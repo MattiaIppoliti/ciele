@@ -133,7 +133,9 @@ export function canEditTeammate(
   viewer: TeammateViewer
 ): boolean {
   if (isTeammateRetired(teammate)) return false;
-  if (viewer.role === "viewer") return false;
+  // A Support Agent ranks as a Viewer here too (#1086): it answers Visitors
+  // and configures nothing.
+  if (viewer.role === "viewer" || viewer.role === "support_agent") return false;
   return (
     teammate.ownerId === viewer.userId ||
     teammate.editorIds.includes(viewer.userId) ||

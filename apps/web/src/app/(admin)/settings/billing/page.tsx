@@ -1,4 +1,3 @@
-import { CreditCard } from "lucide-react";
 import { redirect } from "next/navigation";
 import {
   Card,
@@ -8,7 +7,7 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import { requirePageMember } from "@/lib/authz";
-import { canManageMembers } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { selfServeTiers } from "@/lib/plan-pricing";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { usageLimitsView } from "@/lib/usage-meters";
@@ -53,8 +52,9 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { session, organizationId, role } = await requirePageMember();
-  if (!canManageMembers(role)) redirect("/settings/profile");
+  const { session, organizationId, role, capabilities: held } = await requirePageMember();
+  const access = { role, capabilities: held };
+  if (!can(access, "billing:manage")) redirect("/settings/profile");
 
   const capabilities = getEnterpriseCapabilities();
   const params = await searchParams;
@@ -107,7 +107,6 @@ export default async function BillingPage({
 
   return (
     <SettingsPanel
-      icon={CreditCard}
       title="Billing"
 
     >

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Teammate } from "@agent-hub/core";
+import type { Teammate, TurnTimings } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { DEMO_ORG, getMockDb } from "@agent-hub/db";
 
@@ -25,7 +25,7 @@ const teammate: Teammate = {
   sourceIds: [],
   modelProvider: "anthropic",
   modelId: "claude-opus-4-8",
-  capabilityCeiling: "edit",
+  actionCeiling: "edit",
   systemKind: null,
   assistantId: null,
   approvalBypass: false,
@@ -96,6 +96,38 @@ describe("runTeammateAnswer", () => {
       expect.objectContaining({ organizationId: DEMO_ORG.id }),
     );
     expect(events.some((event) => event.type === "flow")).toBe(true);
+  });
+});
+
+describe("executeTeammateAnswer timings (#1112)", () => {
+  it("opens its own clock for a Channel answer and records the summary", async () => {
+    const db = getMockDb();
+    const telemetry = vi.spyOn(db, "recordRuntimeEvent");
+    const outcome = await executeTeammateAnswer({
+      db,
+      organizationId: DEMO_ORG.id,
+      teammate: { ...teammate, organizationId: DEMO_ORG.id },
+      connections: [],
+      conversationId: null,
+      turn: {
+        platformPrompt: "Platform prompt",
+        message: "Hello",
+        history: [],
+        session: createTurnSession("channel-1", {}),
+        emit: () => undefined,
+        signal: new AbortController().signal,
+      },
+      forward: () => undefined,
+      telemetry: { assistantId: null, conversationId: null, surface: "teammate", startedAt: Date.now() - 50 },
+      attribution: { surface: "channel", memberId: "member-1" },
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    // The container records after the answer, outside any clock scope.
+    await outcome.recordSucceeded("message-1");
+    const timings = telemetry.mock.calls.at(-1)?.[0].timings as TurnTimings | undefined;
+    expect(timings).toMatchObject({ trigger: "channel", modelCalls: 0 });
+    expect(timings?.firstTokenMs ?? 0).toBeGreaterThanOrEqual(45);
   });
 });
 

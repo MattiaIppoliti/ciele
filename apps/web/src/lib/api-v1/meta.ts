@@ -11,6 +11,9 @@ export const API_V1_DOMAINS = [
   "knowledge",
   "publish",
   "inbox",
+  "quick-texts",
+  "webhooks",
+  "business-hours",
   "improvements",
   "memories",
   "projects",
@@ -24,12 +27,15 @@ export const API_V1_DOMAINS = [
   "alerts",
   "organization",
   "members",
+  "roles",
   "api-keys",
   "api-integrations",
   "providers",
   "applications",
   "reviews",
   "usage",
+  "exports",
+  "audit-log",
 ] as const;
 
 /** One of the domains this deployment advertises. */

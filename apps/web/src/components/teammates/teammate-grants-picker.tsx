@@ -1,7 +1,7 @@
 "use client";
 
 import type {
-  TeammateCapabilityCeiling,
+  TeammateActionCeiling,
   TeammateGrantDomain,
 } from "@agent-hub/core";
 import { useId } from "react";
@@ -18,7 +18,7 @@ import {
 
 export interface TeammateGovernanceState {
   domains: TeammateGrantDomain[];
-  ceiling: TeammateCapabilityCeiling;
+  ceiling: TeammateActionCeiling;
   approvalBypass: boolean;
 }
 

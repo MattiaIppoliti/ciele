@@ -210,6 +210,31 @@ describe("distillAgentLearning", () => {
     expect(distiller).not.toHaveBeenCalled();
   });
 
+  it("shows the distiller what the notebook already says, so it can decline a repeat", async () => {
+    const db = getMockDb();
+    const { teammate, conversation } = await teammateWithExchange(db);
+    saysKeep("This organization says Collection, never folder.");
+    await distillAgentLearning({
+      db,
+      organizationId: DEMO_ORG.id,
+      teammateId: teammate.id,
+      conversationId: conversation.id,
+    });
+    distiller.mockClear();
+    saysKeep("Something else.");
+    await distillAgentLearning({
+      db,
+      organizationId: DEMO_ORG.id,
+      teammateId: teammate.id,
+      conversationId: conversation.id,
+    });
+
+    const prompt = String(distiller.mock.calls[0]![0].prompt);
+    expect(prompt).toContain("never folder");
+    // Fenced like the exchange: the notebook was distilled from untrusted text.
+    expect(prompt.indexOf("never folder")).toBeGreaterThan(prompt.indexOf("notebook"));
+  });
+
   it("accumulates across turns rather than replacing", async () => {
     const db = getMockDb();
     const { teammate, conversation } = await teammateWithExchange(db);

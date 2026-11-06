@@ -30,3 +30,17 @@ Place specific message Flows before broad message Flows. The order also controls
 An earlier matching custom Flow can handle a courtesy message before the built-in Basic Interaction Flow.
 
 When [Study Mode](/assistants/tools-and-skills#enable-study-mode) is on, a Study exercise request goes directly to the Study Mode Flow. Intent classification does not run for that request.
+
+
+## Schedule with business hours
+
+The **Schedule** condition offers an **Absolute window** or **Business hours**.
+For Business hours, select a named Organization schedule and choose **During business hours** or **Outside business hours**.
+Both choices include the schedule's holidays and timezone.
+For an absolute window, set the start, optional end and timezone. A new condition starts with the Organization default timezone.
+
+Schedule is a hard gate before Intent Classification. It does not enter the classifier prompt.
+A published Flow reads business hours live, so an edited holiday applies without republishing.
+The editor reports a missing schedule. At runtime a missing schedule is unevaluatable, using the existing Any/All rules.
+A schedule used by an editor Flow or the latest Publication cannot be deleted. The refusal names the Flow.
+Proactive-trigger Flows still have no conditions.

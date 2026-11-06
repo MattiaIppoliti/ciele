@@ -51,6 +51,7 @@ import { bulkUpdateTasksAction, createTaskAction, setFavoriteAction } from "@/ap
 import { PriorityIcon, ProjectGlyph, TaskStatusIcon } from "./work-icons";
 import { AssigneePicker, PriorityPicker, StatusPicker } from "./task-pickers";
 import { TaskCell, type TaskCellKey, type TaskPatch } from "./task-cells";
+import { TaskContextMenu } from "./task-context-menu";
 import { useWorkDirectory } from "./work-directory";
 import { useWorkViewContext } from "./use-work-view-context";
 import { useCollapsedGroups } from "./use-collapsed-groups";
@@ -448,8 +449,17 @@ function TaskGroup({
   const groupProject = groupField === "project" ? dir.project(groupKey) : null;
 
   const row = (task: Task, nested: boolean) => (
-    <TaskRow
+    <TaskContextMenu
       key={task.id}
+      task={task}
+      canEdit={dir.canEdit}
+      onUpdate={(patch) => onUpdate(task, patch)}
+      onOpen={() => onOpenTask(task.id)}
+      onArchive={() => onArchive(task.id)}
+      onDelete={() => onDelete(task.id)}
+    >
+    <div className="contents">
+    <TaskRow
       grid={grid}
       task={task}
       scope={scope}
@@ -471,6 +481,8 @@ function TaskGroup({
       onDropOnRow={mine || nested ? undefined : (id, edge) => onDropOnRow(id, task, edge)}
       onStep={mine || nested ? undefined : (direction) => onStepRow(task, direction)}
     />
+    </div>
+    </TaskContextMenu>
   );
 
   return (

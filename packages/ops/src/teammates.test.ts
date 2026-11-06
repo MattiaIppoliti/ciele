@@ -48,11 +48,11 @@ const create = (over: Record<string, unknown> = {}, context = ctx()) =>
 
 describe("teammates operations", () => {
   it("declares the catalogue contract: capability + mutated entities", () => {
-    expect(listTeammatesOp.capability).toBe("member");
-    expect(getTeammateOp.capability).toBe("member");
-    expect(createTeammateOp.capability).toBe("edit");
-    expect(updateTeammateOp.capability).toBe("edit");
-    expect(deleteTeammateOp.capability).toBe("edit");
+    expect(listTeammatesOp.capability).toBe("teammates:view");
+    expect(getTeammateOp.capability).toBe("teammates:view");
+    expect(createTeammateOp.capability).toBe("teammates:edit");
+    expect(updateTeammateOp.capability).toBe("teammates:edit");
+    expect(deleteTeammateOp.capability).toBe("teammates:edit");
     expect(createTeammateOp.entities({ name: "x" }, undefined as never)).toEqual([
       { kind: "teammateList" },
     ]);

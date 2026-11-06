@@ -49,6 +49,11 @@ export interface RemoteOperationCall {
   organizationId: string;
   userId: string;
   role: Role;
+  /**
+   * What the caller may do (ADR-0028), checked again by the service against
+   * the Capability its port of the operation declares.
+   */
+  capabilities?: readonly string[];
   dbScope: DbScope;
   /** Goes into the session's JWT claims, as it is in the Member's own token. */
   actorEmail?: string | null;
@@ -130,7 +135,7 @@ function base64url(bytes: Uint8Array): string {
  */
 export async function signAssertion(
   secret: string,
-  call: Pick<RemoteOperationCall, "operation" | "organizationId" | "userId" | "role" | "dbScope" | "actorEmail">,
+  call: Pick<RemoteOperationCall, "operation" | "organizationId" | "userId" | "role" | "dbScope" | "actorEmail" | "capabilities">,
   body: string,
   now = Date.now()
 ): Promise<string> {
@@ -142,6 +147,7 @@ export async function signAssertion(
     sub: call.userId,
     email: call.actorEmail ?? null,
     role: call.role,
+    ...(call.capabilities ? { caps: call.capabilities } : {}),
     scope: call.dbScope,
     body: base64url(digest),
     exp: Math.floor(now / 1000) + ASSERTION_TTL_SECONDS,

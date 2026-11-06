@@ -113,7 +113,7 @@ export function NotificationCenter({
               kind: item.kind,
               createdAt: item.createdAt,
               text: notificationText(item),
-              taskTitle: item.task.title,
+              taskTitle: item.kind === "conversation_assigned" ? item.conversation.title : item.task.title,
               excerpt: item.excerpt,
             }),
           );

@@ -1,10 +1,15 @@
-import { roleAllowsCapability, type Role } from "@agent-hub/core";
+import * as exportSchedules from "./export-schedules";
+import * as assistantBundles from "./assistant-bundles";
+import { capabilitiesAllow, capabilitiesForLadderRole, type Role } from "@agent-hub/core";
 import { z } from "zod";
 
 import * as actionApprovals from "./action-approvals";
 import * as applicationImports from "./application-imports";
 import * as applications from "./applications";
 import * as assistants from "./assistants";
+import * as auditLog from "./audit-log";
+import * as roles from "./roles";
+import * as assistantAccess from "./assistant-access";
 import * as channels from "./channels";
 import * as configuration from "./configuration";
 import * as crawlers from "./crawlers";
@@ -14,7 +19,14 @@ import * as flows from "./flows";
 import * as flowsAgent from "./flows-agent";
 import * as helpDesks from "./help-desks";
 import * as improvements from "./improvements";
+import * as improvementValidation from "./improvement-validation";
 import * as inbox from "./inbox";
+import * as operators from "./operators";
+import * as operatorStaffing from "./operator-staffing";
+import * as businessHours from "./business-hours";
+import * as quickTexts from "./quick-texts";
+import * as outboundWebhooks from "./outbound-webhooks";
+import * as remoteMcp from "./remote-mcp";
 import * as integrations from "./integrations";
 import * as knowledge from "./knowledge";
 import * as memberNotifications from "./member-notifications";
@@ -37,7 +49,7 @@ import * as threadPreferences from "./thread-preferences";
 import * as workReads from "./work-reads";
 import * as workViews from "./work-views";
 import type { MutatedEntity } from "./entities";
-import { OperationError, type Operation, type OperationContext } from "./operation";
+import { OperationError, authorizeOperation, type Operation, type OperationContext } from "./operation";
 
 /**
  * Ciele AI's catalogue: every operation of the admin platform, the same set the
@@ -72,6 +84,10 @@ const MODULES: Record<string, unknown>[] = [
   applicationImports,
   applications,
   assistants,
+  auditLog,
+  assistantAccess,
+  assistantBundles,
+  exportSchedules,
   channels,
   configuration,
   crawlers,
@@ -81,11 +97,20 @@ const MODULES: Record<string, unknown>[] = [
   flowsAgent,
   helpDesks,
   improvements,
+  improvementValidation,
   inbox,
+  operators,
+  operatorStaffing,
+  quickTexts,
+  businessHours,
+  outboundWebhooks,
+  remoteMcp,
   integrations,
   knowledge,
   memory,
   organization,
+  // Roles (#1164): Ciele AI may edit Roles only as far as its Member may.
+  roles,
   publish,
   reviews,
   routines,
@@ -126,7 +151,7 @@ function isOperation(value: unknown): value is PlatformOperation {
  * - Deciding a gate (`approvals.decide`, `reviews.decide`): an agent must not
  *   approve the actions it was stopped on.
  * - Anything that takes a credential as input (API keys, provider keys, SSO,
- *   ticketing, API integrations, crawler keys): the secret would have to be
+ *   API integrations, crawler keys): the secret would have to be
  *   typed into the chat, and the transcript keeps it. Operations that take one
  *   only optionally (a help-desk channel, a Flow's API request) stay offered,
  *   and `runPlatformOperation` refuses the call that fills the field.
@@ -143,15 +168,18 @@ function isOperation(value: unknown): value is PlatformOperation {
  * - Leaving the Organization: not something to do by asking.
  * - Deleting a revoked API key: the row is the key's audit trail, which is why
  *   the delete is a console act with no API, CLI or MCP route (#1007).
+ * - Recording an Improvement validation or requesting a replay: a record says a
+ *   Member checked the customer widget, and a replay spends model credit on the
+ *   Member's say-so. An agent may read the evidence, never sign it.
  */
 const EXCLUDED_PREFIXES = [
+  "knowledge.documents.review",
   "approvals.decide",
   "reviews.decide",
   "apiKeys.create",
   "apiKeys.delete",
   "providers.create",
   "sso.connection.set",
-  "helpDesks.ticketing.connect",
   "apiIntegrations.set",
   "crawlers.set",
   "memory.remember",
@@ -162,6 +190,13 @@ const EXCLUDED_PREFIXES = [
   "flows.agent.",
   "channels.messages.post",
   "members.leave",
+  // Answering a Visitor as a person (#1082): the reply goes out under a
+  // Member's name, so a Member sends it, never an agent on their behalf.
+  "inbox.conversations.takeover",
+  "inbox.conversations.reply",
+  "inbox.conversations.release",
+  // A Member's own Available/Away status: theirs to set, not an agent's.
+  "operators.status.set",
   // Personal console triage belongs to the Member, not an agent turn.
   "threads.",
   // A file's bytes reach the bucket through the console's upload route only;
@@ -169,6 +204,8 @@ const EXCLUDED_PREFIXES = [
   "files.prepare",
   "files.create",
   "files.discard",
+  "improvements.validations.record",
+  "improvements.replay",
 ];
 
 export type PlatformOperationPolicy = "excluded" | "confirm" | "run";
@@ -285,16 +322,29 @@ export interface PlatformOperationSummary {
 }
 
 /**
+ * Who is asking: a bare ladder Role (its built-in defaults), or a context
+ * carrying the Member's resolved Capabilities (ADR-0028).
+ */
+export type PlatformAccess = Role | null | { role: Role; capabilities?: readonly string[] };
+
+function accessAllows(access: PlatformAccess, required: PlatformOperation["capability"]): boolean {
+  if (access && typeof access === "object") {
+    return capabilitiesAllow(access.capabilities ?? capabilitiesForLadderRole(access.role), required as never);
+  }
+  return capabilitiesAllow(capabilitiesForLadderRole(access), required as never);
+}
+
+/**
  * What this Role may reach, optionally one domain (the name's first segment).
  * A Viewer listing sees only what a Viewer may do, so the model is never
  * offered something it would then be refused.
  */
 export function listPlatformOperations(
-  role: Role | null,
+  role: PlatformAccess,
   domain?: string
 ): PlatformOperationSummary[] {
   return platformOperations()
-    .filter((op) => roleAllowsCapability(role, op.capability))
+    .filter((op) => accessAllows(role, op.capability))
     .filter((op) => !domain || op.name.split(".")[0] === domain)
     .map((op) => ({
       name: op.name,
@@ -304,7 +354,7 @@ export function listPlatformOperations(
 }
 
 /** The domains, for a first listing that fits in one tool result. */
-export function platformOperationDomains(role: Role | null): { domain: string; count: number }[] {
+export function platformOperationDomains(role: PlatformAccess): { domain: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const op of listPlatformOperations(role)) {
     const domain = op.name.split(".")[0] ?? op.name;
@@ -313,7 +363,7 @@ export function platformOperationDomains(role: Role | null): { domain: string; c
   return [...counts].map(([domain, count]) => ({ domain, count }));
 }
 
-function findReachable(role: Role | null, name: string): PlatformOperation {
+function findOperation(name: string): PlatformOperation {
   const op = platformOperations().find((candidate) => candidate.name === name);
   if (!op) {
     throw new OperationError(
@@ -321,7 +371,12 @@ function findReachable(role: Role | null, name: string): PlatformOperation {
       `There is no platform operation called "${name}". List the operations to see the names.`
     );
   }
-  if (!roleAllowsCapability(role, op.capability)) {
+  return op;
+}
+
+function findReachable(role: PlatformAccess, name: string): PlatformOperation {
+  const op = findOperation(name);
+  if (!accessAllows(role, op.capability)) {
     throw new OperationError(
       "invalid_input",
       `Your colleague's role does not allow "${name}", so it cannot run for them.`
@@ -331,7 +386,7 @@ function findReachable(role: Role | null, name: string): PlatformOperation {
 }
 
 /** An operation's input as JSON Schema, so the model can build a valid call. */
-export function describePlatformOperation(role: Role | null, name: string) {
+export function describePlatformOperation(role: PlatformAccess, name: string) {
   const op = findReachable(role, name);
   return {
     name: op.name,
@@ -360,7 +415,9 @@ export async function runPlatformOperation(
   name: string,
   rawInput: unknown
 ): Promise<PlatformOperationRun> {
-  const op = findReachable(ctx.role, name);
+  // Found, not yet authorized: on one Assistant the Member's Role there
+  // decides, so the Organization-level check would refuse a raise.
+  const op = findOperation(name);
   // Checked on the raw call, before parsing strips anything: what matters is
   // that the secret is being asked for through chat, not whether it would land.
   const credential = credentialIn(rawInput);
@@ -371,6 +428,14 @@ export async function runPlatformOperation(
     );
   }
   const input = op.input.parse(rawInput ?? {});
-  const result = await op.run(ctx, input);
+  // On one Assistant the Member's Role there decides, up or down (ADR-0028).
+  const { allowed, capabilities } = await authorizeOperation(ctx, op as never, input);
+  if (!allowed) {
+    throw new OperationError(
+      "invalid_input",
+      `Your colleague's role does not allow "${name}", so it cannot run for them.`
+    );
+  }
+  const result = await op.run({ ...ctx, capabilities }, input);
   return { operation: op.name, entities: op.entities(input, result), result };
 }

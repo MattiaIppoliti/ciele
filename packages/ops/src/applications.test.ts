@@ -30,9 +30,9 @@ async function seedSlack(db = getMockDb(), scopes = ["channels:read"]) {
 
 describe("applications operations", () => {
   it("declares the catalogue contract", () => {
-    expect(listApplicationConnectionsOp.capability).toBe("member");
-    expect(requestApplicationReconsentOp.capability).toBe("publish");
-    expect(listConnectorActionsOp.capability).toBe("member");
+    expect(listApplicationConnectionsOp.capability).toBe("applications:view");
+    expect(requestApplicationReconsentOp.capability).toBe("applications:connect");
+    expect(listConnectorActionsOp.capability).toBe("applications:view");
   });
 
   it("lists connections without the sealed credential, filtered by provider", async () => {

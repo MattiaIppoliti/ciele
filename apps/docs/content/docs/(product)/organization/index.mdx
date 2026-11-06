@@ -8,6 +8,7 @@ An Organization is the tenant boundary for Ciele data and permissions.
 Use **Settings** for these current areas:
 
 - **General** for Organization information.
+- **Business hours** for shared schedules, holidays and the default timezone.
 - **Members** for membership, invitations, and Roles.
 - **AI Provider** for provider connections.
 - **Crawling** for the website crawler of the Organization, such as its own Apify account.
@@ -17,11 +18,11 @@ Use **Settings** for these current areas:
 
 The self-hosted edition does not show a managed subscription catalogue.
 
-Member Roles and API-key Roles use the same permission ladder. An API key cannot receive a Role above its creator.
+A Role is a set of capabilities. Members, invitations and API keys use the same Roles. An API key cannot have a capability that its creator does not have.
 
 The **AI Provider** area also controls [long-term memory](/data/long-term-memory). It includes tools to erase a Visitor's stored memories.
 
-The **General** tab has two retention settings: one for reasoning traces and one for whole conversations.
+The **Data retention** tab sets how long conversations, messages, improvements and audit records are kept. The **General** tab keeps the window for reasoning traces.
 See [Data retention](/organization/data-retention).
 
 ## Personal appearance
@@ -30,3 +31,62 @@ In the sidebar, expand **Settings** and select **Personal settings**, then **The
 If you do not see **Settings**, open the account menu and select **Profile**, then **Theme**.
 Choose **Light**, **Dark**, or **System**, and select the **Midnight** or **Mist Blue** palette.
 These preferences affect your console and are saved in this browser. The published widget keeps its Assistant style.
+
+
+## Business hours and holidays
+
+A Member with the **edit** capability can open **Settings → Business hours**.
+Create a named schedule, select its IANA timezone and set the weekly opening windows.
+A day can have several windows. A closing time before the opening time continues into the next day.
+One schedule is the Organization default. You can change the default when you edit a schedule.
+
+Add named holidays as one date or an inclusive date range. Select **Repeat yearly** for an annual closure.
+A holiday closes the whole local day, including hours that continue from the previous night.
+Channels and Flow conditions read these settings live. A holiday change applies without republishing an Assistant.
+
+The Organization default timezone is the starting value for new schedules, channel Availability and Flow Schedule conditions.
+Existing timezones and Insights reporting do not change.
+Deletion is refused while a channel, an editor Flow or a Flow in the latest Publication uses the schedule.
+The refusal names those channels and Flows.
+
+The Developer Panel on this page shows the **Business hours API**.
+Use `/api/v1/business-hours`, `ciele business-hours` or `manage_configuration` in MCP to manage the same settings.
+Set the default timezone with `PATCH /api/v1/business-hours/timezone` or `ciele business-hours timezone Europe/Rome --yes`.
+
+
+## Audit log
+
+Owners and Admins open **Settings → Audit log** to see configuration changes.
+Each row shows **When**, **Action**, **Actor** and **Target**. The times are in UTC.
+
+- Select **Filter by action** to show one or more actions.
+- Select **Filter by actor** to show the changes of one member, or of **System**.
+- Select the date control to show one period.
+- Select **When** to show the oldest entries first.
+
+The actor is the member who made the change. When an API key or a Teammate made the change, the actor is the key or the Teammate. The member it acts for shows below it.
+Changes that no person made show **System**.
+
+Select the eye icon on a row to open **Entry details**. The panel shows the actor, the target, the surface, the outcome and the affected entities.
+Links open the entities that still exist.
+Some changes also show **Changes**: roles, invitations, API keys, assistant access and the Organization settings. Each field shows its value before and after.
+
+The log records write and consequential operations, including failed runs.
+A composite operation creates one entry for its outer call.
+It records no operation inputs, credentials, Visitor text or read operations.
+A recording failure does not stop the operation. Diagnostics report the failure.
+
+Select **Export CSV** to queue the current filters in the existing export jobs.
+The export appears in **Insights → Exports** when ready. Audit exports remain restricted to Owners and Admins.
+Members cannot rewrite or delete audit entries. The retention sweep deletes entries older than the **Audit records** period on the **Data retention** tab. The default is 180 days.
+Deleting an Organization removes its audit entries too.
+
+The audit log is also available from the API, the CLI and the MCP server. Each is read-only and needs a key that can manage members.
+
+```bash
+ciele audit-log list --actor system --from 2026-11-01
+curl "https://ciele.app/api/v1/audit-log?action=apiKeys.create" \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+On the MCP server, use the `audit_log_list` action of `manage_organization`.

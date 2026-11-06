@@ -14,6 +14,7 @@ import { countLabel } from "@/lib/pagination";
  */
 
 export interface SourceDocumentsSearchParams {
+  trustTier?: import("@agent-hub/core").OkfTrustTier;
   page: number;
   /** Oldest first. The Updated column defaults to newest first. */
   ascending: boolean;
@@ -59,7 +60,9 @@ export function parseSourceDocumentsParams(
   const page = Number.parseInt(one(params.page), 10);
   const column = one(params.column);
   const status = one(params.status);
+  const trustTier = one(params.trust);
   return {
+    ...(trustTier === "unverified" || trustTier === "machine-confirmed" || trustTier === "human-reviewed" ? { trustTier } : {}),
     page: Number.isFinite(page) && page >= 1 ? page : 1,
     // `sort=oldest` predates the clickable headers and is still what the
     // Updated column writes, so it keeps its spelling; `column` is the newer
@@ -104,6 +107,7 @@ export function sourceDocumentsQuery(
   if (page > 1) query.set("page", String(page));
   if (params.ascending) query.set("sort", "oldest");
   if (params.sort) query.set("column", params.sort);
+  if (params.trustTier) query.set("trust", params.trustTier);
   if (params.status) query.set("status", params.status);
   return query.toString();
 }

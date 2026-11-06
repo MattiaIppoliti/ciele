@@ -47,7 +47,7 @@ export function applicationConnectionView(
 
 export const listApplicationConnectionsOp = defineOperation({
   name: "applications.connections.list",
-  capability: "member",
+  capability: "applications:view",
   effect: "read",
   input: z.object({
     provider: z.enum(CONNECTOR_PROVIDERS).optional(),
@@ -118,7 +118,7 @@ export const requestApplicationReconsentOp = defineOperation({
   name: "applications.connections.reconsent",
   // Org-owned providers are authorized by publishers; a personal Connection is
   // re-consented only by its owner, which the start route enforces again.
-  capability: "publish",
+  capability: "applications:connect",
   effect: "read",
   input: reconsentInput,
   entities: () => [],
@@ -151,7 +151,7 @@ export const requestApplicationReconsentOp = defineOperation({
 /** The catalogue as the API and the MCP tool describe it: keys, effects, fields. */
 export const listConnectorActionsOp = defineOperation({
   name: "applications.connectors.list",
-  capability: "member",
+  capability: "applications:view",
   effect: "read",
   input: z.object({
     provider: z.enum(CONNECTOR_PROVIDERS).optional(),

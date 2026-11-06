@@ -3,22 +3,21 @@ title: Flujos
 description: Dirige los mensajes y los eventos proactivos a acciones de respuesta ordenadas.
 ---
 
-Un Flow contiene un desencadenante (trigger), las condiciones disponibles y las
-acciones ordenadas. El enrutador procesa los Flows habilitados en el orden
-configurado.
+Un Flow contiene un desencadenante, las condiciones disponibles y las acciones
+ordenadas. El enrutador procesa los Flows habilitados en el orden configurado.
 
 ## Flujos de mensajes
 
 El desencadenante **User sends a message** utiliza la clasificación de
-intenciones. Un clasificador de modelos selecciona el mejor Flow elegible cuando
+intenciones. Un clasificador de modelos selecciona el Flow más adecuado cuando
 hay un modelo disponible.
 
 El enrutador de palabras clave ofrece una alternativa de respaldo para
 situaciones offline y en caso de error. Ambos enrutadores utilizan el mismo
 filtro de candidatos.
 
-El flujo **Default behavior** bloqueado permanece en último lugar. Procesa un
-mensaje apto cuando no resulta seleccionado ningún Flow anterior.
+El flujo **Default behavior** bloqueado permanece en último lugar. Gestiona un
+mensaje apto cuando no prevalece ningún Flow anterior.
 
 ## Flujos proactivos
 
@@ -28,17 +27,38 @@ Estos desencadenantes no clasifican un mensaje:
 - **Time on page**
 - **Chat opens**
 
-Un Flow proactivo no tiene condiciones y contiene una acción de tipo
-Notification. Consulta [Notifications](/flows/notifications).
+Un Flow proactivo no tiene condiciones y contiene una acción de Notification.
+Consulta [Notifications](/flows/notifications).
 
 ## Orden de los flujos
 
-Coloca los flujos de mensajes específicos antes de los flujos de mensajes
-generales. El orden también controla el atajo integrado de Basic Interaction.
+Coloca los Flujos de mensajes específicos antes de los Flujos de mensajes
+generales. El orden también controla el acceso directo integrado de Basic
+Interaction.
 
-Un Flow personalizado coincidente situado antes puede gestionar un mensaje de
-cortesía antes del Flow de interacción básica integrado.
+Un Flow personalizado coincidente que aparezca antes puede gestionar un mensaje
+de cortesía antes del Flow de interacción básica integrado.
 
 Cuando [Study Mode](/assistants/tools-and-skills#enable-study-mode) está
 activado, una solicitud de ejercicio de estudio va directamente al flujo Study
 Mode. La clasificación de intenciones no se ejecuta para esa solicitud.
+
+
+## Programación con horario comercial
+
+La condición **Schedule** ofrece un **Absolute window** o un **Business hours**.
+Para el horario comercial, selecciona un horario de la organización con nombre y
+elige **During business hours** o **Outside business hours**. Ambas opciones
+incluyen los días festivos y la zona horaria del horario. Para un intervalo
+absoluto, establece la hora de inicio, la hora de finalización (opcional) y la
+zona horaria. Una nueva condición comienza con la zona horaria predeterminada de
+la organización.
+
+El horario es un filtro estricto previo a la clasificación de intenciones. No
+entra en el *prompt* del clasificador. Un Flow publicado lee el horario
+comercial en tiempo real, por lo que un festivo modificado se aplica sin
+necesidad de volver a publicarlo. El editor informa de que falta un horario. En
+tiempo de ejecución, un horario ausente no se puede evaluar, aplicando las
+reglas existentes Any/All. No puedes eliminar un horario utilizado por un Flow
+de editor o por la última Publication. El rechazo indica el nombre del Flow. Los
+Flujos de desencadenante proactivo aún no tienen condiciones.

@@ -45,7 +45,7 @@ describe("configureSlackBotAction", () => {
     provider: "slack",
     status: "connected",
   };
-  const db = { getSafeApplicationConnection: vi.fn(async () => connection) };
+  const db = { getSafeApplicationConnection: vi.fn(async () => connection), listMembers: vi.fn(async () => [{ userId: "member-1", email: "member@example.test" }]), recordAuditEntry: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,6 +55,7 @@ describe("configureSlackBotAction", () => {
     requireMemberMock.mockResolvedValue({
       db,
       organizationId: "org-1",
+      session: { userId: "member-1", role: "owner", email: "member@example.test" },
     } as unknown as Awaited<ReturnType<typeof requireMember>>);
     vi.mocked(getWidgetDb).mockReturnValue({
       getApplicationConnection: vi.fn(async () => connection),
@@ -64,7 +65,8 @@ describe("configureSlackBotAction", () => {
 
   it("publishes an audience, so it needs publish permission and the session's Organization", async () => {
     await configureSlackBotAction("conn-1", config);
-    expect(requireMemberMock).toHaveBeenCalledWith("publish");
+    expect(requireMemberMock).toHaveBeenCalledWith("applications:connect");
+    expect(db.recordAuditEntry).toHaveBeenCalledWith(expect.objectContaining({ operation: "applications.slackBot.configure", effect: "consequential", outcome: "ok" }));
     expect(saveMock).toHaveBeenCalledWith(db, "org-1", "conn-1", config, {
       expectedAppId: "ATEST",
       channels,

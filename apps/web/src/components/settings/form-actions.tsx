@@ -69,7 +69,7 @@ function FormActions({
  */
 export function SettingsSaveBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="settings-save-bar bg-background sticky -bottom-6 z-10 -mx-2 flex flex-wrap items-center justify-end gap-3 border-t px-2 pt-4 pb-10 sm:-bottom-7 sm:pb-11">
+    <div className="settings-save-bar sticky -bottom-6 z-10 -mx-2 flex flex-wrap items-center justify-end gap-3 bg-[var(--modal-sheet)] px-2 pt-4 pb-10 sm:-bottom-7 sm:pb-11">
       {children}
     </div>
   );

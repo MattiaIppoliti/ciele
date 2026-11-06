@@ -1,3 +1,4 @@
+import { capabilitiesForLadderRole } from "@agent-hub/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ORG, getMockDb, type Db } from "@agent-hub/db";
 
@@ -49,7 +50,7 @@ describe("Application knowledge actions", () => {
       organizationId: DEMO_ORG.id,
       session: {
         userId: "demo-owner",
-        role: "owner",
+        role: "owner", capabilities: capabilitiesForLadderRole("owner"),
         organization: DEMO_ORG,
       },
     } as never);
@@ -341,13 +342,13 @@ describe("Application knowledge actions", () => {
       sources: 1,
       assistantLinks: 1,
     });
-    expect(requireMemberMock).toHaveBeenLastCalledWith("edit");
+    expect(requireMemberMock).toHaveBeenLastCalledWith("applications:edit");
 
     revokeMock.mockRejectedValueOnce(new Error("provider unavailable"));
     await deleteApplicationConnectionAction(connection.id);
 
     expect(await db.getApplicationConnection(connection.id)).toBeNull();
     expect(await db.getSource(source.id)).toBeNull();
-    expect(requireMemberMock).toHaveBeenLastCalledWith("edit");
+    expect(requireMemberMock).toHaveBeenLastCalledWith("applications:edit");
   });
 });

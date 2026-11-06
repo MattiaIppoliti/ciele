@@ -1,26 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  apiKeySecretHint,
-  generateApiKeySecret,
-  hashApiKeySecret,
-} from "@agent-hub/core";
+import { apiKeySecretHint, generateApiKeySecret, hashApiKeySecret } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
-import { GET as mcpGet, POST as mcpRoute } from "./route";
+import { DELETE as mcpDelete, GET as mcpGet, POST as mcpRoute } from "./route";
+import { mcpRouteContract, modern, payload, toolCall } from "./route-contract.suite";
 
 /**
- * The hosted MCP endpoint (#702) at the route seam: authentication, the two
- * protocol eras, and the tool surface. What a tool *does* once called is
- * covered exhaustively in packages/mcp, this asserts the endpoint in front
- * of them, not the tools behind it.
+ * The hosted MCP endpoint (#702) at the route seam. The contract every server
+ * answering /api/mcp must pass lives in `route-contract.suite.ts`, which the
+ * Rust parity test runs against the service too; this file runs it against
+ * the Next.js route on the mock Db, plus what only the route has to prove.
  */
-
-const URL_ = "http://test.local/api/mcp";
 
 async function mintKey(role: "owner" | "viewer" = "owner") {
   const secret = generateApiKeySecret();
   await getMockDb().createApiKey(DEMO_ORG.id, {
     name: `mcp ${role} key`,
     role,
+    roleId: `builtin:${role}`,
     secretHash: hashApiKeySecret(secret),
     secretHint: apiKeySecretHint(secret),
     createdBy: DEMO_MEMBER.userId,
@@ -28,209 +24,71 @@ async function mintKey(role: "owner" | "viewer" = "owner") {
   return secret;
 }
 
-/** A modern (2026-07-28) request: the per-request `_meta` envelope, no handshake. */
-const modern = (secret: string | undefined, method: string, params = {}) =>
-  new Request(URL_, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-      "mcp-method": method,
-      ...(secret ? { authorization: `Bearer ${secret}` } : {}),
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method,
-      params: {
-        ...params,
-        _meta: {
-          "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-          "io.modelcontextprotocol/clientInfo": { name: "test", version: "1.0.0" },
-          "io.modelcontextprotocol/clientCapabilities": {},
-        },
-      },
-    }),
-  });
-
-/** A 2025-era request: the `initialize` handshake, no envelope. */
-const legacy = (secret: string) =>
-  new Request(URL_, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-      authorization: `Bearer ${secret}`,
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "test", version: "1.0.0" },
-      },
-    }),
-  });
-
-/** The handler may answer JSON or SSE; pull the one JSON-RPC payload either way. */
-async function payload(response: Response) {
-  const text = await response.text();
-  if (response.headers.get("content-type")?.includes("text/event-stream")) {
-    const line = text.split("\n").find((l) => l.startsWith("data:"));
-    return JSON.parse(line?.slice(5).trim() ?? "null");
+/** Stub every outbound fetch, record its URL, and restore it after `run`. */
+async function recordingFetch<T>(run: (urls: string[]) => Promise<T>): Promise<T> {
+  const urls: string[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
+    urls.push(String(input instanceof Request ? input.url : input));
+    return Response.json({ ok: true });
+  }) as unknown as typeof fetch;
+  try {
+    return await run(urls);
+  } finally {
+    globalThis.fetch = realFetch;
   }
-  return JSON.parse(text);
 }
 
 describe("POST /api/mcp", () => {
-  it("refuses a request with no API key", async () => {
-    const response = await mcpRoute(modern(undefined, "tools/list"));
-    expect(response.status).toBe(401);
-  });
-
-  it("refuses an unknown API key with the same opaque 401", async () => {
-    const response = await mcpRoute(modern("ciele_sk_not_a_real_key", "tools/list"));
-    expect(response.status).toBe(401);
-  });
-
-  it("serves the modern era: server/discover advertises 2026-07-28", async () => {
-    const secret = await mintKey();
-    const response = await mcpRoute(modern(secret, "server/discover"));
-
-    expect(response.status).toBe(200);
-    const body = await payload(response);
-    expect(body.result.supportedVersions).toContain("2026-07-28");
-    expect(body.result.capabilities.tools).toBeDefined();
-    // 2026-07-28 moved server identity into the result `_meta` envelope.
-    expect(body.result._meta["io.modelcontextprotocol/serverInfo"]).toMatchObject({
-      name: "ciele",
-      version: "0.1.0",
-    });
-  });
-
-  it("lists all 17 tools to an authenticated modern client", async () => {
-    const secret = await mintKey();
-    const response = await mcpRoute(modern(secret, "tools/list"));
-
-    expect(response.status).toBe(200);
-    const body = await payload(response);
-    expect(body.result.tools).toHaveLength(17);
-    expect(body.result.tools.map((t: { name: string }) => t.name)).toContain(
-      "manage_assistants"
-    );
-  });
-
-  it("still serves a 2025-era client (dual era)", async () => {
-    const secret = await mintKey();
-    const response = await mcpRoute(legacy(secret));
-
-    expect(response.status).toBe(200);
-    const body = await payload(response);
-    expect(body.result.protocolVersion).toBe("2025-11-25");
-    expect(body.result.serverInfo).toMatchObject({ name: "ciele" });
-  });
-
-  /**
-   * The 2026-07-28 result-shape obligations (#701), asserted where they are
-   * actually observable, on the wire. `resultType` is SDK-supplied; the cache
-   * fields come from the hint `createCieleMcpServer` configures (the SDK's
-   * default would be an uncacheable `ttlMs: 0`).
-   */
-  it("carries the required result-shape fields on tools/list", async () => {
-    const secret = await mintKey();
-    const body = await payload(await mcpRoute(modern(secret, "tools/list")));
-
-    expect(body.result.resultType).toBe("complete");
-    expect(body.result.ttlMs).toBe(60 * 60 * 1000);
-    expect(body.result.cacheScope).toBe("private");
-  });
-
-  it("advertises no deprecated capability", async () => {
-    const secret = await mintKey();
-    const body = await payload(await mcpRoute(modern(secret, "server/discover")));
-
-    // Roots, Sampling and Logging are Deprecated as of 2026-07-28; we serve
-    // tools only, and this keeps it that way.
-    expect(Object.keys(body.result.capabilities)).toEqual(["tools"]);
-  });
-
-  /**
-   * #801, CYB-03. The tools forward the caller's own live API key to whatever
-   * origin this endpoint dials, so the origin must come from configuration and
-   * never from the request: a proxy passing an untrusted `Host` would
-   * otherwise have this server post a working Bearer key to the attacker's
-   * host. Proven by intercepting the outbound call a tool makes, from a request
-   * whose Host says something else entirely.
-   */
-  it("dials the configured internal origin, not the Host it was asked on", async () => {
-    const secret = await mintKey();
-    const outbound: string[] = [];
-    const realFetch = globalThis.fetch;
-    const priorInternalOrigin = process.env.CIELE_INTERNAL_API_ORIGIN;
-    process.env.CIELE_INTERNAL_API_ORIGIN = "http://app.internal:3000";
-    globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
-      outbound.push(String(input instanceof Request ? input.url : input));
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    }) as unknown as typeof fetch;
-
-    try {
-      const request = new Request("https://ciele.your-campus.example/api/mcp", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json, text/event-stream",
-          "mcp-method": "tools/call",
-          // SEP-2243 requires both routing headers, and the handler validates
-          // them against the body, Mcp-Name is the tool being called.
-          "mcp-name": "manage_assistants",
-          authorization: `Bearer ${secret}`,
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/call",
-          params: {
-            name: "manage_assistants",
-            arguments: { action: "list" },
-            _meta: {
-              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-              "io.modelcontextprotocol/clientInfo": { name: "t", version: "1" },
-              "io.modelcontextprotocol/clientCapabilities": {},
-            },
-          },
-        }),
-      });
-      await mcpRoute(request);
-
-      expect(outbound.length).toBeGreaterThan(0);
-      for (const url of outbound) {
-        expect(new URL(url).origin).toBe("http://app.internal:3000");
-        expect(new URL(url).pathname.startsWith("/api/v1/")).toBe(true);
+  mcpRouteContract(() => ({
+    post: mcpRoute,
+    probe: (method) => (method === "GET" ? mcpGet : mcpDelete)(new Request("http://test.local/api/mcp", { method })),
+    key: mintKey,
+    outbound: async (send) => {
+      const prior = process.env.CIELE_INTERNAL_API_ORIGIN;
+      process.env.CIELE_INTERNAL_API_ORIGIN = "http://app.internal:3000";
+      try {
+        return await recordingFetch(async (urls) => {
+          await send();
+          return { urls, origin: "http://app.internal:3000" };
+        });
+      } finally {
+        if (prior === undefined) delete process.env.CIELE_INTERNAL_API_ORIGIN;
+        else process.env.CIELE_INTERNAL_API_ORIGIN = prior;
       }
+    },
+  }));
+
+  /**
+   * `CIELE_MCP_READ_ONLY=1` holds here too, not only on stdio and in the Rust
+   * service: with the endpoint kept in the app (CIELE_RUST_MCP=0) a write
+   * must still be refused before any request leaves.
+   */
+  it("refuses a write under CIELE_MCP_READ_ONLY=1, with the stdio server's words", async () => {
+    const secret = await mintKey();
+    const prior = process.env.CIELE_MCP_READ_ONLY;
+    process.env.CIELE_MCP_READ_ONLY = "1";
+    const call = (name: string, args: Record<string, unknown>) => toolCall(secret, name, args);
+    try {
+      await recordingFetch(async (outbound) => {
+        const refused = await payload(await mcpRoute(call("manage_assistants", { action: "delete", id: "a" })));
+        expect(refused.result.isError).toBe(true);
+        expect(refused.result.content[0].text).toBe(
+          'Read-only mode: "manage_assistants" action "delete" would write. Unset CIELE_MCP_READ_ONLY to allow mutations.'
+        );
+        expect(outbound).toEqual([]);
+
+        const listed = await payload(await mcpRoute(modern(secret, "tools/list")));
+        expect(listed.result.tools[0].description).toContain("READ-ONLY mode");
+
+        // A read still goes through.
+        const read = await payload(await mcpRoute(call("manage_assistants", { action: "list" })));
+        expect(read.result.isError).toBeUndefined();
+        expect(outbound.length).toBeGreaterThan(0);
+      });
     } finally {
-      globalThis.fetch = realFetch;
-      if (priorInternalOrigin === undefined) delete process.env.CIELE_INTERNAL_API_ORIGIN;
-      else process.env.CIELE_INTERNAL_API_ORIGIN = priorInternalOrigin;
+      if (prior === undefined) delete process.env.CIELE_MCP_READ_ONLY;
+      else process.env.CIELE_MCP_READ_ONLY = prior;
     }
-  });
-
-  it("answers a 2025-era GET probe rather than crashing", async () => {
-    const response = await mcpGet(new Request(URL_, { method: "GET" }));
-    // Stateless serving has no SSE stream to open: 405, not a 500.
-    expect(response.status).toBe(405);
-  });
-
-  it("serves a Viewer key too, read-only is the Role, not the endpoint", async () => {
-    const secret = await mintKey("viewer");
-    const response = await mcpRoute(modern(secret, "tools/list"));
-
-    expect(response.status).toBe(200);
-    const body = await payload(response);
-    expect(body.result.tools).toHaveLength(17);
   });
 });

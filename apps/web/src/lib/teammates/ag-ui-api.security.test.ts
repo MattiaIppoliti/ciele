@@ -21,6 +21,7 @@ async function fixture(role: "admin" | "viewer" = "viewer") {
   const key = await db.createApiKey(DEMO_ORG.id, {
     name: "AG-UI fixture",
     role,
+    roleId: `builtin:${role}`,
     createdBy: DEMO_MEMBER.userId,
     secretHash: hashApiKeySecret(secret),
     secretHint: apiKeySecretHint(secret),

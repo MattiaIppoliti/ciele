@@ -8,8 +8,7 @@ import { EvalLibrary } from "@/components/eval/eval-library";
 import { clampPageSize } from "@/lib/pagination";
 import type { RunFilters } from "@/components/eval/evaluation-runs-table";
 import { requirePageMember } from "@/lib/authz";
-import { canEdit } from "@/lib/rbac";
-import { canManageMembers } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { allEvaluationModels, availableEvaluationModels, evaluationModelsForStage } from "@/lib/evaluation-models";
 import { isPlatformOwner, listPlatformEvalModels } from "@/lib/platform";
 
@@ -22,7 +21,8 @@ export default async function EvalPage({
 }: {
   searchParams: Promise<{ page?: string; size?: string; stage?: string; assistant?: string; dataset?: string }>;
 }) {
-  const { organizationId, role, db, session } = await requirePageMember();
+  const { organizationId, role, db, session, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
   const params = await searchParams;
   const rawPage = Number(params.page ?? "1");
   const pageSize = clampPageSize(params.size);
@@ -67,8 +67,8 @@ export default async function EvalPage({
       assistants={assistantOptions}
       allModels={allEvaluationModels(connections, extraModels)}
       availableModelKeys={availableModels.map(modelSelector)}
-      canEdit={canEdit(role)}
-      canManageProviders={canManageMembers(role)}
+      canEdit={can(access, "evaluations:run")}
+      canManageProviders={can(access, "providers:manage")}
       canManageCatalog={isPlatformOwner(session.email)}
       page={page}
       pageSize={pageSize}

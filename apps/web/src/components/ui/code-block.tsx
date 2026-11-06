@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Button, CopyFeedbackIcon, useCopyFeedback } from "@agent-hub/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AgentCodeLine, agentCodeLanguage, useAgentCodeTokens } from "@/components/agents/agent-code";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,12 +14,11 @@ import { cn } from "@/lib/utils";
  * This is a local implementation rather than the upstream component, for the
  * same reason as `components/motion/grid-beam.tsx`: cult-ui's registry sits
  * behind a bot checkpoint that answers 429 to both fetch and the shadcn CLI, so
- * the source could not be installed. Two deliberate differences from upstream:
- * the tab strip is the repo's shared motion `Tabs` rather than a bespoke one, and the
- * code is rendered as plain text; there is no syntax highlighter in this
- * workspace, and pulling one in for a handful of shell lines would cost far
- * more than it shows. `language` therefore labels the block (and lands in
- * `data-language`) instead of colouring it.
+ * the source could not be installed. The tab strip is the repo's shared motion
+ * `Tabs` rather than a bespoke one, and colouring comes from the same shiki
+ * tokens the agent code surfaces use (`agents/agent-code.tsx`), so a `tsx`
+ * block here and in chat read identically. A label shiki has no grammar for
+ * (`prompt`) renders as plain text and never loads the highlighter.
  */
 export interface CodeBlockTab {
   label: string;
@@ -41,6 +41,8 @@ function CodeSurface({
   code: string;
   language?: string;
 }) {
+  const tokens = useAgentCodeTokens(code, agentCodeLanguage(language));
+  const lines = code.split("\n");
   return (
     // Wraps rather than scrolls sideways: these are commands to copy, and a
     // horizontal scrollbar under a four-line snippet is more chrome than the
@@ -49,7 +51,16 @@ function CodeSurface({
       data-language={language}
       className="no-scrollbar max-h-[22rem] overflow-y-auto px-4 py-3.5 font-mono text-[0.8125rem] leading-relaxed break-words whitespace-pre-wrap"
     >
-      <code className="text-foreground">{code}</code>
+      <code className="text-foreground">
+        {tokens
+          ? lines.map((line, index) => (
+              <React.Fragment key={index}>
+                <AgentCodeLine code={line} tokens={tokens[index]} />
+                {index < lines.length - 1 ? "\n" : null}
+              </React.Fragment>
+            ))
+          : code}
+      </code>
     </pre>
   );
 }

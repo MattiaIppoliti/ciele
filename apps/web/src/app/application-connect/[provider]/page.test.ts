@@ -1,3 +1,4 @@
+import { capabilitiesForLadderRole } from "@agent-hub/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,7 +29,7 @@ describe("Application connection handoff", () => {
     vi.stubEnv("GOOGLE_APPLICATION_CLIENT_ID", "ciele-google-client");
     vi.stubEnv("GOOGLE_APPLICATION_CLIENT_SECRET", "ciele-google-secret");
     mocks.getSession.mockReset().mockResolvedValue({
-      userId: "member-1", organization: { id: "org-1", name: "Acme" }, role: "owner",
+      userId: "member-1", organization: { id: "org-1", name: "Acme" }, role: "owner", capabilities: capabilitiesForLadderRole("owner"),
     });
     mocks.getConnection.mockReset().mockResolvedValue(null);
     mocks.getDb.mockReset().mockResolvedValue({ getSafeApplicationConnection: mocks.getConnection });
@@ -72,7 +73,7 @@ describe("Application connection handoff", () => {
 
   it("keeps the provider role boundary on the handoff page", async () => {
     mocks.getSession.mockResolvedValue({
-      userId: "member-1", organization: { id: "org-1", name: "Acme" }, role: "editor",
+      userId: "member-1", organization: { id: "org-1", name: "Acme" }, role: "editor", capabilities: capabilitiesForLadderRole("editor"),
     });
     await expect(render("slack")).rejects.toThrow("NOT_FOUND");
     expect(renderToStaticMarkup(await render("google_drive"))).toContain("Continue connecting");

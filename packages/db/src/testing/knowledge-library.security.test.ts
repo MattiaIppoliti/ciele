@@ -13,15 +13,14 @@ let foreignOrganizationId: string;
 let assistantId: string;
 const userId = randomUUID();
 /**
- * The signature the adapter actually calls. There are two: the nine-argument
- * one the sortable Library reads through, and the seven-argument wrapper kept
- * for the deploy window. Hiding the wrapper would prove nothing, because
- * nothing calls it.
+ * The quality projection is current. The nine-argument Library projection
+ * remains the one-migration-behind fallback. Exercise authorization on the
+ * current signature, rather than denying an RPC the adapter no longer calls.
  */
 const RPC_SIGNATURE =
-  "public.get_org_knowledge_source_page(uuid, text[], text, text, text, bigint, bigint, text, boolean)";
+  "public.get_library_quality_page(uuid, text[], text, text, text, bigint, bigint, text, boolean, boolean)";
 const RPC_HIDDEN_SIGNATURE =
-  "public.hidden_knowledge_source_page(uuid, text[], text, text, text, bigint, bigint, text, boolean)";
+  "public.hidden_knowledge_source_page(uuid, text[], text, text, text, bigint, bigint, text, boolean, boolean)";
 
 beforeAll(async () => {
   pg = await createSchemaLoadedPglite();
@@ -75,7 +74,7 @@ describe("Knowledge Library bounded reads", () => {
       expect(rpc).toHaveBeenCalledTimes(1);
       expect(from).not.toHaveBeenCalled();
       const counts = await db.listOrgKnowledgeSources(organizationId, { kinds: ["file"], pageSize: 0 });
-      expect(counts).toEqual({ items: [], total: 60, statusCounts: page.statusCounts });
+      expect(counts).toEqual({ items: [], total: 60, statusCounts: page.statusCounts, qualityAvailable: true });
       const empty = await db.listOrgKnowledgeSources(organizationId, { kinds: ["file"], page: 9, pageSize: 25 });
       expect(empty).toEqual(counts);
     } finally { vi.restoreAllMocks(); }
@@ -117,7 +116,7 @@ describe("Knowledge Library bounded reads", () => {
     try {
       expect((await db.listOrgKnowledgeSources(organizationId, { kinds: ["file"] })).total).toBe(60);
       expect(await db.listOrgKnowledgeSources(foreignOrganizationId, { kinds: ["file"] })).toEqual({
-        items: [], total: 0, statusCounts: { ready: 0, processing: 0, error: 0 },
+        items: [], total: 0, statusCounts: { ready: 0, processing: 0, error: 0 }, qualityAvailable: true,
       });
       expect(await db.listOrgKnowledgeSourceOptions(foreignOrganizationId, { kinds: ["file"], limit: 5 })).toEqual({ items: [], total: 0 });
     } finally { await pg.exec("reset role"); }
@@ -129,9 +128,10 @@ describe("Knowledge Library bounded reads", () => {
       const page = await db.listOrgKnowledgeSources(organizationId, { kinds: ["file"], pageSize: 3 });
       expect(page.items).toHaveLength(3);
       expect(page.total).toBe(60);
+      expect(page.qualityAvailable).not.toBe(true);
     } finally {
       await pg.exec(
-        `alter function ${RPC_HIDDEN_SIGNATURE} rename to get_org_knowledge_source_page`
+        `alter function ${RPC_HIDDEN_SIGNATURE} rename to get_library_quality_page`
       );
     }
     await pg.exec(`revoke execute on function ${RPC_SIGNATURE} from authenticated`);

@@ -95,7 +95,7 @@ export const evaluationRunSchema = z.object({
 
 export const createEvaluationDatasetOp = defineOperation({
   name: "eval.datasets.create",
-  capability: "edit",
+  capability: "evaluations:run",
   effect: "write",
   input: evaluationDatasetSchema,
   entities: () => [{ kind: "evaluations" }],
@@ -110,7 +110,7 @@ export const createEvaluationDatasetOp = defineOperation({
 
 export const startEvaluationRunOp = defineOperation({
   name: "eval.runs.start",
-  capability: "edit",
+  capability: "evaluations:run",
   effect: "consequential",
   input: evaluationRunSchema,
   entities: () => [{ kind: "evaluations" }],

@@ -100,14 +100,22 @@ const flowConditionUnion = z.discriminatedUnion("kind", [
   z.looseObject({
     id: z.string().min(1),
     kind: z.literal("schedule"),
-    startAt: z.string().max(32),
+    mode: z.enum(["absolute", "business_hours"]).optional(),
+    businessHoursId: z.string().min(1).max(200).optional(),
+    direction: z.enum(["during", "outside"]).optional(),
+    startAt: z.string().max(32).optional(),
     endAt: z.string().max(32).optional(),
-    timezone: z.string().min(1).max(64),
+    timezone: z.string().min(1).max(100).optional(),
   }),
 ]);
 
 export const flowConditionSchema =
-  flowConditionUnion as unknown as z.ZodType<FlowCondition>;
+  flowConditionUnion.superRefine((condition, ctx) => {
+    if (condition.kind !== "schedule") return;
+    if (condition.mode === "business_hours") {
+      if (!condition.businessHoursId || !condition.direction) ctx.addIssue({ code: "custom", message: "Business hours conditions require a schedule and during/outside" });
+    } else if (condition.startAt === undefined || !condition.timezone) ctx.addIssue({ code: "custom", message: "Absolute Schedule conditions require a start and timezone" });
+  }) as unknown as z.ZodType<FlowCondition>;
 
 /**
  * The condition kinds this build implements, read off the union rather than

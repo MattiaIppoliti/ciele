@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import {
   modelSelector,
   openSecret,
@@ -6,10 +7,11 @@ import {
   type UsageSpenders,
   type UsageSurface,
 } from "@agent-hub/core";
-import type { Db } from "@agent-hub/db";
+import { withMemberAssistantAccess, type Db } from "@agent-hub/db";
 import type { OperationPorts } from "@ciele/ops";
 import {
   embedConcept,
+  scheduleImprovementReplay,
   enqueueIngestJob,
   enqueueStaleDocumentMemoryExtractions,
   persistConcept,
@@ -26,6 +28,8 @@ import {
   enqueueApplicationSyncJob,
   evaluateCase,
   checkOpenAiCompatibleBaseUrl,
+  validateOutboundWebhookUrl,
+  runDueJobs,
 } from "@agent-hub/agent";
 import {
   availableEvaluationModels,
@@ -72,9 +76,12 @@ export function webOperationPorts(
      * keyed surface can ask an Assistant (`askAssistant`): the question is the
      * key's, so the Conversation is marked with it and the turn is its spend.
      */
+    memberId?: string;
     apiKey?: { keyId: string; memberId: string };
   }
 ): OperationPorts {
+  const memberId = opts.memberId ?? opts.apiKey?.memberId;
+  const readDb = memberId ? withMemberAssistantAccess(db,opts.organizationId,{ memberId }) : db;
   const apiKey = opts.apiKey;
   /**
    * The system Db, but only for a row of this Organization: the gate tables
@@ -90,6 +97,25 @@ export function webOperationPorts(
     return current?.organizationId === opts.organizationId ? system : null;
   };
   return {
+    remoteMcp: {
+      discover: async ({ url, encryptedToken }) => {
+        const { discoverRemoteMcpTools } = await import("@agent-hub/agent");
+        return discoverRemoteMcpTools({ url, token: encryptedToken ? openSecret(encryptedToken) : null });
+      },
+      refresh: async serverId => {
+        const { discoverRemoteMcpTools } = await import("@agent-hub/agent");
+        const service = getWidgetDb();
+        const server = await service.table("mcpServerConnections").get(serverId);
+        if (!server || server.organizationId !== opts.organizationId) throw new Error("MCP server not found");
+        const sealed = await service.getMcpServerToken(serverId);
+        return discoverRemoteMcpTools({ url: server.url, token: sealed ? openSecret(sealed) : null });
+      },
+    },
+    outboundWebhooks: {
+      validateUrl: validateOutboundWebhookUrl,
+      wakeDeliveries: () => after(async () => { await runDueJobs({ db: getWidgetDb() }, { kinds: ["deliver_outbound_webhook"] }); }),
+    },
+    async enqueueImprovementReplay() { scheduleImprovementReplay(getWidgetDb()); },
     /**
      * The Application Import lifecycle's host work, on the system Db: the
      * sealed credential discovery needs is hidden from the Member's RLS, and
@@ -122,6 +148,11 @@ export function webOperationPorts(
      * re-reads the grants: an admin who revoked a domain between the card
      * being raised and a Member clicking has revoked it.
      */
+    afterActionApprovalDecided: async (approval, result) => {
+      const { recordRemoteMcpApprovalOutcome } = await import("@agent-hub/agent");
+      if (approval.organizationId !== opts.organizationId) throw new Error("Approval Organization mismatch");
+      await recordRemoteMcpApprovalOutcome(getWidgetDb(), approval.id, result);
+    },
     runApprovedTeammateAction: async ({ teammateId, operation, input, requestedBy }) => {
       const { getServiceRoleDb } = await import("@/lib/service-db");
       const { resolveTeammateActions } = await import("@/lib/teammates/actions");
@@ -142,7 +173,7 @@ export function webOperationPorts(
       }
       // The Member's yes on the card is the confirmation a tool that promises
       // to wait (Ciele AI's consequential platform calls) requires.
-      await tool.run(input, { confirmed: true });
+      return tool.run(input, { confirmed: true });
     },
 
     /**
@@ -223,6 +254,10 @@ export function webOperationPorts(
      * Org connections only: whoever holds the key spends the embedding and
      * the rerank, attributed through `usage`.
      */
+    findFaqDuplicates: async ({ collectionId, question }) => {
+      const { findFaqDuplicates } = await import("@agent-hub/agent");
+      return findFaqDuplicates({ db: readDb, organizationId: opts.organizationId, collectionId, question, connections: await db.listProviderConnections(opts.organizationId), usage: opts.usage });
+    },
     searchKnowledge: async ({ query, assistantId }) => {
       const { searchKnowledge } = await import("@agent-hub/agent");
       if (assistantId) {
@@ -232,7 +267,7 @@ export function webOperationPorts(
         }
       }
       return searchKnowledge({
-        db,
+        db: readDb,
         connections: await db.listProviderConnections(opts.organizationId),
         organizationId: opts.organizationId,
         query,

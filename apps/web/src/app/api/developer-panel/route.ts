@@ -5,7 +5,7 @@ import { getDb } from "@/lib/data";
 import { appOrigin, docsOrigin } from "@/lib/origins";
 import { buildPanelDomains } from "@/lib/developer-panel/catalogue";
 import type { DeveloperPanelData } from "@/lib/developer-panel/types";
-import { canManageApiKeys } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 
 /**
  * What the Developer Panel needs, fetched when it opens (#754).
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   // Only ask about keys when the viewer is allowed to know. An Editor gets
   // `null`, and the panel tells them who can mint one instead of asserting the
   // Organization has none.
-  const hasKeys = canManageApiKeys(session.role)
+  const hasKeys = can(session, "apiKeys:manage")
     ? (await (await getDb()).listApiKeys(session.organization.id)).length > 0
     : null;
 

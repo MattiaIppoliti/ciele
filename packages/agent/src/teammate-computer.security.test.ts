@@ -144,7 +144,7 @@ async function fixture() {
     name: "Computer coworker",
   });
   const teammate = await db.table("teammates").update(inserted.id, {
-    capabilityCeiling: "edit",
+    actionCeiling: "edit",
     runtimeConfig: {
       harness: { kind: "ciele" },
       internet: true,
@@ -280,7 +280,7 @@ describe("Teammate computer perimeter", () => {
     ).rejects.toThrow();
     await db
       .table("teammates")
-      .update(teammate.id, { capabilityCeiling: "member" });
+      .update(teammate.id, { actionCeiling: "member" });
     await expect(
       computer.action("files_write", { path: "notes.txt", contents: "x" }),
     ).rejects.toThrow("limited to reading");

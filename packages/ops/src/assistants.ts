@@ -93,6 +93,10 @@ export const assistantPatchSchema = z
     tools: z.custom<Assistant["tools"]>(
       (v) => typeof v === "object" && v !== null
     ).superRefine((tools, ctx) => {
+      if (tools.remoteMcp !== undefined) {
+        const selected = z.array(z.object({ serverId: z.string().min(1).max(200), tools: z.array(z.object({ name: z.string().min(1).max(200), definitionHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict()).max(200) }).strict()).max(20).safeParse(tools.remoteMcp);
+        if (!selected.success) for (const issue of selected.error.issues) ctx.addIssue({ code: "custom", path: ["remoteMcp", ...issue.path], message: issue.message });
+      }
       if (tools.evaluationModels !== undefined) {
         const defaults = z.partialRecord(z.enum(EVALUATION_STAGES), z.object({
           provider: z.enum(["google", "anthropic", "openai", "openai_compatible", "typesafe", "voyage"]),
@@ -148,7 +152,7 @@ export async function requireAssistant(
 
 export const listAssistantsOp = defineOperation({
   name: "assistants.list",
-  capability: "member",
+  capability: "assistants:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -157,7 +161,7 @@ export const listAssistantsOp = defineOperation({
 
 export const listAssistantsPageOp = defineOperation({
   name: "assistants.listPage",
-  capability: "member",
+  capability: "assistants:view",
   effect: "read",
   input: z.object({
     limit: z.number().int().min(1).max(100),
@@ -169,7 +173,7 @@ export const listAssistantsPageOp = defineOperation({
 
 export const getAssistantOp = defineOperation({
   name: "assistants.get",
-  capability: "member",
+  capability: "assistants:view",
   effect: "read",
   input: idSchema,
   entities: () => [],
@@ -178,7 +182,7 @@ export const getAssistantOp = defineOperation({
 
 export const createAssistantOp = defineOperation({
   name: "assistants.create",
-  capability: "edit",
+  capability: "assistants:edit",
   effect: "write",
   input: z.object({
     title: z.string().min(1).max(200),
@@ -191,7 +195,7 @@ export const createAssistantOp = defineOperation({
 
 export const updateAssistantOp = defineOperation({
   name: "assistants.update",
-  capability: "edit",
+  capability: "assistants:edit",
   effect: "write",
   input: z.object({ id: z.string().min(1), patch: assistantPatchSchema }),
   entities: ({ id }) => [{ kind: "assistant" as const, id }],
@@ -211,7 +215,7 @@ export const updateAssistantOp = defineOperation({
 
 export const deleteAssistantOp = defineOperation({
   name: "assistants.delete",
-  capability: "publish",
+  capability: "assistants:delete",
   effect: "consequential",
   input: idSchema,
   entities: () => [{ kind: "assistantList" as const }],
@@ -233,7 +237,10 @@ export const deleteAssistantOp = defineOperation({
  */
 export const duplicateAssistantOp = defineOperation({
   name: "assistants.duplicate",
-  capability: "edit",
+  capability: "assistants:edit",
+  // It creates a new Organization Assistant: the Organization Role decides,
+  // never a Role held on the one being copied.
+  assistant: () => null,
   effect: "write",
   input: idSchema,
   entities: () => [{ kind: "assistantList" as const }],
@@ -352,7 +359,7 @@ export const askAssistantInput = z.object({
  */
 export const askAssistantOp = defineOperation({
   name: "assistants.ask",
-  capability: "member",
+  capability: "assistants:chat",
   effect: "write",
   input: askAssistantInput,
   entities: () => [{ kind: "inbox" as const }],

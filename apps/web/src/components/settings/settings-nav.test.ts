@@ -87,3 +87,39 @@ describe("settingsTabLabel (#1073)", () => {
     expect(settingsTabLabel("/settings/nope")).toBeNull();
   });
 });
+
+
+describe("Organization tabs by role", () => {
+  const owner = { manageOrg: true, viewMembers: true, editBusinessHours: true };
+  const editor = { manageOrg: false, viewMembers: true, editBusinessHours: true };
+  const viewer = { manageOrg: false, viewMembers: false, editBusinessHours: false };
+
+  it("lists every tab while the role is still unknown", () => {
+    // The dialog's first render, before the layout's read lands. Reading an
+    // unknown role as no access emptied the rail and crashed /settings/members.
+    expect(tabsForScope("organization", null)).toEqual(ORG_SETTINGS_TABS);
+    expect(tabsForScope("organization", undefined)).toEqual(ORG_SETTINGS_TABS);
+    expect(crossScopeLink("personal", null).href).toBe(SETTINGS_HOME);
+  });
+
+  it("lists every tab for an Owner or Admin", () => {
+    expect(tabsForScope("organization", owner)).toEqual(ORG_SETTINGS_TABS);
+    expect(crossScopeLink("personal", owner).href).toBe(SETTINGS_HOME);
+  });
+
+  it("offers Editors the two tabs their routes let them open", () => {
+    expect(tabsForScope("organization", editor).map((tab) => tab.slug)).toEqual([
+      "members",
+      "business-hours",
+    ]);
+    expect(crossScopeLink("personal", editor).href).toBe("/settings/members");
+  });
+
+  it("leaves a Viewer an empty Organization scope, and the personal one whole", () => {
+    expect(tabsForScope("organization", viewer)).toEqual([]);
+    expect(tabsForScope("personal", viewer)).toEqual(PERSONAL_SETTINGS_TABS);
+    // No Organization tab to land on, so the link falls back to the scope's
+    // home; the dialog hides it for this role.
+    expect(crossScopeLink("personal", viewer).href).toBe(SETTINGS_HOME);
+  });
+});

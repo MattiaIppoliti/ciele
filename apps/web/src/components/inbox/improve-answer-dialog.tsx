@@ -3,6 +3,7 @@
 import { type FormEvent, useEffect, useState, useTransition } from "react"
 import type { ImprovementListItem } from "@agent-hub/core"
 import { canAutoFocus } from "@/lib/auto-focus"
+import { Textarea } from "@/components/ui/textarea"
 import { Search } from "lucide-react"
 import {
   createImprovementFromMessageAction,
@@ -39,6 +40,7 @@ export function ImproveAnswerDialog({
   const [tab, setTab] = useState<Tab>("create")
   const slideDirection = useSlidingDirection(tab, ["create", "link"])
   const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [existing, setExisting] = useState<ImprovementListItem[] | null>(null)
@@ -57,6 +59,7 @@ export function ImproveAnswerDialog({
     if (messageId) {
       setTab("create")
       setTitle("")
+      setDescription("")
       setSearch("")
       setSelectedId(null)
       setExisting(null)
@@ -114,7 +117,7 @@ export function ImproveAnswerDialog({
     setError(null)
     startTransition(async () => {
       try {
-        await createImprovementFromMessageAction(messageId, title)
+        await createImprovementFromMessageAction(messageId, title, description)
         onChanged()
         onClose()
       } catch (e) {
@@ -190,12 +193,27 @@ export function ImproveAnswerDialog({
                     value={title}
                     maxLength={TITLE_MAX}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Improvement title"
+                    placeholder="What needs to improve in this answer?"
                     className="h-11 rounded-lg"
                   />
                   <p className="mt-1 text-right text-xs text-muted-foreground">
                     <RollingNumber value={title.length} />/{TITLE_MAX}
                   </p>
+                  <label
+                    htmlFor="improvement-expected-answer"
+                    className="mt-3 block text-sm font-medium"
+                  >
+                    Expected answer or behavior
+                  </label>
+                  <Textarea
+                    id="improvement-expected-answer"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    maxLength={10000}
+                    rows={3}
+                    placeholder="Describe what the Assistant should have said, and what would show a correct answer."
+                    className="mt-1"
+                  />
                 </form>
               ) : (
                 <div className="space-y-2">

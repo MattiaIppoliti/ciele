@@ -58,7 +58,7 @@ async function findFlowsAgent(
  */
 export const ensureFlowsAgentOp = defineOperation({
   name: "flows.agent.ensure",
-  capability: "edit",
+  capability: "flows:edit",
   effect: "write",
   input: z.object({ assistantId: z.string().min(1) }),
   // The row it may create is a Teammate; a repeat call revalidates a roster
@@ -120,7 +120,7 @@ export const ensureFlowsAgentOp = defineOperation({
  */
 export const adoptFlowsAgentThreadOp = defineOperation({
   name: "flows.agent.adopt",
-  capability: "edit",
+  capability: "flows:edit",
   effect: "read",
   input: z.object({
     assistantId: z.string().min(1),
@@ -157,7 +157,7 @@ export const adoptFlowsAgentThreadOp = defineOperation({
  */
 export const listFlowsAgentThreadOp = defineOperation({
   name: "flows.agent.thread",
-  capability: "member",
+  capability: "flows:view",
   effect: "read",
   input: z.object({
     assistantId: z.string().min(1),
@@ -178,7 +178,7 @@ export const listFlowsAgentThreadOp = defineOperation({
 /** One past Flows Agent conversation, reopened in the panel. */
 export const readFlowsAgentConversationOp = defineOperation({
   name: "flows.agent.conversation",
-  capability: "member",
+  capability: "flows:view",
   effect: "read",
   input: z.object({
     assistantId: z.string().min(1),

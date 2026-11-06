@@ -16,6 +16,7 @@ import { createGoogleVertexProvider } from "./google-vertex";
 import { resolveProviderCredential, type ProviderCredential } from "./models";
 import { maskOutbound } from "./pii-masking";
 import { meterUsage } from "./usage";
+import { timedWait } from "./turn-clock";
 
 export const EMBEDDING_DIMS = 1536;
 /** Keeps provider payloads and retry blast radius bounded for large corpora. */
@@ -251,7 +252,10 @@ export function createEmbedder(
     if (!resolved) return null;
     try {
       // A query embedding is a model call like any other (#1078).
-      const result = await embed({ model: resolved.model, value: maskOutbound(text) });
+      // `resolved` is a lazily assigned `let`, so its null check does not
+      // reach into the closure; the const carries the narrowing in.
+      const embeddingModel = resolved.model;
+      const result = await timedWait("embed", () => embed({ model: embeddingModel, value: maskOutbound(text) }));
       await recordEmbedUsage(resolved, result.usage?.tokens, attribution);
       return padEmbedding(result.embedding);
     } catch {
@@ -310,7 +314,7 @@ export async function embedTextsWithStatus(
   for (let offset = 0; offset < texts.length; offset += EMBEDDING_BATCH_SIZE) {
     const values = texts.slice(offset, offset + EMBEDDING_BATCH_SIZE);
     try {
-      const result = await embedMany({ model: resolved.model, values: values.map((value) => maskOutbound(value)) });
+      const result = await timedWait("embed", () => embedMany({ model: resolved.model, values: values.map((value) => maskOutbound(value)) }));
       await recordEmbedUsage(resolved, result.usage?.tokens, attribution);
       embeddings.push(...result.embeddings.map(padEmbedding));
     } catch (error) {

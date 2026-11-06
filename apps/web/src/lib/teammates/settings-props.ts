@@ -135,11 +135,11 @@ export async function loadTeammateSettingsProps(
           member.email,
         // A Viewer named here would still be refused by `canEditTeammate`:
         // the org Role is the ceiling, so the picker says so up front.
-        canEdit: member.role !== "viewer",
+        canEdit: member.role !== "viewer" && member.role !== "support_agent",
       })),
     governance: {
       domains: grants.map((grant) => grant.domain),
-      ceiling: teammate.capabilityCeiling,
+      ceiling: teammate.actionCeiling,
       approvalBypass: teammate.approvalBypass,
     },
     learnings: learnings?.body ?? "",

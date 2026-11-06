@@ -29,7 +29,7 @@ function crawlerView(connection: CrawlerConnection): CrawlerConnectionView {
 
 export const setCrawlerConnectionOp = defineOperation({
   name: "crawlers.set",
-  capability: "manageMembers",
+  capability: "crawlers:manage",
   effect: "write",
   input: z.object({
     provider: z.enum(["apify"]),
@@ -70,7 +70,7 @@ export const setCrawlerConnectionOp = defineOperation({
 
 export const deleteCrawlerConnectionOp = defineOperation({
   name: "crawlers.delete",
-  capability: "manageMembers",
+  capability: "crawlers:manage",
   effect: "consequential",
   input: z.object({ provider: z.enum(["apify"]) }),
   entities: () => [{ kind: "crawlerSettings" as const }],

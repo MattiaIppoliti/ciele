@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { TeammateRuntimeConfig } from "@agent-hub/core";
+import { useEffect, useState } from "react";
+import { listMcpServersAction } from "@/app/(admin)/settings/mcp-servers/actions";
+import type { McpServerConnection, TeammateRuntimeConfig } from "@agent-hub/core";
 import { Button, Label } from "@agent-hub/ui";
+import { RollRow, RollInText } from "@/components/motion/roll-in-text";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -28,6 +30,13 @@ export function TeammateExecutionSettings({
     harnesses: { id: string; name: string }[];
   };
 }) {
+  const [servers, setServers] = useState<McpServerConnection[]>([]);
+  useEffect(() => {
+    if (!canGrant) return;
+    let cancelled = false;
+    void listMcpServersAction().then(result => { if (!cancelled && result.ok) setServers(result.value.items); });
+    return () => { cancelled = true; };
+  }, [canGrant]);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const selected =
@@ -124,6 +133,9 @@ export function TeammateExecutionSettings({
   }
   return (
     <div className="space-y-5">
+      {canGrant && servers.length > 0 && <fieldset className="space-y-2"><legend className="text-sm font-medium">MCP servers</legend>
+        {servers.map((server, index) => <RollRow key={server.id} index={index}><label className="flex items-center gap-2 text-sm"><Checkbox disabled={!native} checked={value.mcpServerIds?.includes(server.id) ?? false} onCheckedChange={checked => onChange({ ...value, mcpServerIds: checked === true ? [...(value.mcpServerIds ?? []), server.id] : (value.mcpServerIds ?? []).filter(id => id !== server.id) })} /><RollInText text={server.name} /></label></RollRow>)}
+      </fieldset>}
       <div className="space-y-2">
         <Label>Agent harness</Label>
         <Select

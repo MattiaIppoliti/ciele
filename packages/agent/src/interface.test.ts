@@ -77,6 +77,7 @@ describe("runtime public interface", () => {
       // The pure detection rules over the object-access ledger (#801,
       // CYB-19); the cron tick composing them is runSecurityDetections.
       "discoverApplicationConnectionScopes",
+      "discoverRemoteMcpTools",
       // The Agent memory layer's writer (#771). Public because the job ledger
       // and the cron drain both reach it; nothing else should.
       "embedConcept",
@@ -94,20 +95,28 @@ describe("runtime public interface", () => {
       "enqueueVerbatimReingests",
       "evaluateCase",
       "extractSourceText",
+      // The "Create a ticket" channel's filing (#1088, #1089), called by the
+      // escalation transaction in apps/web.
+      "fileTicket",
       // The two scheduled drains. The cron endpoints in apps/web are auth-and-
       // serialize adapters over these, so the tick's policy is tested here.
       "finalizeDueCrawls",
       "finalizeWebsiteCrawl",
+      "findFaqDuplicates",
       "getEnterpriseCapabilities",
       "loadConnectorOptions",
       "parseAgUiTurn",
       "persistConcept",
       "providerAvailability",
+      "recordRemoteMcpApprovalOutcome",
       "refuseHttpFlow",
       "registerEnterpriseCapabilities",
       // The host port registry: how a framework-free package gets the two
       // facts only its host knows (see host.ts).
       "registerRuntimeHost",
+      "remoteMcpActions",
+      // Quick Texts (#1085): a saved reply filled from the Conversation answered.
+      "resolveQuickText",
       "restartWebsiteCrawl",
       "resumeReviewedConversation",
       "revokeApplicationConnectionCredentials",
@@ -129,6 +138,8 @@ describe("runtime public interface", () => {
       "runPreflightDriftReplay",
       "runSecurityDetections",
       "runTriageDecision",
+      // Starts a queued Improvement replay sooner than the cron drain would.
+      "scheduleImprovementReplay",
       // Retrieval without a turn: passages + Sources for an outside model.
       "searchKnowledge",
       "sendEmail",
@@ -141,9 +152,12 @@ describe("runtime public interface", () => {
       "streamChannelChain",
       "streamConversationTurn",
       "summariseDocument",
+      "summariseEscalation",
       // The retention drains: deleted Task comments (#1055), traces (#573),
       // transcripts (CYB-12), the object-access ledger (CYB-19) and Member
       // Notifications (#1067), all deliberate widenings.
+      // The Data retention tab's message and Improvement windows.
+      "sweepDataRetention",
       "sweepDeletedTaskComments",
       "sweepDueRecrawls",
       "sweepExpiredMemberNotifications",
@@ -164,6 +178,7 @@ describe("runtime public interface", () => {
       // gate is open; the ops layer calls it through a port before the delete.
       "unsubscribePendingWebhooks",
       "updateWebsiteSourceConfiguration",
+      "validateOutboundWebhookUrl",
       "validateProviderApiKey",
       // Settings → Crawling checks an Organization's Apify token, and learns
       // its account id, before the ops layer seals it.

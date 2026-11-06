@@ -59,6 +59,30 @@ function harness(
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ciele-cli-"));
 
+describe("webhook commands", () => {
+  it("requires confirmation, creates with a one-time secret, and supports pause, resume and delivery reads", async () => {
+    const file = join(tmp(), "webhook.json");
+    const input = { name: "Support events", url: "https://example.com/events", eventTypes: ["conversation.escalated"] };
+    writeFileSync(file, JSON.stringify(input));
+    const { deps, calls, out } = harness((request) => {
+      if (request.method === "POST") return { status: 201, json: { subscription: { id: "wh1", ...input }, secret: "generated-signing-secret" } };
+      if (request.method === "PATCH") return { json: { id: "wh1", ...JSON.parse(request.body ?? "{}") } };
+      return { json: { data: [] } };
+    });
+    expect(await runCli(["webhooks", "create", "--file", file], deps)).toBe(EXIT.usage);
+    expect(calls).toHaveLength(0);
+    expect(await runCli(["webhooks", "create", "--file", file, "--yes"], deps)).toBe(EXIT.ok);
+    expect(JSON.parse(calls[0].body ?? "{}")).toEqual(input);
+    expect(out.join("\n")).toContain("generated-signing-secret");
+    expect(await runCli(["webhooks", "pause", "wh1", "--yes"], deps)).toBe(EXIT.ok);
+    expect(JSON.parse(calls[1].body ?? "{}")).toEqual({ paused: true });
+    expect(await runCli(["webhooks", "resume", "wh1", "--yes"], deps)).toBe(EXIT.ok);
+    expect(JSON.parse(calls[2].body ?? "{}")).toEqual({ paused: false });
+    expect(await runCli(["webhooks", "deliveries", "wh1"], deps)).toBe(EXIT.ok);
+    expect(calls[3].url).toMatch(/\/webhooks\/wh1\/deliveries$/);
+  });
+});
+
 describe("flows commands", () => {
   it("create merges --file JSON with flags (flags win) and posts it", async () => {
     const dir = tmp();
@@ -877,6 +901,42 @@ describe("organization administration commands", () => {
   });
 });
 
+describe("roles commands (#1164)", () => {
+  it("lists Roles, creates one from Capabilities, gives it to a member, and moves the defaults", async () => {
+    const { deps, calls, out } = harness(({ url }) => {
+      if (url.endsWith("/roles") && !url.includes("defaults")) {
+        return {
+          json: {
+            data: [{ id: "role-1", name: "Editor", key: "editor", capabilities: ["flows:edit"], builtIn: true, edited: false, locked: false, memberCount: 2, memberDefault: true, assistantDefault: false }],
+            id: "role-2",
+            name: "Reviewer",
+            capabilities: ["knowledge:view", "knowledge:edit"],
+          },
+        };
+      }
+      if (url.includes("/members/")) return { json: { userId: "user-2", role: "viewer", roleName: "Reviewer" } };
+      return { json: { data: [] } };
+    });
+    expect(await runCli(["roles", "list"], deps)).toBe(EXIT.ok);
+    expect(out[0]).toContain("Editor");
+    expect(
+      await runCli(["roles", "create", "--name", "Reviewer", "--capabilities", "knowledge:edit", "--available", "organization,assistant"], deps)
+    ).toBe(EXIT.ok);
+    expect(await runCli(["members", "set-role", "user-2", "--role-id", "role-2"], deps)).toBe(EXIT.ok);
+    expect(out.at(-1)).toContain("Reviewer");
+    expect(await runCli(["roles", "set-defaults", "--member", "role-2"], deps)).toBe(EXIT.ok);
+    expect(await runCli(["roles", "delete", "role-2"], deps)).toBe(EXIT.usage);
+    expect(calls.map((call) => `${call.method} ${new URL(call.url).pathname}`)).toEqual([
+      "GET /api/v1/roles",
+      "POST /api/v1/roles",
+      "PATCH /api/v1/members/user-2",
+      "PUT /api/v1/roles/defaults",
+    ]);
+    expect(JSON.parse(String(calls[1]!.body))).toMatchObject({ capabilities: ["knowledge:edit"], organizationLevel: true, assistantLevel: true });
+    expect(JSON.parse(String(calls[2]!.body))).toEqual({ roleId: "role-2" });
+  });
+});
+
 describe("integration and provider commands", () => {
   it("configures an Assistant API, SSO, and an OpenAI-compatible provider", async () => {
     const dir = tmp();
@@ -918,5 +978,106 @@ describe("emitJson", () => {
     const { deps, out } = harness(() => ({ json: { id: "h1", name: "Registrar" } }));
     expect(await runCli(["help-desks", "get", "h1"], deps)).toBe(EXIT.ok);
     expect(out.join("")).toContain('"name": "Registrar"');
+  });
+});
+
+
+it("requires confirmation before changing the business hours timezone", async () => {
+  const { deps, calls } = harness(() => ({ json: { timezone: "Europe/Rome" } }));
+  expect(await runCli(["business-hours", "timezone", "Europe/Rome"], deps)).toBe(EXIT.usage);
+  expect(calls).toHaveLength(0);
+  expect(await runCli(["business-hours", "timezone", "Europe/Rome", "--yes"], deps)).toBe(EXIT.ok);
+  expect(calls[0]).toMatchObject({ method: "PATCH", body: JSON.stringify({ timezone: "Europe/Rome" }) });
+  expect(calls[0].url).toMatch(/business-hours\/timezone$/);
+});
+
+describe("portable bundles and scheduled exports", () => {
+  it("prints a bundle to stdout and posts it as a new Assistant", async () => {
+    const bundle = { bundleVersion: 1, assistant: { title: "Portable" }, flows: [], skills: [], collections: [], apiIntegration: null };
+    const file = join(tmp(), "assistant.json"); writeFileSync(file, JSON.stringify(bundle));
+    const { deps, calls, out } = harness(request => ({ json: request.method === "GET" ? bundle : { assistantId: "new-assistant", report: [] } }));
+    expect(await runCli(["assistants", "export", "a1"], deps)).toBe(EXIT.ok);
+    expect(JSON.parse(out[0])).toEqual(bundle);
+    expect(await runCli(["assistants", "import", file], deps)).toBe(EXIT.ok);
+    expect(calls[0].url).toMatch(/\/assistants\/a1\/export$/);
+    expect(JSON.parse(calls[1].body ?? "{}")).toEqual({ bundle });
+  });
+  it("requires confirmation for schedule writes and pauses without replacing filters", async () => {
+    const { deps, calls } = harness(() => ({ json: { id: "schedule1" } }));
+    expect(await runCli(["exports", "pause", "schedule1"], deps)).toBe(EXIT.usage);
+    expect(calls).toHaveLength(0);
+    expect(await runCli(["exports", "pause", "schedule1", "--yes"], deps)).toBe(EXIT.ok);
+    expect(calls[0].url).toMatch(/\/exports\/schedules\/schedule1$/);
+    expect(JSON.parse(calls[0].body ?? "{}")).toEqual({ enabled: false });
+  });
+});
+
+describe("audit-log", () => {
+  it("lists entries with the filters as query parameters and System for no member", async () => {
+    const { deps, calls, out } = harness(() => ({
+      json: {
+        data: [
+          {
+            createdAt: "2026-11-04T12:10:00.000Z",
+            operation: "members.updateRole",
+            outcome: "ok",
+            surface: "api",
+            memberId: null,
+            memberName: null,
+            memberEmail: null,
+            apiKeyId: null,
+            teammateId: null,
+            targetLabel: "viewer@example.com",
+            targetDetail: "Editor role",
+          },
+        ],
+      },
+    }));
+    expect(
+      await runCli(
+        ["audit-log", "list", "--action", "members.updateRole,apiKeys.create", "--actor", "system", "--from", "2026-11-01", "--oldest-first", "--limit", "20"],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    const url = new URL(calls[0].url);
+    expect(url.pathname).toBe("/api/v1/audit-log");
+    expect(url.searchParams.get("action")).toBe("members.updateRole,apiKeys.create");
+    expect(url.searchParams.get("actor")).toBe("system");
+    expect(url.searchParams.get("from")).toBe("2026-11-01");
+    expect(url.searchParams.get("order")).toBe("oldest");
+    expect(url.searchParams.get("limit")).toBe("20");
+    expect(out.join("\n")).toContain("System");
+    expect(out.join("\n")).toContain("viewer@example.com (Editor role)");
+  });
+
+  it("prints usage for an unknown verb and sends nothing", async () => {
+    const { deps, calls } = harness();
+    expect(await runCli(["audit-log", "delete"], deps)).toBe(EXIT.usage);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("members assistants", () => {
+  it("sends the scope and each assistant:role pair as the rows to keep", async () => {
+    const { deps, calls } = harness(() => ({ json: { userId: "u1", scope: "selected", access: [{ assistantId: "a1", role: "editor" }] } }));
+    expect(
+      await runCli(["members", "set-assistants", "u1", "--scope", "selected", "--assistants", "a1:editor,a2:viewer"], deps)
+    ).toBe(EXIT.ok);
+    expect(calls[0].method).toBe("PUT");
+    expect(calls[0].url).toContain("/members/u1/assistants");
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      scope: "selected",
+      access: [
+        { assistantId: "a1", role: "editor" },
+        { assistantId: "a2", role: "viewer" },
+      ],
+    });
+  });
+
+  it("refuses a pair without a known role and sends nothing", async () => {
+    const { deps, calls } = harness();
+    expect(await runCli(["members", "set-assistants", "u1", "--scope", "selected", "--assistants", "a1:owner"], deps)).toBe(EXIT.usage);
+    expect(await runCli(["members", "set-assistants", "u1", "--scope", "some"], deps)).toBe(EXIT.usage);
+    expect(calls).toHaveLength(0);
   });
 });

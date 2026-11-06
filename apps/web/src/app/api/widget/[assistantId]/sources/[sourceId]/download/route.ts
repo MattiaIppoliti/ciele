@@ -96,7 +96,12 @@ export async function GET(
     await recordObjectAccess({ ...ledger, result: "refused" });
     return refuse();
   }
-  if (!serviceConfigured) return refuse();
+  // No object storage (a demo, a self-host without it): the original cannot
+  // be served, which is our side's failure, and it is recorded like any other.
+  if (!serviceConfigured) {
+    await recordObjectAccess({ ...ledger, result: "failed" });
+    return refuse();
+  }
 
   const response = await deliverObject({
     ...ledger,

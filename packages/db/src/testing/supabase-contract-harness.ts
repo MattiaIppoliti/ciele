@@ -192,6 +192,15 @@ export async function createSupabaseContractContext(): Promise<DbContractContext
     missingOrganizationId: randomUUID(),
     foreignOrganizationId,
     foreignAssistantId: foreignAssistant.id,
+    listRuntimeEventTimings: async (id) =>
+      (
+        await pg.query<{ timings: unknown }>(
+          `select timings from public.runtime_events
+            where organization_id = $1 and timings is not null
+            order by created_at, id`,
+          [id]
+        )
+      ).rows.map((row) => row.timings),
     teardown: () => pg.close(),
   };
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { apiError } from "@/lib/api-v1/http";
 import { runApiOperation } from "@/lib/api-v1/run";
 import { conversationExportRows } from "@/lib/inbox/conversation-export";
-import { canViewReasoning } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 
 /**
  * Message-level export (#624): the same 29-field records as the admin app's
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (outcome instanceof Response) return outcome;
 
   const rows = conversationExportRows(outcome.result.rows, {
-    includeReasoning: canViewReasoning(outcome.ctx.role),
+    includeReasoning: can(outcome.ctx, "inbox:reasoning"),
     iterationLimit: MAX_AGENT_ITERATIONS,
   });
   return Response.json({ data: rows });

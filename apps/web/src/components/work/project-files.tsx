@@ -46,6 +46,7 @@ import {
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
+import { TableRowMenu } from "@/components/ui/table-menu";
 import { cn } from "@/lib/utils";
 import { agoText } from "@/lib/work/work-format";
 import {
@@ -222,6 +223,45 @@ function PickFilesButton({ onFiles, label = "Upload", className }: { onFiles: (f
 }
 
 /** A file's actions: preview, download, rename, copy link, delete. */
+/** Right-click on a file: the same actions as its "More" menu, under the pointer. */
+function FileRowMenu({
+  file,
+  editable,
+  onPreview,
+  onRename,
+  onDelete,
+  children,
+}: {
+  file: ProjectFile;
+  editable: boolean;
+  onPreview?: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+  children: React.ReactElement<React.HTMLAttributes<HTMLElement>>;
+}) {
+  return (
+    <TableRowMenu
+      title={file.name}
+      actions={[
+        onPreview ? { label: "Preview", icon: Eye, onSelect: onPreview } : null,
+        { label: "Download", icon: Download, onSelect: () => download(file) },
+        {
+          label: "Copy link",
+          icon: Copy,
+          onSelect: () => {
+            void navigator.clipboard.writeText(`${window.location.origin}${fileUrl(file.id)}`);
+            toast.success("Link copied");
+          },
+        },
+        editable && { label: "Rename", icon: Pencil, onSelect: onRename },
+        editable && { label: "Delete", icon: Trash2, destructive: true, onSelect: onDelete },
+      ]}
+    >
+      {children}
+    </TableRowMenu>
+  );
+}
+
 function FileMenu({
   file,
   editable,
@@ -455,7 +495,8 @@ export function TaskAttachments({
             {files.map((file) => {
               const Icon = KIND_ICON[fileKind(file)];
               return (
-                <li key={file.id} className="group/file hover:bg-alpha-lighter flex items-center gap-2.5 px-2.5 py-2">
+                <FileRowMenu key={file.id} file={file} editable={editable} onPreview={previewable(file) ? () => preview(file) : undefined} onRename={() => rename(file)} onDelete={() => remove(file)}>
+                <li className="group/file hover:bg-alpha-lighter flex items-center gap-2.5 px-2.5 py-2">
                   <Icon aria-hidden className="text-muted-foreground size-4 shrink-0" />
                   <button
                     type="button"
@@ -475,6 +516,7 @@ export function TaskAttachments({
                     className="opacity-0 group-hover/file:opacity-100 [@media(hover:none)]:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
                   />
                 </li>
+                </FileRowMenu>
               );
             })}
             {pending.map((name, i) => (
@@ -612,7 +654,8 @@ export function ProjectFilesView({
         ) : layout === "grid" ? (
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
             {shown.map((file) => (
-              <li key={file.id} className="group/card bg-content border-alpha-medium hover:border-alpha-strong relative overflow-hidden rounded-xl border transition-colors">
+              <FileRowMenu key={file.id} file={file} editable={editable} onPreview={previewable(file) ? () => preview(file) : undefined} onRename={() => rename(file)} onDelete={() => remove(file)}>
+              <li className="group/card bg-content border-alpha-medium hover:border-alpha-strong relative overflow-hidden rounded-xl border transition-colors">
                 <button
                   type="button"
                   onClick={() => (previewable(file) ? preview(file) : download(file))}
@@ -651,6 +694,7 @@ export function ProjectFilesView({
                   className="bg-content/90 absolute top-2 right-2 opacity-0 group-hover/card:opacity-100 [@media(hover:none)]:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
                 />
               </li>
+              </FileRowMenu>
             ))}
           </ul>
         ) : (
@@ -658,7 +702,8 @@ export function ProjectFilesView({
             {shown.map((file) => {
               const Icon = KIND_ICON[fileKind(file)];
               return (
-                <li key={file.id} className="group/file hover:bg-alpha-lighter flex items-center gap-3 px-3 py-2">
+                <FileRowMenu key={file.id} file={file} editable={editable} onPreview={previewable(file) ? () => preview(file) : undefined} onRename={() => rename(file)} onDelete={() => remove(file)}>
+                <li className="group/file hover:bg-alpha-lighter flex items-center gap-3 px-3 py-2">
                   <span className="bg-alpha-light grid size-7 shrink-0 place-items-center rounded-md">
                     <Icon aria-hidden className="text-muted-foreground size-4" />
                   </span>
@@ -681,6 +726,7 @@ export function ProjectFilesView({
                     onDelete={() => remove(file)}
                   />
                 </li>
+                </FileRowMenu>
               );
             })}
           </ul>

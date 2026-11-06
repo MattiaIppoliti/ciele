@@ -1,0 +1,99 @@
+---
+title: MCP-Server
+description: Verbinden Sie externe Tools für Teammates und veröffentlichte Assistants.
+---
+
+Ein **MCP Server Connection** verbindet Ihre Organisation mit einem externen
+Model Context Protocol-Server. Der Server stellt Tools bereit. Ciele steuert,
+welche Tools ausgeführt werden dürfen.
+
+## Einen Server registrieren
+
+Ein Owner oder Admin öffnet **Settings → MCP servers**, wählt **Add server** aus
+und gibt einen Namen sowie eine Streamable HTTP URL ein. Ein Bearer-Token ist
+optional. Ciele versiegelt das Token in einem separaten
+Anmeldeinformationsspeicher. Es gibt das Token niemals in den
+Verbindungseinstellungen oder in einem Publication-Snapshot zurück.
+
+Ciele überprüft die URL und ermittelt die Tool-Namen, Beschreibungen sowie die
+Input-Schemas. In der Produktion sind öffentliche HTTPS-Endpoints erforderlich.
+Private Adressen und Weiterleitungen werden abgelehnt. Ciele unterstützt sowohl
+moderne als auch ältere Protokollversionen.
+
+Jedes neue Tool startet **Off**. Die Read-only-Annotation eines Servers ist ein
+Hinweis. Sie erteilt keine Berechtigung.
+
+## Tool-Richtlinien prüfen
+
+Jedes Tool hat eine Richtlinie:
+
+| Policy | Verhalten |
+| --- | --- |
+| Run freely | Ciele kann das Tool ohne die Genehmigung eines Members aufrufen. |
+| Ask first | Ein Teammate zeigt eine Genehmigungskarte mit dem Tool und geschwärzten Argumenten, bevor er es aufruft. |
+| Off | Ciele bietet das Tool nicht an. |
+
+Wenn Sie einen Aufruf genehmigen, wird die gespeicherte Aktion einmal über den
+Action Approval Claim ausgeführt. Bei Ablehnung bleibt sie als abgelehnt
+vermerkt. Das Ändern einer Richtlinie ist ein Konfigurationsvorgang mit
+weitreichenden Auswirkungen.
+
+**Refresh** ermittelt die aktuellen Definitionen. Eine Richtlinie wird dem
+Definitionshash zugeordnet, den der Administrator überprüft hat. Wenn sich eine
+Beschreibung, ein Schema oder ein anderes Definitionsfeld ändert, zeigt das Tool
+**Changed** an und wird pausiert. Überprüfen Sie die aktuelle Definition und
+legen Sie ihre Richtlinie erneut fest. Entfernte Tools bleiben zur Überprüfung
+sichtbar und können nicht ausgeführt werden.
+
+## Server für ein Teammitglied aktivieren
+
+In den Ausführungseinstellungen des Teammates wählt ein Owner oder Admin
+registrierte MCP-Server aus. Das native Ciele-Harness stellt aktivierte Tools
+unter einem Server-Präfix bereit, sodass es zu keinen Namenskollisionen bei
+Server-Tools kommen kann. Ein Teammate kann weder einen eigenen Server
+registrieren noch eine Richtlinie ändern.
+
+„Ask first“ wartet auf das aufrufende Member, einen Owner oder einen Admin. Der
+Aufruf verwendet nach der Genehmigung die gespeicherten Argumente. Seine
+Richtlinie und der Zugriff des Teammates werden vor der Ausführung erneut
+überprüft.
+
+## Tools für einen Assistenten aktivieren
+
+Öffnen Sie das **Tools & Skills → MCP servers** des Assistenten. Wählen Sie die
+Tools unter Run freely aus und veröffentlichen Sie sie. Tools vom Typ „Ask
+first“ können für Besucher nicht ausgeführt werden. Publish lehnt eine Auswahl
+ab, die eine Genehmigung erfordert, deaktiviert ist oder einen veralteten
+Definitionshash aufweist.
+
+Eine Publication speichert nur Server-IDs, Tool-Namen und Definition-Hashes.
+Ciele liest die Anmeldeinformationen auf dem Server, wenn ein Aufruf ausgeführt
+wird. Zum Zeitpunkt der Ausführung muss ein Tool weiterhin die Richtlinie „Run
+freely“ und denselben Definitionshash aufweisen. Andernfalls lässt Ciele es aus
+und löst einen Alert aus, in dem Sie aufgefordert werden, es zu überprüfen und
+erneut zu veröffentlichen. Preview verwendet dieselben Regeln.
+
+Ein Visitor-Zug führt höchstens fünf MCP-Aufrufe aus. Tool-Ergebnisse sind
+externe Daten. Sie sind keine Knowledge Sources und werden niemals als Citations
+hinzugefügt.
+
+## Aufrufe und Fehler untersuchen
+
+Der Turn Trace und die Inbox zeigen den Server, das Tool, die geschwärzten
+Argumente, den Status und die Ergebnisübersicht an. Remote-Ergebnisse
+durchlaufen die Barriere für nicht vertrauenswürdige Inhalte von Ciele. Große
+Ergebnisse verbleiben für den jeweiligen Turn in einem begrenzten Speicher. Das
+Modell liest weitere Fenster mit einem Result-Handle und erhält die Gesamtlänge.
+
+Ein genehmigtes „Ask first“-Ergebnis wird zusammen mit seiner Conversation oder
+seinem Channel gespeichert. Der nächste Turn erhält ein geschütztes erstes
+Fenster und kann den Rest über den Handle lesen, ohne den externen Aufruf zu
+wiederholen. Andere Conversations können dieses Ergebnis nicht lesen.
+
+Jeder Verbindungsversuch und jeder Tool-Aufruf hat insgesamt eine Frist von 30
+Sekunden. Antworten sind auf ein Mebibyte begrenzt. Eine fehlgeschlagene
+Verbindung löst einen Alert aus. Die nächste erfolgreiche Verbindung löscht sie.
+
+Löschen Sie einen Server, um das Anbieten seiner Tools zu beenden. Bestehende
+Auswahlen von Assistenten müssen dann vor einer erneuten Veröffentlichung
+überprüft werden.

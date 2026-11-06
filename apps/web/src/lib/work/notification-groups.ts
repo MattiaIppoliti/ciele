@@ -13,7 +13,7 @@ export type NotificationTab = "all" | "mentions" | "assigned" | "comments" | "up
 export const NOTIFICATION_TABS: { key: NotificationTab; label: string; kinds: MemberNotificationKind[] | null }[] = [
   { key: "all", label: "All", kinds: null },
   { key: "mentions", label: "Mentions", kinds: ["mentioned"] },
-  { key: "assigned", label: "Assigned", kinds: ["assigned"] },
+  { key: "assigned", label: "Assigned", kinds: ["assigned", "conversation_assigned"] },
   { key: "comments", label: "Comments", kinds: ["commented"] },
   { key: "updates", label: "Updates", kinds: ["status_changed"] },
 ];
@@ -24,7 +24,7 @@ export function inTab(item: Pick<NotificationItem, "kind">, tab: NotificationTab
 }
 
 export function notificationKey(item: Pick<NotificationItem, "project" | "task">): string {
-  return taskKey(item.project.key, item.task.seq);
+  return item.project && item.task ? taskKey(item.project.key, item.task.seq) : "Inbox";
 }
 
 /** Who did it: the Member's name, "A Teammate", or "Someone" for a departed Member. */
@@ -34,6 +34,7 @@ export function notificationActor(item: Pick<NotificationItem, "actorName" | "ac
 
 /** "Ada assigned you WEB-12": the line a row and a card both lead with. */
 export function notificationText(item: Pick<NotificationItem, "kind" | "actorName" | "actorTeammateId" | "project" | "task">): string {
+  if (item.kind === "conversation_assigned") return "A Visitor is waiting for you";
   const who = notificationActor(item);
   const key = notificationKey(item);
   switch (item.kind) {

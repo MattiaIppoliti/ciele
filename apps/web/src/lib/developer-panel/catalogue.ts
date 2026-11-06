@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { OperationCapability } from "@ciele/ops";
+import type { OperationTier } from "@ciele/ops";
 import { API_V1_ENDPOINTS, type EndpointSpec } from "@/lib/api-v1/openapi";
 import type { ApiV1Domain } from "@/lib/api-v1/meta";
 import { DOMAIN_PRESENTATION, domainDocs } from "./domains";
@@ -20,8 +20,8 @@ import type { PanelCapability, PanelDomain, PanelOperation } from "./types";
  * ops layer's own union. These two assignments fail to compile the moment
  * either side gains or loses a rung, which is cheaper than a test.
  */
-const _capabilityMirrorsOps: PanelCapability = null as unknown as OperationCapability;
-const _opsMirrorsCapability: OperationCapability = null as unknown as PanelCapability;
+const _capabilityMirrorsOps: PanelCapability = null as unknown as OperationTier;
+const _opsMirrorsCapability: OperationTier = null as unknown as PanelCapability;
 void _capabilityMirrorsOps;
 void _opsMirrorsCapability;
 

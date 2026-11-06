@@ -1,9 +1,11 @@
 import type {
   Teammate,
-  TeammateCapabilityCeiling,
+  TeammateActionCeiling,
   TeammateGrantDomain,
   Role,
 } from "./types";
+import { canOperateConversations } from "./operator";
+import type { CapabilityTier } from "./capabilities";
 
 /**
  * What an AI Teammate is allowed to *do* (#770), as pure functions of its grant
@@ -62,7 +64,15 @@ const ROLE_RANK: Record<Role, number> = {
   admin: 3,
   editor: 2,
   viewer: 1,
+  // Not a rung (#1086): a Support Agent ranks as a Viewer everywhere the
+  // ladder is asked, and answers Visitors through the `operate` check.
+  support_agent: 1,
 };
+
+/** How a Role reads in the console and the audit log: "Support Agent", not "Support_agent". */
+export function roleLabel(role: Role): string {
+  return role === "support_agent" ? "Support Agent" : role.charAt(0).toUpperCase() + role.slice(1);
+}
 
 /** 0 for "nobody", so an absent Role clears no gate. */
 export function memberRoleRank(role: Role | null | undefined): number {
@@ -89,8 +99,10 @@ const REQUIRED_RANK: Record<string, number> = {
  */
 export function roleAllowsCapability(
   role: Role | null | undefined,
-  capability: string
+  capability: CapabilityTier
 ): boolean {
+  // Answering Visitors is a named check, not a rung (#1082, #1086).
+  if (capability === "operate") return canOperateConversations(role);
   const wanted = REQUIRED_RANK[capability];
   return wanted !== undefined && memberRoleRank(role) >= wanted;
 }
@@ -105,7 +117,7 @@ export function roleAllowsCapability(
  * which invented a fourth grant domain that typecheck could not see and handed
  * it to the card anyway.
  */
-export type TeammateActionDomain = TeammateGrantDomain | "memory" | "platform" | "computer";
+export type TeammateActionDomain = TeammateGrantDomain | "memory" | "platform" | "computer" | "mcp";
 
 /**
  * Whether an operation's declared capability fits under this ceiling.
@@ -116,8 +128,8 @@ export type TeammateActionDomain = TeammateGrantDomain | "memory" | "platform" |
  * until somebody decides otherwise, instead of quietly landing under `edit`.
  */
 export function ceilingAllowsCapability(
-  ceiling: TeammateCapabilityCeiling,
-  capability: string
+  ceiling: TeammateActionCeiling,
+  capability: CapabilityTier
 ): boolean {
   const wanted = CAPABILITY_RANK[capability];
   const allowed = CAPABILITY_RANK[ceiling];

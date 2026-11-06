@@ -50,8 +50,8 @@ server used by initialization does not release dependent services early.
 The migration runner waits for Auth and Storage HTTP readiness too: their
 tables can exist while their own migrations and concurrent indexes still run.
 
-Three things are not profiles but **overlay files**, listed in `COMPOSE_FILE`:
-prebuilt images, the heavy workers, and an external database. All three are
+Four things are not profiles but **overlay files**, listed in `COMPOSE_FILE`:
+prebuilt images, the heavy workers, an external database and the Rust service. All four are
 covered below.
 
 ## Bring your own Postgres
@@ -204,6 +204,32 @@ the `:?` guards that stop a worker from starting without its token used to
 abort a plain `docker compose up` on a stack that was never going to run them.
 A file nobody asked for is never read at all.
 
+## Turning on the Rust service
+
+```sh
+./deploy/bootstrap.sh --rust
+```
+
+adds `docker-compose.rust.yml` to `COMPOSE_FILE` and mints `CIELE_RUST_API_SECRET`.
+The overlay builds `services/ciele-api`, puts it on the `data` and `backend` zones
+with no published port, and sets the app's `CIELE_RUST_API_URL` and
+`CIELE_RUST_OPERATIONS` (every ported operation unless `.env` lists fewer). The
+app then forwards those operations to the service, and its middleware sends
+their `/api/v1` endpoints straight to it, where the service checks the API key
+itself (#1134). Off: drop the file from `COMPOSE_FILE`; everything runs in the
+app again. On an external database set `CIELE_RUST_DATABASE_URL`. Operations:
+`services/ciele-api/RUNBOOK.md`.
+
+The public widget endpoints are a second switch, off by default:
+`CIELE_RUST_WIDGET_ROUTES` in `.env` names the ones the app's middleware sends
+to the service (`config,session`; the service lists every one it answers at
+`GET /v1/widget`). The overlay passes the service the app's
+`APP_ENCRYPTION_KEY` and platform model keys under the same names, so a
+signed-in Visitor stays signed in and the model picker matches, and Storage
+through the gateway with the service-role key, for Source downloads. A listed
+endpoint has no fallback: with the service down the widget shows its error
+state until you empty the list and restart the app.
+
 ## TLS and exposure
 
 **The stack ships its own TLS path** (#801, CYB-16): the
@@ -228,6 +254,14 @@ of this section applies either way.
 
 Whichever proxy terminates, set `PUBLIC_URL`, `SUPABASE_PUBLIC_URL` and
 `CIELE_PUBLIC_ORIGIN` in `deploy/.env` to the public HTTPS origins.
+
+The app and the Rust service read a caller's address from `X-Forwarded-For`,
+for the rate limits and the Source download ledger. By default they take the
+left-most hop, which is right on Vercel and behind the bundled Caddy: both
+replace whatever the client sent. A proxy that *appends* instead (nginx with
+`$proxy_add_x_forwarded_for`, most cloud load balancers) leaves the left-most
+hop to the client, so set `CIELE_TRUSTED_PROXY_HOPS` to the number of such
+proxies and both read the hop the outermost one added.
 
 In **source-build mode** that value is baked in, so the app image has to be
 rebuilt:
@@ -351,3 +385,29 @@ refuses to default on purpose: an unpinned stack that silently followed
 **In image mode, every request fails after changing `SUPABASE_PUBLIC_URL`**,
 the published app image resolves that value once, at container start. Recreate
 the container with `docker compose up -d` rather than restarting it.
+
+## Hosted webhook worker on Vercel Hobby
+
+Run this scheduler on an external Docker host. It calls the hosted app every five
+minutes, so webhook delivery and retries can run while Vercel keeps its daily
+maintenance schedule. This Compose file starts only the scheduler.
+
+Create a private environment file outside the checkout, for example
+`/secure/ciele-worker.env`, containing `APP_URL` (the hosted HTTPS origin without a
+trailing slash) and `CRON_SECRET` (the same secret as the hosted app). Restrict the
+file to its owner. Pass it to Compose:
+
+```sh
+docker compose --env-file /secure/ciele-worker.env -f deploy/docker-compose.hosted-worker.yml up -d --build
+docker compose --env-file /secure/ciele-worker.env -f deploy/docker-compose.hosted-worker.yml logs --tail 20 webhook-worker
+```
+
+Each tick must log `/api/cron/finalize-crawls ok (200)`. A connection or authentication
+failure is logged as `FAILED`. Submit a test event from Settings → Webhooks and
+check that its delivery log changes to `delivered`. Retry verification also needs
+a receiver that first returns a failure and then succeeds. Starting the container
+and confirming those outcomes on the target host are deployment steps.
+
+The standalone hosted worker also calls `/api/cron/run-exports` every five minutes.
+This queues due Insights schedules, builds files, and sends the ready-file emails.
+Vercel Hobby keeps its daily cron fallback. Keep the external worker running for timely reports.

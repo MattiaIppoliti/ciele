@@ -27,6 +27,7 @@ import {
 import type { UsageEvent } from "./types";
 import { maskOutboundValue } from "./pii-masking";
 import { usageTotals } from "./usage";
+import { timedWait, withModelStage } from "./turn-clock";
 
 /**
  * The decision model (#950, spec #948): a *decision* is one `evaluate` call, a
@@ -195,7 +196,7 @@ export async function decide<const Q extends Record<string, Experimental_Evaluat
   const startedAt = performance.now();
   // Native Jev has no output generation. Its verified Gateway window is 32k.
   if (resolved.backend === "jev" && requestUpperBound(input, 1) > 32000) throw new ContextBudgetError("The decision request exceeds its verified context window.");
-  const result = await experimental_evaluate({
+  const result = await withModelStage("decide", () => timedWait("decide", () => experimental_evaluate({
     model: resolved.model,
     // Jev is an evaluation model, not a language model, so `buildModel`'s
     // masking never sees this request (#1078). The answers are choice ids,
@@ -203,7 +204,7 @@ export async function decide<const Q extends Record<string, Experimental_Evaluat
     state: maskOutboundValue(input.state),
     questions: maskOutboundValue(input.questions),
     abortSignal: input.abortSignal,
-  });
+  })));
   return {
     answers: result.answers,
     confidence: confidenceOf(result.providerMetadata),

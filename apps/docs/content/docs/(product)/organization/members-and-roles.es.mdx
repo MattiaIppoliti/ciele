@@ -5,18 +5,79 @@ description: Controla quién puede leer, editar, publicar y administrar una orga
 
 ## Roles
 
-| Role | Nivel de permiso actual |
+Un rol es un conjunto de capacidades. Una capacidad es algo que un miembro puede
+hacer, por ejemplo, **Create and edit Flows** (`flows:edit`). Cada organización
+empieza con seis roles integrados.
+
+| Role | Capacidades predeterminadas |
 | --- | --- |
 | Viewer | Lee los datos de la organización y del producto. |
+| Data Viewer | Lee los Insights y los Assistants que muestran los Insights. |
+| Support Agent | Tiene permisos de lectura como un Viewer. También se hace cargo de Conversations, responde a los Visitors, utiliza Quick Texts y atiende los Help Desks como operador. |
 | Editor | Modifica el contenido y la configuración del asistente. |
-| Admin | Publica asistentes y gestiona miembros y claves API. |
-| Owner | Cambia los roles y gestiona a los propietarios. |
+| Admin | Publica asistentes y gestiona miembros, Roles, claves API e integraciones. |
+| Owner | Tiene todas las capacidades. Gestiona a los propietarios y las suscripciones personales de IA. |
 
-La aplicación aplica comprobaciones de capacidades más específicas a operaciones
-individuales.
+La navegación de un Support Agent solo te muestra **Inbox**, **Help Desks**,
+**My Tasks**, **Notifications** y **Settings**. Si un Support Agent abre una
+página diferente a través de un enlace directo, Ciele te muestra un mensaje de
+permisos.
 
-La sección **Roles** situada en la parte inferior de **Settings > Members**
-muestra una tabla con lo que puede hacer cada Role.
+## Editar y crear Roles
+
+Abre **Settings > Roles**. La lista muestra cada Role, su número de capacidades
+y quién lo tiene.
+
+Para crear un rol:
+
+1. Selecciona **New role**.
+2. En **Start from**, selecciona un Role para copiar o selecciona **Nothing**.
+3. Introduce un nombre y una descripción.
+4. En **Available on**, selecciona **Organization**, **Assistant** o ambos.
+5. Selecciona las capacidades. Selecciona una casilla de grupo para seleccionar
+   todas las capacidades de ese grupo. Utiliza el cuadro de búsqueda para
+   encontrar una capacidad.
+6. Selecciona **Create role**.
+
+Cuando seleccionas una capacidad, Ciele también selecciona las capacidades que
+necesita. Por ejemplo, **Create and edit Flows** necesita **View Flows** y
+**View Assistants**. Una capacidad que otra capacidad seleccionada necesita
+permanece seleccionada. La fila indica qué funcionalidad la necesita. Primero
+desmarca esa capacidad.
+
+Puedes editar todos los Roles integrados, excepto Owner. Un Role predefinido
+editado muestra **Edited**. Selecciona **Reset to default** para restaurar sus
+capacidades predeterminadas.
+
+Las reglas:
+
+- No puedes asignar a un Role una capacidad que tú no tengas. Esto se aplica
+  cuando editas un Role, asignas un Role a un miembro, invitas con un Role o
+  creas una clave API.
+- No puedes dar a un compañero de equipo acceso a un área que tu Role no pueda
+  usar.
+- No puedes editar el Role que tienes. Un Owner puede editar todos los Roles
+  excepto Owner.
+- No puedes eliminar un Role predefinido. No puedes eliminar un Role
+  personalizado mientras lo tenga asignado un miembro, una invitación o una
+  clave API activa. Primero asígnales otro Role.
+- Cuando Ciele añade una capacidad, los Roles integrados que no hayas editado la
+  obtienen si forma parte de sus valores predeterminados. Los Roles editados y
+  personalizados no la obtienen.
+
+Para gestionar Roles, un miembro necesita la capacidad **Manage Roles**. Los
+administradores la tienen de forma predeterminada. Todos los cambios se muestran
+en el registro de auditoría.
+
+## Roles predeterminados
+
+Hay dos Roles predeterminados. El **Organization default** es el primer Role en
+el formulario de invitación. El **Assistant default** es el primer rol cuando le
+das a un miembro acceso a un asistente. Al principio, estos son Editor y Viewer.
+
+Para cambiarlos, abre **Settings > Roles** y selecciona **Manage defaults**. No
+puedes eliminar un Role predeterminado. Primero, selecciona otro rol
+predeterminado.
 
 ## Invita a miembros
 
@@ -31,8 +92,8 @@ Ciele crea un enlace de unión para cada dirección. Puedes invitar a un máximo
 volver a copiar un enlace, selecciona **Copy invite link** en la lista de
 miembros.
 
-Si introduces una sola dirección o ninguna, Ciele copia el enlace en tu
-portapapeles.
+Si introduces una sola dirección o ninguna dirección, Ciele copia el enlace en
+tu portapapeles.
 
 Si una dirección no es correcta, Ciele muestra esa dirección y no crea ninguna
 invitación.
@@ -40,22 +101,73 @@ invitación.
 Ciele no crea una segunda invitación para una dirección que ya tenga una
 invitación abierta o que pertenezca a un miembro. Muestra estas direcciones
 después de que las envíes. Si Ciele no puede crear una invitación, la dirección
-permanece en el cuadro. Selecciona **Create invite** de nuevo para volver a
-probar esas direcciones.
+permanece en el cuadro. Vuelve a seleccionar **Create invite** para intentar de
+nuevo con esas direcciones.
 
 ## Cambiar un miembro
 
-Un Admin puede gestionar a los miembros por debajo del nivel Owner. Un Owner
-puede gestionar todos los niveles.
+En **Settings > Members**, selecciona un Role en la columna **Role**. La lista
+muestra los Roles que puedes asignar. Solo un Owner puede convertir a un miembro
+en Owner o cambiar un Owner.
 
 Un miembro no puede editar ni eliminar su propia fila de la lista de miembros.
 Utiliza a otro miembro autorizado para esa operación.
 
 ## Roles de claves API
 
-Un Admin o un Owner puede crear una clave API de la organización. El Role
-seleccionado no puede ser superior al Role del creador.
+Un miembro con la capacidad **Manage API keys** puede crear una clave API de la
+organización. La clave puede tener cualquier Role, incluso un Role
+personalizado. El Role no puede tener una capacidad que el creador no tenga.
+
+Una clave solo puede hacer lo que su Role y su creador pueden hacer actualmente.
+Si el creador pierde una capacidad, la clave también la pierde.
 
 Revoca una clave cuando su cliente ya no necesite acceso. Ciele conserva el
-registro revocado para fines de auditoría. Un Admin o un Owner puede eliminar
-una clave revocada para borrar su registro.
+registro revocado para fines de auditoría. Puedes eliminar una clave revocada
+para borrar su registro.
+
+## Gestiona el acceso a un asistente
+
+Un Owner o un Admin abre un Assistant y, a continuación, selecciona **More
+options → Manage access**. La lista muestra el Organization Role de cada Member
+y cualquier override. Selecciona **Denied** o un Role, luego confirma el cambio.
+La lista muestra cada Role que está disponible en los Asistentes, incluidos los
+Roles personalizados. Selecciona **Organization Role** para eliminar la
+anulación. Los Owners siempre conservan el acceso.
+
+Un Role en un Assistant sustituye al Organization Role en ese Assistant. Puede
+otorgar más o menos permisos que el Role de la organización. Solo se aplica a
+las capacidades de los asistentes, por ejemplo, Flows, Knowledge e Inbox. Las
+capacidades de la organización, como Members y API keys, no cambian.
+
+Denied oculta el asistente de las listas, de la búsqueda, de Find y del
+Developer Panel. La misma restricción se aplica a sus ajustes secundarios y a
+los enlaces de Knowledge. Las claves API de un Member, sus Teammates y Ciele AI
+actúan dentro del ámbito de acceso de ese Member. Las claves API también
+conservan su propio límite de Role. Una anulación nunca eleva ese límite.
+
+Cambiar el acceso tiene consecuencias. Ciele AI te pide aprobación antes del
+cambio. Los Teammates estándar no pueden cambiar el acceso. El Developer Panel
+muestra los comandos de la API, de la CLI y del MCP para estas operaciones.
+
+## Limita a un miembro a determinados asistentes
+
+En la pestaña **Members**, la columna **Assistants** muestra a qué puede acceder
+cada miembro. Selecciona **Manage assistants** debajo de un miembro para
+cambiarlo.
+
+- **All assistants** asigna al miembro su rol de organización en todos los
+  asistentes, ahora y en el futuro. Aun así, puedes establecer una anulación
+  para cada asistente.
+- **Only selected assistants** concede al miembro acceso únicamente a los
+  Asistentes que selecciones. Selecciona un Role para cada uno de entre los
+  Roles disponibles en los Assistants. El Role puede ser de nivel superior o
+  inferior al Organization Role.
+
+Un miembro con **Only selected assistants** no ve un nuevo asistente hasta que
+lo añadas. Cuando ese miembro crea un asistente, obtiene acceso a él con su
+Organization Role. La restricción es la misma que **Denied** para todos los
+asistentes que no estén seleccionados.
+
+Los Owners siempre tienen acceso a todos los Assistants. Cada cambio aparece en
+el registro de auditoría.

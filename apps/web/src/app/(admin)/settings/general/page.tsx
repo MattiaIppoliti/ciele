@@ -1,6 +1,5 @@
 "use client";
 
-import { Building2 } from "lucide-react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { OrganizationClient } from "@/components/settings/organization-client";
@@ -25,7 +24,6 @@ export default function GeneralSettingsPage() {
   if (!session || !allowed) return null;
   return (
     <SettingsPanel
-      icon={Building2}
       title="General"
 
     >

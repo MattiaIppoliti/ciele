@@ -115,9 +115,8 @@ export async function runApprovalGate(input: {
  * The card a stopped action leaves in the transcript.
  *
  * It carries the catalogue's words for the action and the gate's reason, never
- * the action's arguments and never anything the model wrote: a card is read by
- * a Member deciding whether to let something run, and an argument that talked
- * its way onto that screen would be talking to the person with the authority.
+ * the action's arguments. Remote MCP callers append their redacted argument
+ * view as literal data, because that approval names the exact external call.
  */
 export function approvalCardPart(input: {
   approvalId: string;
@@ -217,6 +216,9 @@ export function gateTeammateActions(options: {
     // gate to protect, and asking a colleague to authorise somebody
     // writing to their own profile would be absurd.
     guard: action.domain === "memory" ? undefined : async (actionInput: Record<string, unknown>) => {
+      // The reviewed MCP policy is deterministic: Run freely (and local result
+      // reads) bypass model judgement; Ask first always creates the card below.
+      if (action.domain === "mcp" && !action.alwaysConfirm?.(actionInput)) return null;
       // A call the host marks as always confirmed skips the judgement
       // and goes straight in front of the Member, gate or no gate.
       const confirmed = action.alwaysConfirm?.(actionInput) ?? false;
@@ -267,11 +269,11 @@ export function gateTeammateActions(options: {
         mapVersion: gate.mapVersion,
         expiresAt: new Date(Date.now() + APPROVAL_EXPIRY_MS).toISOString(),
       });
-      return approvalCardPart({
+      return { ...approvalCardPart({
         approvalId: approval.id,
         label: callLabel,
         verdict: gate.verdict,
-      });
+      }), ...(action.traceInput ? { arguments: action.traceInput(actionInput) } : {}) };
     },
   }));
 

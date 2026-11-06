@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
-import { BookText } from "lucide-react";
 import { KnowledgeClient } from "@/components/assistant/knowledge-client";
 import { SnippetVariables } from "@/components/developer-panel/snippet-variables";
 import { SharedKnowledgePanel } from "@/components/assistant/shared-knowledge-panel";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { requirePageMember } from "@/lib/authz";
-import { canEdit, canPublish } from "@/lib/rbac";
+import { requirePageMember, requireAssistantPageAccess } from "@/lib/authz";
+import { can } from "@/lib/rbac";
 import { applicationOAuthAvailability } from "@/lib/application-oauth";
 import { redactApplicationConnection } from "@/lib/application-connections";
 import {
@@ -36,7 +35,8 @@ export default async function KnowledgePage({
 }) {
   const { id } = await params;
   const { c, mode } = await searchParams;
-  const { db, organizationId, role, session } = await requirePageMember();
+  const { db, organizationId, session } = await requirePageMember();
+  const { access } = await requireAssistantPageAccess(id);
   const assistant = await getAssistantCached(id);
   if (!assistant) notFound();
 
@@ -119,7 +119,6 @@ export default async function KnowledgePage({
   return (
     <div className="mx-auto max-w-4xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
-        icon={BookText}
         title="Knowledge"
         description="Sources are shared with the Library."
       />
@@ -144,8 +143,8 @@ export default async function KnowledgePage({
           title: item.title,
         }))}
         currentMemberId={session.userId}
-        canEditApplications={canEdit(role)}
-        canManageApplicationConnections={canPublish(role)}
+        canEditApplications={can(access, "applications:edit")}
+        canManageApplicationConnections={can(access, "applications:connect")}
         applicationOAuthAvailability={applicationOAuthAvailability()}
         initialMode={parseKnowledgeMode(mode)}
       />

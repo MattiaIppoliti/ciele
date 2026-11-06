@@ -15,6 +15,8 @@
     "flows",
     "---Connecter---",
     "help-desks",
+    "webhooks",
+    "mcp-servers",
     "authentication",
     "publishing",
     "---Planifier le travail---",

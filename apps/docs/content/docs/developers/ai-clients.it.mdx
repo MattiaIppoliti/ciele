@@ -6,7 +6,7 @@ description: Collega i client AI supportati al server MCP Ciele ospitato o local
 Il server MCP di Ciele dispone di due transport. Entrambi registrano gli stessi
 strumenti.
 
-- L'**hosted endpoint** è `POST /api/mcp` nella tua distribuzione. Qualsiasi
+- L'*endpoint ospitato* è `POST /api/mcp` sulla tua distribuzione. Qualsiasi
   client che accetta un URL MCP remoto può utilizzarlo.
 - Il **local server** è un processo `stdio` che il client avvia come processo
   figlio.
@@ -22,7 +22,7 @@ interfacce client e i formati di configurazione possono cambiare.
 | Client | Hosted endpoint | Local `stdio` |
 | --- | :---: | :---: |
 | Claude Code | Sì | Sì |
-| Codex CLI, Codex app e Codex IDE extension | Sì | Sì |
+| Codex CLI, app Codex ed estensione Codex per IDE | Sì | Sì |
 | ChatGPT desktop app | Sì | Sì |
 | Cursor | Sì | Sì |
 | OpenCode | Sì | Sì |
@@ -42,22 +42,23 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-L'endpoint ospitato non dispone di uno switch di sola lettura: le sue
-autorizzazioni corrispondono al Role della chiave. Tuttavia, una chiave Viewer
-non è un agente di sola lettura: la revisione delle conversazioni rientra nella
-curatela, quindi può fissare una conversazione, lasciare un feedback ed
-eliminarne una. Utilizza un server stdio locale con `CIELE_MCP_READ_ONLY=1`
-quando l'agente non deve modificare assolutamente nulla.
+Le autorizzazioni dell'endpoint ospitato corrispondono al Role della chiave.
+Tuttavia, una chiave Viewer non è un agente di sola lettura. La revisione delle
+conversazioni rientra nella curatela, pertanto una chiave Viewer può bloccare
+una conversazione, lasciare un feedback ed eliminare una conversazione. Un
+deployment self-hosted può impostare `CIELE_MCP_READ_ONLY=1` in modo da
+rifiutare ogni mutazione per ogni chiave. Per un agente che non deve modificare
+nulla, utilizza un server stdio locale con `CIELE_MCP_READ_ONLY=1`.
 
 ## Prepara una connessione locale
 
 1. Installa Node.js 22.6 o versione successiva.
 2. Clona il repository di Ciele.
 3. Crea una [API key](/developers/api-keys) per il viewer.
-4. Risolvi il percorso assoluto di `packages/mcp/bin/ciele-mcp.mjs`.
+4. Risolvi il percorso assoluto a `packages/mcp/bin/ciele-mcp.mjs`.
 5. Imposta `CIELE_MCP_READ_ONLY=1` per la prima connessione.
 
-Sostituisci `<repo>` e l'origin di esempio in ciascuna configurazione.
+Sostituisci `<repo>` e l'origin di esempio in ogni configurazione.
 
 ## Claude Code
 
@@ -133,7 +134,7 @@ globale di Cursor.
 }
 ```
 
-Apri **Settings > MCP**. Abilita `ciele` e verifica ogni chiamata allo strumento
+Apri **Settings > MCP**. Abilita `ciele` e verifica ogni chiamata di strumento
 richiesta.
 
 Consulta la
@@ -217,7 +218,8 @@ copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
 Aggiungi le tre variabili di ambiente Ciele tramite la configurazione MCP di
-Copilot. Non inserire la chiave API nel controllo del codice sorgente.
+Copilot. Non inserire la chiave API nel sistema di controllo del codice
+sorgente.
 
 Consulta la
 [GitHub Copilot CLI MCP guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)

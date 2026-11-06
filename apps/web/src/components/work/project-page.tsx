@@ -151,7 +151,7 @@ export function ProjectFrame({
         </SlotPortal>
       )}
       <header className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2 px-6 pt-5 pb-3">
-        <SectionHeading icon={projectIcon(project.icon)} title={project.name} className="min-w-0" />
+        <SectionHeading icon={projectIcon(project.icon)} title={project.name} className="mb-0 min-w-0" />
         {project.visibility === "private" && <Lock aria-label="Private" className="text-muted-foreground size-3.5 shrink-0" />}
         <Hint label={favorite ? "Remove from favorites" : "Add to favorites"}>
           <button
@@ -261,8 +261,17 @@ export function ProjectFrame({
         </div>
       </header>
       <nav aria-label="Project views" className="border-alpha-medium shrink-0 border-b px-4 py-1.5">
-        {/* Link tabs: each view is its own route, so back walks views. */}
-        <Tabs value={tab} onValueChange={setTab}>
+        {/* Link tabs: each view is its own route, so back walks views. A
+            plain click is intercepted to slide the pill, so the push is ours. */}
+        <Tabs
+          value={tab}
+          onValueChange={(slug) =>
+            startTransition(() => {
+              setTab(slug);
+              router.push(`/projects/${project.id}/${slug}`);
+            })
+          }
+        >
           <TabsList aria-label="Project views">
             {PROJECT_VIEWS.map((view) => (
               <TabsTrigger key={view.slug} value={view.slug} href={`/projects/${project.id}/${view.slug}`}>

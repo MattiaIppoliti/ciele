@@ -1,3 +1,4 @@
+import { approvedMcpResults } from "./remote-mcp-results";
 import type {
   AiUsageInput,
   ChatAttachment,
@@ -612,7 +613,7 @@ function channelHistory(
 ): HistoryMessage[] {
   return messages.map((message) =>
     message.authorTeammateId === selfId
-      ? { id: message.id, role: "assistant" as const, text: messageText(message.content) }
+      ? { id: message.id, role: "assistant" as const, text: messageText(message.content), mcpResults: approvedMcpResults(message.content) }
       : { id: message.id, role: "user" as const, text: speakerLine(message, nameOf) },
   );
 }

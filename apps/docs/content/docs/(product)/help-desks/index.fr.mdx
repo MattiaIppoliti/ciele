@@ -1,47 +1,234 @@
 ---
-title: Centres d'assistance
+title: Centres d’assistance
 description: Offrez aux visiteurs un parcours configuré pour contacter une équipe humaine.
 ---
 
 Un Help Desk regroupe les canaux de contact, les informations de disponibilité,
-les champs de formulaire et les paramètres d'escalade. Une organisation peut
+les champs de formulaire et les paramètres d’escalade. Une Organisation peut
 connecter un Help Desk à plusieurs Assistants.
 
 ## Comportement actuel du canal
 
 | Canal | Résultat pour le visiteur |
 | --- | --- |
-| E-mail | Ciele envoie un e-mail de remontée lorsque le transport e-mail est configuré. |
-| Téléphone | Le widget affiche le contact téléphonique configuré. |
-| Live chat | Le widget affiche le chemin de contact du Live Chat configuré. |
+| Email | Ciele envoie un e-mail de remontée lorsque le transport d'e-mail est configuré. |
+| Phone | Le widget affiche le contact téléphonique configuré. |
+| Live chat | Le widget affiche le chemin de contact du live chat configuré. |
 | External link | Le widget ouvre la destination configurée. |
-| Point de terminaison API | Le widget affiche le formulaire du canal et l'envoie au point de terminaison configuré. |
+| Point de terminaison API | Le widget affiche le formulaire du canal et l’envoie au point de terminaison configuré. |
+| Create a ticket | Le widget affiche le formulaire du canal et crée un ticket Salesforce ou un enregistrement ServiceNow. Le Visiteur voit le numéro de ticket. |
+| Live operator | Le Visiteur reste dans le chat et attend une personne de votre équipe. |
 
-Ne configurez un canal qu'après avoir testé l'intégralité de son parcours
+Ne configurez un canal qu’après avoir testé l’intégralité de son parcours
 Visiteur.
 
-## Sélection de l'escalade
+## Créer un ticket
+
+Le canal **Create a ticket** crée un enregistrement dans le système que le Help
+Desk désigne comme sa cible de ticketing. Définissez la cible avant d’ajouter le
+canal.
+
+### Définir la cible de création de tickets
+
+1. Connectez Salesforce ou ServiceNow sous **Knowledge → Applications**. La
+   connexion doit appartenir à l’Organisation. Une connexion personnelle n’est
+   pas affichée.
+2. Ouvrez le Help Desk.
+3. Dans **Ticketing Integration**, sélectionnez **Choose a connection**.
+4. Sélectionnez la connexion.
+5. Pour ServiceNow, saisissez le **Table**. La valeur par défaut est `incident`.
+   Vous pouvez également saisir un **Requester email column**. Il ne peut pas
+   s'agir de `description` ni de `short_description`, car ces colonnes
+   contiennent le contenu des tickets.
+6. Sélectionnez **Save**.
+
+### Mappage des champs
+
+Le formulaire du canal commence par trois champs : Email, Subject et
+Description.
+
+| Champ du formulaire | Salesforce Case | ServiceNow record |
+| --- | --- | --- |
+| Adresse e-mail | E-mail Web (`SuppliedEmail`) | La colonne de l’adresse e-mail du demandeur. Si vous ne définissez aucune colonne, l’e-mail est inséré dans la description. |
+| Objet | Objet | `short_description` |
+| Description | Description | `description` |
+
+Les autres champs renseignés par le Visiteur sont ajoutés à la description sous
+la forme de lignes `Label: value`. Si le **Conversation Data** du canal inclut
+l’historique complet de la conversation, la transcription suit la description.
+Une requête Salesforce reçoit l’origine `Web`.
+
+La limite pour le champ Subject est de 255 caractères. La limite de la
+description est de 32 000 caractères, y compris les valeurs du formulaire, le
+résumé et la transcription. Ciele vous demande de raccourcir une demande trop
+longue avant de créer un ticket. Il ne tronque pas le texte. Le système externe
+peut appliquer des limites inférieures.
+
+### Autorisations
+
+- Salesforce : l’utilisateur qui a connecté l’application doit disposer de
+  l’autorisation **Create** sur les Cases. La connexion ne nécessite aucun
+  nouveau scope.
+- ServiceNow : l’utilisateur qui a connecté l’application doit être en mesure de
+  créer des enregistrements dans la table cible.
+
+### Résultats
+
+- Le Visiteur voit le message de confirmation, le numéro de ticket et un lien
+  **View ticket**. Le système externe peut exiger une connexion.
+- La boîte de réception affiche le numéro de ticket dans le panneau
+  **Escalation**, accompagné d’un lien vers l’enregistrement. Un ticket soumis
+  avant le premier message de chat crée également une Conversation à cet
+  endroit.
+- Si le navigateur tente à nouveau la même soumission, Ciele ne crée pas de
+  deuxième enregistrement. Une demande encore en cours reste affichée dans le
+  formulaire. Sélectionnez à nouveau **Submit** pour vérifier son statut.
+- Si Salesforce ou ServiceNow refuse l’enregistrement ou ne répond pas, le
+  widget affiche les autres canaux du Help Desk. La Conversation n’est pas
+  marquée comme ayant fait l’objet d’une remontée. Si une réponse est perdue,
+  l’enregistrement peut exister dans le système externe. Ciele ne répète pas
+  cette soumission. Contactez le Help Desk avant de soumettre une nouvelle
+  demande.
+- Après un échec, une alerte **Integration** indique le nom de la connexion et
+  l’erreur. L’alerte disparaît lorsque le ticket suivant est enregistré.
+
+### ServiceNow avec un mot de passe
+
+Auparavant, un Help Desk pouvait connecter ServiceNow avec un nom d’utilisateur
+et un mot de passe. Cette intégration ne crée plus de tickets. Un Help Desk qui
+dispose encore de cette intégration affiche une alerte. Connectez ServiceNow
+sous **Knowledge → Applications** et sélectionnez cette connexion comme cible de
+création de tickets.
+
+## Résumé de la conversation
+
+L’onglet **Conversation Data** d’un canal E-mail, d’un point de terminaison
+d’API ou de type « Créer un ticket » comporte un paramètre **Chat summary**.
+Lorsque ce paramètre est activé, Ciele rédige un bref résumé de la Conversation
+lorsqu’un Visiteur procède à une remontée. Le résumé indique à votre équipe ce
+que le Visiteur a demandé et ce à quoi l’Assistant a déjà répondu.
+
+- Lors d’une remontée par e-mail, le résumé s’affiche au-dessus des champs du
+  formulaire. Si **Full chat history** est également activé, la transcription
+  apparaît après les champs du formulaire.
+- Une remontée via un point de terminaison d’API envoie le résumé dans le champ
+  `summary` de la charge utile.
+- Une remontée de type Create a ticket ajoute le résumé à la description du
+  ticket, suivi de la transcription lorsque celle-ci est demandée.
+- Les détails de la conversation dans l’Inbox affichent le résumé.
+
+Ciele utilise les connexions au fournisseur d’IA de l’organisation pour le
+résumé, et jamais l’abonnement personnel d’un membre. Ciele enregistre l’appel
+dans l’utilisation de l’IA de l’Organisation. Si le Visitor envoie à nouveau la
+même remontée, Ciele utilise le même résumé et n’appelle pas à nouveau le
+modèle.
+
+Si Ciele ne parvient pas à rédiger le résumé, l’escalade est tout de même
+envoyée. L’e-mail affiche la ligne « Summary unavailable ». Dans la charge utile
+de l’API, `summary` est défini sur `null` et `summaryNote` est défini sur «
+Summary unavailable ». Une remontée effectuée avant que le Visiteur n’envoie un
+message ne comporte pas de résumé.
+
+## Canal d’opérateur en direct
+
+Un canal **Live operator** permet à un Visiteur de demander à parler à une
+personne sans quitter le chat. Le canal a un nom, un formulaire facultatif, un
+calendrier de disponibilité et un délai d’attente. Le délai d'attente par défaut
+est de 5 minutes.
+
+Lorsqu’un visiteur sélectionne le canal :
+
+1. Le Visiteur remplit le formulaire, si le canal en comporte un.
+2. La Conversation est placée dans la liste **Waiting** en haut de l’Inbox.
+   L’attente la plus ancienne apparaît en premier, et chaque ligne indique le
+   temps d’attente ainsi que le Help Desk.
+3. L’élément de navigation Inbox indique le nombre de Visiteurs en attente.
+4. La fenêtre de chat informe le Visiteur qu’une personne va le rejoindre.
+   L’Assistant ne répond pas pendant que le Visiteur attend, mais il enregistre
+   chaque message.
+5. Un Member sélectionne la Conversation et sélectionne **Take over**. L’attente
+   prend fin, et le Member répond dans le même chat. Reportez-vous à
+   [Inbox](/operations/inbox).
+
+Si personne ne prend le relais avant l’expiration du délai, la fenêtre de chat
+en informe le Visiteur. L’Assistant répond à nouveau, et la fenêtre de chat
+affiche les autres canaux du Help Desk.
+
+### Opérateurs et statut
+
+Un Help Desk doté d’un canal Opérateur en direct comporte une section
+**Operators**. Sélectionnez les Members qui répondent sur ce canal. Chaque
+opérateur a une capacité, qui correspond au nombre maximal de Conversations
+qu’il peut gérer simultanément. La capacité par défaut est de 3.
+
+Chaque opérateur définit **Available** ou **Away** à l’aide du bouton de statut
+situé dans la barre supérieure. Ciele conserve le statut lorsque vous rechargez
+la page. Lorsque vous vous déconnectez, votre statut passe à **Away**.
+
+Ciele affiche le canal Live operator auprès d'un Visiteur uniquement lorsqu'au
+moins un opérateur du Help Desk est **Available**. Un Visiteur n’attend pas dans
+une file d’attente que personne ne surveille.
+
+### Attribution
+
+Lorsqu’un Visiteur commence à attendre, Ciele attribue la Conversation à un
+opérateur du Help Desk :
+
+- L’opérateur doit être **Available** et en dessous de sa capacité.
+- Ciele sélectionne l’opérateur ayant le moins de Conversations. Une
+  Conversation que l’opérateur mène ou qui l’attend est prise en compte.
+- Si deux opérateurs ont le même nombre, Ciele sélectionne l’opérateur qui a
+  reçu une affectation le moins récemment.
+
+L’opérateur auquel la conversation est attribuée reçoit une notification
+persistante de type Member Notification dans la console. Elle reste dans
+**Notifications** jusqu’à ce qu’elle soit lue, archivée ou supprimée. La liste
+d’attente affiche **Assigned to you** pour cette Conversation. L’opérateur
+assigné ou tout autre Membre habilité à répondre aux Visiteurs peut la prendre
+en charge.
+
+Si aucun opérateur n’est disponible, la Conversation reste dans la liste Waiting
+sans être attribuée. Ciele l’attribue lorsqu’un opérateur libère une
+Conversation ou passe à **Available**.
+
+Ciele enregistre l’escalade sur la Conversation, comme pour les autres types de
+canaux. Les détails de la boîte de réception indiquent le nom du canal et les
+valeurs du formulaire. Si le Help Desk crée des Improvements lors d’une
+remontée, ce canal le fait également.
+
+## Sélection de l’escalade
 
 Un Assistant peut afficher une action **Contact support** toujours disponible.
 Ciele peut recommander un Help Desk connecté à partir de sa description et du
 contexte de la Conversation.
 
 Le Visiteur sélectionne un canal disponible. Le widget affiche ensuite le
-formulaire configuré ou l'action de contact.
+formulaire configuré ou l’action de contact.
 
-Un Visiteur peut également saisir **@** dans la zone de message. La fenêtre de
-chat affiche les Help Desks que cet Assistant peut recommander. Lorsque le
-Visiteur en sélectionne un, la fenêtre de chat supprime le **@** et affiche ce
-Help Desk. Le texte n'est pas envoyé à l'Assistant.
+Un visiteur peut également saisir **@** dans la zone de message. La fenêtre de
+discussion affiche les Help Desks que cet Assistant peut recommander. Lorsque le
+Visiteur en sélectionne un, la fenêtre de discussion supprime le **@** et
+affiche ce Help Desk. Le texte n’est pas envoyé à l’Assistant.
 
-Un Help Desk sans canal actif n'apparaît pas dans cette liste.
+Un Help Desk sans canal actif n’apparaît pas dans cette liste.
 
-## Créer un centre d'assistance
+## Créer un Help Desk
 
 1. Ouvrez **Help Desks**.
-2. Créer un Help Desk.
+2. Créez un Help Desk.
 3. Saisissez un nom et une description du routage.
 4. Ajoutez un canal pris en charge.
 5. Configurez la disponibilité et les champs du formulaire.
 6. Connectez le Help Desk à un Assistant.
-7. Testez l'escalade dans Preview.
+7. Testez l’escalade dans Preview.
+
+### Présence dans la console
+
+La console renouvelle **Available** tant que l’opérateur connecté reste
+connecté. La fermeture de tous les onglets de la console ou la perte de la
+session entraîne le passage de l’opérateur à l’état **Away** dans un délai de
+deux minutes.
+
+Le rechargement d’une console active conserve le statut. Un heartbeat ne fait
+jamais repasser un **Away** explicite à **Available**. Sélectionnez
+**Available** pour recevoir à nouveau des affectations.

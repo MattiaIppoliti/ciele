@@ -24,6 +24,11 @@ import { internalApiOrigin } from "@/lib/internal-origin";
 // /api/v1, whose route allows 300s; the MCP request holding it open must too.
 export const maxDuration = 300;
 
+/** `CIELE_MCP_READ_ONLY` as `ciele-mcp` reads it: "1" or "true", any case. */
+function readOnlyFromEnv(value: string | undefined): boolean {
+  return ["1", "true"].includes((value ?? "").toLowerCase());
+}
+
 const handler = createMcpHandler((ctx) => {
   // The tools reach the Organization the same way the stdio server does,
   // through /api/v1 on this same deployment, so there is exactly one
@@ -31,6 +36,7 @@ const handler = createMcpHandler((ctx) => {
   // caller's own key is forwarded, so RBAC is enforced where it always was.
   const request = ctx.requestInfo;
   const client = new CieleClient({
+    surface: "mcp",
     apiKey: bearerApiKeySecret(request?.headers.get("authorization") ?? null) ?? "",
     // Resolved from the environment, never from the request being served
     // (#801, CYB-03). The caller's live key travels to this origin, so a
@@ -38,13 +44,13 @@ const handler = createMcpHandler((ctx) => {
     // the loopback default keeps the endpoint configuration-free.
     baseUrl: internalApiOrigin(),
   });
-  // Read-only is a property of the key's Role here, not an env switch: the
-  // operations layer answers 403 for a capability the Role does not carry.
-  // Note a Viewer key is *not* a read-only agent — the four Inbox operations
-  // declare `member` on purpose, conversation delete included — so
-  // `CIELE_MCP_READ_ONLY` on a stdio server is still the only way to get an
-  // agent that cannot write at all.
-  return createCieleMcpServer({ client, readOnly: false });
+  // Two boundaries. The key's Role, always: the operations layer answers 403
+  // for a capability the Role does not carry. Note a Viewer key is *not* a
+  // read-only agent, the four Inbox operations declare `member` on purpose,
+  // conversation delete included. And `CIELE_MCP_READ_ONLY=1`, which refuses
+  // every mutating action before a request leaves, exactly as the stdio
+  // server does with the same variable. Read per request, by name.
+  return createCieleMcpServer({ client, readOnly: readOnlyFromEnv(process.env.CIELE_MCP_READ_ONLY) });
 });
 
 export async function POST(request: Request): Promise<Response> {

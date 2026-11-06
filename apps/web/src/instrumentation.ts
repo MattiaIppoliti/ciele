@@ -106,10 +106,8 @@ export async function register() {
   // service talks to Postgres, and the demo has none.
   const rustApiUrl = process.env.CIELE_RUST_API_URL;
   const rustApiSecret = process.env.CIELE_RUST_API_SECRET;
-  const rustOperations = (process.env.CIELE_RUST_OPERATIONS ?? "")
-    .split(",")
-    .map((name) => name.trim())
-    .filter(Boolean);
+  const { rustOperationsFromEnv } = await import("@/lib/rust-routing");
+  const rustOperations = rustOperationsFromEnv({ CIELE_RUST_OPERATIONS: process.env.CIELE_RUST_OPERATIONS });
   if (rustApiUrl && rustApiSecret && rustOperations.length > 0 && isSupabaseConfigured()) {
     const { createHttpRemoteExecutor, registerRemoteExecutor } = await import("@ciele/ops");
     registerRemoteExecutor(

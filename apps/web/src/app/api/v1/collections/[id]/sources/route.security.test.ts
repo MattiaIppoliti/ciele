@@ -42,7 +42,7 @@ beforeAll(async () => {
   const raw = generateApiKeySecret();
   await db.createApiKey(DEMO_ORG.id, {
     name: "upload test key",
-    role: "editor",
+    role: "editor", roleId: "builtin:editor",
     secretHash: hashApiKeySecret(raw),
     secretHint: apiKeySecretHint(raw),
     createdBy: DEMO_MEMBER.userId,

@@ -24,6 +24,7 @@ import { Table, TableActions, TableCard, TableHeader, TableBody, TableRow, Table
 import { TableColumnHeader, useClientPage, useClientSort } from "@/components/ui/table-column-header";
 import { TableFilter, TableSearch } from "@/components/ui/table-filters";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { TableRowMenu } from "@/components/ui/table-menu";
 import { formatDateTime } from "@/lib/format";
 import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 import { RollingNumber } from "@/components/motion/rolling-number";
@@ -312,6 +313,21 @@ export function AlertsList({
               )}
               {paged.items.map((alert, index) => (
                 <RollRow key={alert.id} index={index}>
+                  <TableRowMenu
+                    title={alert.title}
+                    actions={[
+                      { label: "More details", icon: Ellipsis, onSelect: () => setDetails(alert) },
+                      canEdit && alert.status === "active" && { label: "Mark resolved", icon: Check, disabled: pending, onSelect: () => resolve(alert.id) },
+                    ]}
+                    choices={[
+                      canEdit && {
+                        label: "Category",
+                        value: alert.type,
+                        options: Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label })),
+                        onChange: (type) => startTransition(async () => { await updateAlertAction(alert.id, { type: type as AlertType }); }),
+                      },
+                    ]}
+                  >
                   <TableRow>
                     <TableEditableCell
                       editor={
@@ -447,6 +463,7 @@ export function AlertsList({
                       </TableActions>
                     </TableCell>
                   </TableRow>
+                  </TableRowMenu>
                 </RollRow>
               ))}
             </TableBody>

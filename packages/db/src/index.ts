@@ -83,3 +83,7 @@ export function getMockDb(): Db {
  * other's writes.
  */
 export { resetMockStore as resetMockDb } from "./mock";
+
+export { withMemberAssistantAccess } from "./member-assistant-access";
+
+export { isImprovementWorkflowUnavailable } from "./improvement-validation";

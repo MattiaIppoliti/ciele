@@ -1,3 +1,4 @@
+import { reportError } from "@agent-hub/diagnostics";
 import type { ExportJob, ExportJobFormat } from "@agent-hub/core";
 import { thrownMessage } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
@@ -45,6 +46,7 @@ async function runClaimedExportJob(
       lockedAt: null,
       lockedBy: null,
     });
+    if (typeof job.params.scheduleId === "string") await deps.db.resolveAlertsByKey(job.organizationId, `scheduled-export:${job.params.scheduleId}`).catch(error => reportError("export.alert", error));
     return "done";
   } catch (error) {
     const message = thrownMessage(error, "Export generation failed");
@@ -57,6 +59,7 @@ async function runClaimedExportJob(
         lockedAt: null,
         lockedBy: null,
       });
+      if (typeof job.params.scheduleId === "string") await deps.db.raiseAlert(job.organizationId, { type: "system", title: "Scheduled export failed", detail: "Review the failed run in Insights → Exports.", sourceKey: `scheduled-export:${job.params.scheduleId}` }).catch(error => reportError("export.alert", error));
       return "failed";
     }
     await deps.db.updateExportJob(job.id, {

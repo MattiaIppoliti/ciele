@@ -22,6 +22,7 @@ import { NewTaskDialog } from "./new-task-dialog";
 import { PriorityIcon, TaskStatusIcon } from "./work-icons";
 import { useTaskMutations } from "./use-task-mutations";
 import { useDateView } from "./use-work-view";
+import { TaskMenuFor, TaskMenuProvider } from "./task-context-menu";
 import { useWorkDirectory } from "./work-directory";
 import { useWorkViewContext } from "./use-work-view-context";
 import { Segmented, TONE_FILL, WorkAvatar } from "./work-ui";
@@ -93,6 +94,13 @@ export function TaskCalendar({
   const canCreate = dir.canEdit && (projectId !== undefined || dir.projects.length > 0);
 
   return (
+    <TaskMenuProvider value={{
+      canEdit: dir.canEdit,
+      update: (task, patch) => mutations.update(task, patch),
+      open: onOpenTask,
+      archive: (id) => mutations.archive([id]),
+      remove: (id) => mutations.remove([id]),
+    }}>
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-alpha-medium flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b px-6 py-2">
         <Button size="sm" variant="secondary" className="h-7" onClick={() => setPlace({ date: "" })}>
@@ -167,7 +175,9 @@ export function TaskCalendar({
           defaults={{ dueDate: creatingOn, ...(scope === "my-tasks" ? { assigneeMemberId: dir.viewerId } : {}) }}
         />
       )}
+      {mutations.confirmDeleteModal}
     </div>
+    </TaskMenuProvider>
   );
 }
 
@@ -282,6 +292,7 @@ function CalendarChip({ task, onOpen }: { task: Task; onOpen: () => void }) {
   const done = task.status === "done";
   // The chip truncates the title, so the whole of it is a hover away.
   return (
+    <TaskMenuFor task={task}>
     <Hint label={task.title}>
       <button
         ref={ref}
@@ -299,6 +310,7 @@ function CalendarChip({ task, onOpen }: { task: Task; onOpen: () => void }) {
         {task.assigneeMemberId && <WorkAvatar person={dir.person(task.assigneeMemberId)} size="xs" className="ring-0" />}
       </button>
     </Hint>
+    </TaskMenuFor>
   );
 }
 
@@ -352,6 +364,7 @@ function WeekCard({ task, onOpen, keyOf }: { task: Task; onOpen: () => void; key
   const dragging = useDraggableTask(ref, task.id, { disabled: !dir.canEdit });
   const project = dir.project(task.projectId);
   return (
+    <TaskMenuFor task={task}>
     <button
       ref={ref}
       type="button"
@@ -371,5 +384,6 @@ function WeekCard({ task, onOpen, keyOf }: { task: Task; onOpen: () => void; key
         {task.assigneeMemberId && <WorkAvatar person={dir.person(task.assigneeMemberId)} size="xs" />}
       </span>
     </button>
+    </TaskMenuFor>
   );
 }

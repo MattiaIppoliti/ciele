@@ -349,9 +349,8 @@ function ApprovalCard({
     setState("deciding");
     setState((await onDecide(part, decision)) ? decision : "open");
   }
-  // The beui approval card. It never lists the call's arguments: the card
-  // carries the catalogue's words and the reason, which is what the Member
-  // agrees to (#958).
+  // Ordinary approvals carry the catalogue label. Remote MCP approvals also
+  // show redacted arguments as literal text so the Member can review the call.
   return (
     <ToolApproval
       className="max-w-[90%]"
@@ -371,7 +370,7 @@ function ApprovalCard({
           ? "You approved this action."
           : state === "rejected"
             ? "You declined this action."
-            : undefined
+            : part.arguments ? <span className="whitespace-pre-wrap break-all font-mono text-xs">{JSON.stringify(part.arguments, null, 2)}</span> : undefined
       }
       onApprove={onDecide ? () => void decide("approved") : undefined}
       onDeny={onDecide ? () => void decide("rejected") : undefined}

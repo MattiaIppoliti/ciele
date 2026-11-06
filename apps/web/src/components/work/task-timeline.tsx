@@ -22,6 +22,7 @@ import {
 import { TaskStatusIcon } from "./work-icons";
 import { useTaskMutations } from "./use-task-mutations";
 import { useDateView } from "./use-work-view";
+import { TaskContextMenu } from "./task-context-menu";
 import { useWorkDirectory } from "./work-directory";
 import { useWorkViewContext } from "./use-work-view-context";
 import { Segmented } from "./work-ui";
@@ -200,8 +201,16 @@ export function TaskTimeline({
                   <span className="font-medium opacity-70">{row.count}</span>
                 </div>
               ) : (
-                <button
+<TaskContextMenu
                   key={row.task.id}
+                  task={row.task}
+                  canEdit={dir.canEdit}
+                  onUpdate={(patch) => mutations.update(row.task, patch)}
+                  onOpen={() => onOpenTask(row.task.id)}
+                  onArchive={() => mutations.archive([row.task.id])}
+                  onDelete={() => mutations.remove([row.task.id])}
+                >
+                <button
                   type="button"
                   onClick={() => onOpenTask(row.task.id)}
                   data-open={openTaskId === row.task.id || undefined}
@@ -214,6 +223,7 @@ export function TaskTimeline({
                   </span>
                   <span className="text-muted-foreground shrink-0 font-mono text-2xs">{dir.keyOf(row.task)}</span>
                 </button>
+                </TaskContextMenu>
               )
             )}
           </div>
@@ -261,8 +271,17 @@ export function TaskTimeline({
               row.kind === "milestones" ? (
                 <MilestoneLane key="milestones" milestones={milestones} range={range} top={i * ROW} />
               ) : row.kind === "task" ? (
-                <TimelineBar
+<TaskContextMenu
                   key={row.task.id}
+                  task={row.task}
+                  canEdit={dir.canEdit}
+                  onUpdate={(patch) => mutations.update(row.task, patch)}
+                  onOpen={() => onOpenTask(row.task.id)}
+                  onArchive={() => mutations.archive([row.task.id])}
+                  onDelete={() => mutations.remove([row.task.id])}
+                >
+                <div className="contents">
+                <TimelineBar
                   task={row.task}
                   range={range}
                   top={i * ROW + (ROW - BAR) / 2}
@@ -272,6 +291,8 @@ export function TaskTimeline({
                   onOpen={() => onOpenTask(row.task.id)}
                   onEdit={(patch) => mutations.update(row.task, patch)}
                 />
+                </div>
+                </TaskContextMenu>
               ) : null
             )}
           </div>

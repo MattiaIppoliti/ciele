@@ -51,7 +51,6 @@ describe("the platform catalogue", () => {
       "providers.createOpenAiCompatible",
       "providers.createFederated",
       "sso.connection.set",
-      "helpDesks.ticketing.connectServiceNow",
       "apiIntegrations.set",
       "crawlers.set",
       "memory.remember",
@@ -74,6 +73,7 @@ describe("the platform catalogue", () => {
 
   it("stops every destructive or outward-facing operation for confirmation", () => {
     for (const name of [
+      "assistants.access.set",
       "assistants.delete",
       "inbox.conversations.delete",
       "knowledge.sources.delete",
@@ -398,5 +398,18 @@ describe("Ciele AI's lifecycle", () => {
     const cieleAi = await ensureCieleAiOp.run(ctx(), {});
     await db.table("teammates").update(cieleAi.id, { visibility: "private" });
     expect((await ensureCieleAiOp.run(ctx(), {})).visibility).toBe("org");
+  });
+});
+
+describe("Ciele AI and custom Roles (ADR-0028)", () => {
+  it("offers what the Member's Capabilities cover, not what their Role's tier would", () => {
+    // An Admin-tier custom Role that may publish and nothing else.
+    const access = { role: "admin" as const, capabilities: ["assistants:view", "assistants:publish"] };
+    const names = listPlatformOperations(access).map((op) => op.name);
+    expect(names).toContain("publish.publish");
+    expect(names).toContain("assistants.list");
+    expect(names).not.toContain("members.updateRole");
+    expect(names).not.toContain("flows.update");
+    expect(() => describePlatformOperation(access, "flows.update")).toThrow(/does not allow/);
   });
 });

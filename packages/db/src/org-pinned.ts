@@ -1,3 +1,5 @@
+import { withMemberAssistantAccess } from "./member-assistant-access";
+import { assistantAccessRank, memberRoleRank } from "@agent-hub/core";
 import type { DbTableMap } from "./table-access";
 import type { Db } from "./types";
 
@@ -31,12 +33,18 @@ import type { Db } from "./types";
 
 /** Methods whose first parameter is an organizationId, pinned on call. */
 const ORG_SCOPED_METHODS = new Set<keyof Db>([
+  "listAuditEntries",
+  "createExportJob",
+  "getSourceUsage",
+  "setDocumentReview",
+  "saveBusinessHours", "deleteBusinessHours", "setDefaultTimezone",
   // Usage over /api/v1 (#853). Takes the organization id as its first argument
   // like every other read here, so pinning it is the whole enforcement.
   "getOrgUsageSpenders",
   "listApplicationConnections",
   // Filing an Improvement from an unattended triage run (#772).
   "createImprovement",
+  "createImprovementValidation",
   "listAssistants",
   "listAssistantsPage",
   "listAssistantShellSummaries",
@@ -46,6 +54,7 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "listImprovements",
   "listImprovementsPage",
   "listImprovementsAssignedTo",
+  "countImprovementsByStatus",
   "getMemoryEnabled",
   "setMemoryEnabled",
   "listMemorySubjects",
@@ -54,11 +63,29 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "getSsoClientSecret",
   "setSsoConnection",
   "setSsoConnectionValidation",
+  "createOutboundWebhookSubscription",
+  "createMcpServerConnection",
+  "compareAndSetMcpTools",
+  "queueOutboundWebhookEvent",
   "listHelpDesks",
+  "getEscalationTicket",
   "createHelpDesk",
   "listAlerts",
+  // Clearing the retired-ticketing Alert when a desk gets a target (#1089).
+  "resolveAlertsByKey",
   "listMembers",
+  // A Member's Assistant scope (20261104132000): organization-first.
+  "listMemberAssistantAccess",
+  "setMemberAssistantScope",
   "updateMemberRole",
+  // Roles (#1164): every method takes the organization first.
+  "getMemberGrant",
+  "listOrgRoles",
+  "createOrgRole",
+  "updateOrgRole",
+  "deleteOrgRole",
+  "setRoleDefaults",
+  "getMemberAssistantGrant",
   "removeMember",
   "listInvites",
   "createInvite",
@@ -72,6 +99,7 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "searchSourceChunks",
   "listOrgFaqs",
   "getOrCreateOrgLibraryCollection",
+  "getOrgLibraryCollection",
   "clearSsoConnection",
   "listProviderConnections",
   "createProviderConnection",
@@ -245,6 +273,9 @@ const supportChannelOwner: OwnerResolver = async (
  * Organization must be the pinned one, otherwise `cross_org`.
  */
 const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
+  listAssistantAccess: assistantOwner,
+  setAssistantAccess: assistantOwner,
+  clearAssistantAccess: assistantOwner,
   // projectId-addressed (#1061)
   nextTaskSeq: async (inner, id) =>
     (await inner.table("projects").get(id))?.organizationId ?? null,
@@ -263,6 +294,7 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   deleteApiIntegration: assistantOwner,
   updateAssistant: assistantOwner,
   deleteAssistant: assistantOwner,
+  getAssistantValidationSnapshot: assistantOwner,
   // flow → assistant → organization
   updateFlow: flowOwner,
   deleteFlow: flowOwner,
@@ -271,6 +303,12 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   listConcepts: collectionOwner,
   // source → collection → organization (#622). The link mutations (#726)
   // get an extra assistant-side check in their dedicated branch below.
+  updateSource: sourceOwner,
+  listSourceDocuments: sourceOwner,
+  listConceptsBySource: sourceOwner,
+  countLiveMemoriesByPath: sourceOwner,
+  updateConcept: conceptOwner,
+  deleteChunksByConcept: conceptOwner,
   deleteSource: sourceOwner,
   listSourceAssistantLinks: sourceOwner,
   // teammate → organization (#768). Without this the Teammates domain's thread
@@ -313,6 +351,7 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   reorderSupportChannels: helpDeskOwner,
   setTicketingIntegration: helpDeskOwner,
   clearTicketingIntegration: helpDeskOwner,
+  setTicketingTarget: helpDeskOwner,
   updateSupportChannel: supportChannelOwner,
   deleteSupportChannel: supportChannelOwner,
   // goals
@@ -396,6 +435,15 @@ export const TABLE_EXPOSURE: TableExposureMap = {
   tasks: "pinned",
   taskDependencies: "pinned",
   taskLabels: "pinned",
+  outboundWebhookSubscriptions: "pinned",
+  faqHistory: "pinned",
+  businessHours: "pinned",
+  mcpServerConnections: "pinned",
+  webhookDeliveries: "pinned",
+  // `/api/v1/quick-texts` (#1085): Organization-level saved replies.
+  quickTexts: "pinned",
+  helpDeskOperators: { hidden: "Console-only desk staffing (#1084); no /api/v1 route reaches it." },
+  operatorPresence: { hidden: "A Member's own Available/Away status (#1084); an Organization key has no Member to set it for." },
   taskLabelLinks: "pinned",
   taskComments: "pinned",
   // `DELETE /projects/{id}` collects the objects of the files that go with it (#1068).
@@ -419,7 +467,9 @@ export const TABLE_EXPOSURE: TableExposureMap = {
   teammateRosterHidden: {
     hidden: "No /api/v1 route reaches it: a Member's own roster preference, adjacent to the Teammates routes but not part of them.",
   },
+  exportSchedules: "pinned",
   assistantGoals: "pinned",
+  improvementValidations: "pinned",
   // Human review requests (#841): `/api/v1/reviews` lists and decides them.
   reviewRequests: "pinned",
   // Inbound HTTP Flow runs (#843), from `GET /flows/{id}/runs`: an operator
@@ -531,7 +581,17 @@ export class OrgPinnedDbError extends Error {
  * code and the operations layer type-check, but any method outside the
  * allow-lists throws, and every id argument is resolved before it is trusted.
  */
-export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
+export function createOrgPinnedDb(inner: Db, organizationId: string, actor?: { memberId: string }): Db {
+  const actorDb = inner;
+  async function assertAssistantRank(method: string,assistantId: string,minimum: number) {
+    if (!actor) return;
+    const role = await actorDb.getMemberRole(organizationId,actor.memberId);
+    if (role === "owner") return;
+    const override = (await actorDb.listAssistantAccess(assistantId)).find(row => row.userId === actor.memberId)?.role;
+    const scope = override ? undefined : (await actorDb.listMembers(organizationId)).find(row => row.userId === actor.memberId)?.assistantScope;
+    if (assistantAccessRank({ orgRole: role, override, scope }) < minimum) throw new OrgPinnedDbError(method,"cross_org");
+  }
+  if (actor) inner = withMemberAssistantAccess(inner,organizationId,actor);
   async function assertOwner(
     method: string,
     resolver: OwnerResolver,
@@ -539,6 +599,21 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
   ) {
     if ((await resolver(inner, String(id), organizationId)) !== organizationId) {
       throw new OrgPinnedDbError(method, "cross_org");
+    }
+    if (resolver === assistantOwner) {
+      const adminWrite = ["createPublication","deletePublications","deleteAssistant"].includes(method);
+      const editorWrite = /^(create|update|delete|set|clear|reorder)/.test(method) && !["setAssistantAccess","clearAssistantAccess"].includes(method);
+      await assertAssistantRank(method,String(id),adminWrite ? 3 : editorWrite ? 2 : 1);
+    } else if ((resolver === sourceOwner || resolver === conceptOwner) && /^(update|delete)/.test(method)) {
+      const sourceId = resolver === sourceOwner ? String(id) : (await actorDb.getConcept(String(id)))?.sourceId;
+      if (actor && sourceId) {
+        const links = await actorDb.listSourceAssistantLinks(sourceId);
+        if (!links.length && memberRoleRank(await actorDb.getMemberRole(organizationId, actor.memberId)) < 2) throw new OrgPinnedDbError(method, "cross_org");
+        for (const link of links) await assertAssistantRank(method, link.assistantId, 2);
+      }
+    } else if (resolver === flowOwner && /^(update|delete)/.test(method)) {
+      const flow = await actorDb.getFlow(String(id));
+      if (flow) await assertAssistantRank(method,flow.assistantId,2);
     }
   }
 
@@ -550,6 +625,15 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
       const call = (...args: unknown[]) =>
         (value as (...a: unknown[]) => unknown).call(target, ...args);
 
+      if (method === "recordAuditEntry") {
+        return (entry: Parameters<Db["recordAuditEntry"]>[0]) => inner.recordAuditEntry({ ...entry, organizationId });
+      }
+      if (method === "setDocumentReview" && actor) {
+        return async (...args: Parameters<Db["setDocumentReview"]>) => {
+          await assertOwner("updateConcept", conceptOwner, args[1].documentId);
+          return inner.setDocumentReview(organizationId, { ...args[1], memberId: actor.memberId });
+        };
+      }
       if (ORG_SCOPED_METHODS.has(method)) {
         return (...args: unknown[]) => call(organizationId, ...args.slice(1));
       }
@@ -558,6 +642,27 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
         return (name: unknown) => {
           if (typeof name !== "string" || !PINNED_TABLES.has(name)) {
             throw new OrgPinnedDbError(`table(${String(name)})`, "not_exposed");
+          }
+          if (name === "assistantGoals" && actor) {
+            const table = pinTableAccessor(name, inner.table("assistantGoals"), organizationId);
+            const assertGoal = async (id: string, rank: number) => {
+              const row = await table.get(id);
+              if (!row) throw new OrgPinnedDbError(`assistantGoals(${id})`, "cross_org");
+              await assertOwner("getAssistant", assistantOwner, row.assistantId);
+              await assertAssistantRank("assistantGoals", row.assistantId, rank);
+              return row;
+            };
+            const list: typeof table.list = async (filter, options) => {
+              const rows = await table.list(filter, options);
+              const visible = await Promise.all(rows.map(row => inner.getAssistant(row.assistantId)));
+              return rows.filter((_row, index) => visible[index]);
+            };
+            return { ...table, list, count: async (filter: Parameters<typeof table.count>[0]) => (await list(filter)).length,
+              get: async (id: string) => { const row = await table.get(id); return row && await inner.getAssistant(row.assistantId) ? row : null; },
+              insert: async (input: Parameters<typeof table.insert>[0]) => { await assertOwner("updateAssistant", assistantOwner, input.assistantId); return table.insert(input); },
+              update: async (id: string, patch: Parameters<typeof table.update>[1]) => { await assertGoal(id, 2); return table.update(id, patch); },
+              delete: async (id: string) => { await assertGoal(id, 2); return table.delete(id); },
+            };
           }
           return pinTableAccessor(
             String(name),
@@ -606,9 +711,18 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
             method === "setSourceAssistantLinks"
               ? (args[1] as string[])
               : [String(args[1])];
-          for (const assistantId of assistantIds) {
-            await assertOwner(String(prop), assistantOwner, assistantId);
+          if (method === "setSourceAssistantLinks" && actor) {
+            // Hidden links are outside this Member's editable projection. Keep
+            // them, while permitting the same per-link unlink escape hatch as RLS.
+            const existing = await actorDb.listSourceAssistantLinks(String(args[0]));
+            const editable = await inner.listSourceAssistantLinks(String(args[0]));
+            const wanted = new Set([...assistantIds, ...existing.filter(link => !editable.some(row => row.assistantId === link.assistantId)).map(link => link.assistantId)]);
+            for (const id of new Set([...existing.map(link => link.assistantId), ...wanted])) {
+              if (existing.some(link => link.assistantId === id) !== wanted.has(id)) await assertOwner(String(prop), assistantOwner, id);
+            }
+            return call(args[0], [...wanted]);
           }
+          for (const assistantId of assistantIds) await assertOwner(String(prop), assistantOwner, assistantId);
           return call(...args);
         };
       }

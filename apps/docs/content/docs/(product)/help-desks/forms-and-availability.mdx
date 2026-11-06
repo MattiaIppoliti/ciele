@@ -24,3 +24,15 @@ Use the timezone of the team that receives the escalation. Test the boundary at 
 ## Email delivery
 
 The Email channel requires a configured Resend transport. When it is absent, Ciele reports that the email was not sent.
+
+
+## Reuse Organization business hours
+
+Choose **Business hours** in a channel's Availability tab, then select a named schedule.
+Create and edit schedules in [Settings](/organization). Weekly hours, timezone and holidays come from that schedule.
+Several channels can use the same schedule. A holiday closes them all, and the Widget's next opening skips closed dates.
+
+**Always available** and **Limited availability** keep their existing behavior.
+Limited availability keeps its own weekly windows and timezone.
+New channel settings start with the Organization default timezone.
+A schedule cannot be deleted while a channel uses it. The refusal names the channel.

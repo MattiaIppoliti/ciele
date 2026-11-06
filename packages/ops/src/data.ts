@@ -8,7 +8,7 @@ const IDENTITY_CLAIM_PATTERN = /^[a-zA-Z0-9_.:-]{1,64}$/;
 
 export const getSsoIdentityOp = defineOperation({
   name: "sso.identity.get",
-  capability: "manageMembers",
+  capability: "sso:manage",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -27,7 +27,7 @@ export const getSsoIdentityOp = defineOperation({
 
 export const setSsoIdentityOp = defineOperation({
   name: "sso.identity.set",
-  capability: "manageMembers",
+  capability: "sso:manage",
   effect: "consequential",
   input: z.object({ identityClaim: z.string().nullable() }),
   entities: () => [{ kind: "aiSettings" as const }],
@@ -50,7 +50,7 @@ export const setSsoIdentityOp = defineOperation({
 
 export const validateSsoIdentityOp = defineOperation({
   name: "sso.identity.validate",
-  capability: "manageMembers",
+  capability: "sso:manage",
   effect: "write",
   input: z.object({}),
   entities: () => [{ kind: "aiSettings" as const }],
@@ -70,16 +70,16 @@ export const validateSsoIdentityOp = defineOperation({
 });
 
 export const getMemorySettingsOp = defineOperation({
-  name: "memories.settings.get", capability: "member", effect: "read", input: z.object({}), entities: () => [],
+  name: "memories.settings.get", capability: "memories:view", effect: "read", input: z.object({}), entities: () => [],
   run: async (ctx) => ({ enabled: await ctx.db.getMemoryEnabled(ctx.organizationId) }),
 });
 export const setMemorySettingsOp = defineOperation({
-  name: "memories.settings.set", capability: "manageMembers", effect: "write", input: z.object({ enabled: z.boolean() }),
+  name: "memories.settings.set", capability: "memories:settings", effect: "write", input: z.object({ enabled: z.boolean() }),
   entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, { enabled }) => { await ctx.db.setMemoryEnabled(ctx.organizationId, enabled); return { enabled }; },
 });
 export const listMemorySubjectsPageOp = defineOperation({
-  name: "memories.subjects.listPage", capability: "member", effect: "read",
+  name: "memories.subjects.listPage", capability: "memories:view", effect: "read",
   input: z.object({
     limit: z.number().int().min(1).max(100),
     cursor: z.string().min(1).nullable().optional(),
@@ -88,7 +88,7 @@ export const listMemorySubjectsPageOp = defineOperation({
   run: (ctx, input) => ctx.db.listMemorySubjectsPage(ctx.organizationId, input),
 });
 export const listSubjectMemoriesOp = defineOperation({
-  name: "memories.subject.list", capability: "member", effect: "read", input: z.object({ subjectId: z.string().min(1) }), entities: () => [],
+  name: "memories.subject.list", capability: "memories:view", effect: "read", input: z.object({ subjectId: z.string().min(1) }), entities: () => [],
   run: (ctx, { subjectId }) =>
     ctx.db.listMemories({ organizationId: ctx.organizationId, subjectId }),
 });
@@ -98,11 +98,11 @@ async function requireMemory(ctx: OperationContext, id: string): Promise<Memory>
   throw new OperationError("not_found", "Memory not found");
 }
 export const deleteMemoryOp = defineOperation({
-  name: "memories.delete", capability: "edit", effect: "consequential", input: idSchema, entities: () => [{ kind: "aiSettings" as const }],
+  name: "memories.delete", capability: "memories:edit", effect: "consequential", input: idSchema, entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, { id }) => { await requireMemory(ctx, id); await ctx.db.deleteMemory(id); },
 });
 export const wipeSubjectMemoriesOp = defineOperation({
-  name: "memories.subject.wipe", capability: "edit", effect: "consequential", input: z.object({ subjectId: z.string().min(1) }), entities: () => [{ kind: "aiSettings" as const }],
+  name: "memories.subject.wipe", capability: "memories:edit", effect: "consequential", input: z.object({ subjectId: z.string().min(1) }), entities: () => [{ kind: "aiSettings" as const }],
   run: async (ctx, { subjectId }) =>
     ctx.db.deleteSubjectMemories({ organizationId: ctx.organizationId, subjectId }),
 });

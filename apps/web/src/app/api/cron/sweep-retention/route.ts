@@ -6,6 +6,7 @@ import {
 } from "@/lib/supabase/service";
 import { getWidgetDb } from "@/lib/widget-db";
 import {
+  sweepDataRetention,
   sweepDeletedTaskComments,
   sweepExpiredMemberNotifications,
   sweepExpiredObjectAccess,
@@ -43,9 +44,12 @@ export const GET = withCronAuth(async () => {
   // Plus the storage backstop: knowledge originals no Source names any more
   // (an Organization deleted whole, or files orphaned before Source deletes
   // removed them). Isolated, a storage outage must not fail the row sweeps.
-  const [traces, transcripts, objectAccess, memberNotifications, deletedComments, knowledgeOrphans] = await Promise.all([
+  // The Data retention tab adds two more tenant-set windows, messages and
+  // Improvements, swept on the same tick.
+  const [traces, transcripts, dataRetention, objectAccess, memberNotifications, deletedComments, knowledgeOrphans] = await Promise.all([
     sweepExpiredTraces({ db }),
     sweepExpiredTranscripts({ db }),
+    sweepDataRetention({ db }),
     sweepExpiredObjectAccess({ db }),
     sweepExpiredMemberNotifications({ db }),
     sweepDeletedTaskComments({ db }),
@@ -59,6 +63,7 @@ export const GET = withCronAuth(async () => {
   return Response.json({
     ...traces,
     ...transcripts,
+    ...dataRetention,
     ...objectAccess,
     ...memberNotifications,
     ...deletedComments,

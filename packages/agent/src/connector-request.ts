@@ -134,6 +134,12 @@ interface PreparedRequest {
    * adapter builds it from the response and names the extra host to trust.
    */
   then?: (response: ApplicationHttpResponse) => (PreparedRequest & { extraHost?: string }) | null;
+  /**
+   * The second hop only adds detail to a write that already happened (a
+   * Case's number): if it fails, answer with the first response rather than
+   * report a write that landed as one that did not.
+   */
+  thenOptional?: boolean;
 }
 
 interface ProviderAdapter {
@@ -150,7 +156,12 @@ interface ProviderAdapter {
     connection: ApplicationConnection
   ): PreparedRequest;
   /** Outputs from a 2xx response; may throw `ConnectorFailure` for an in-body error. */
-  parse(action: ConnectorAction, response: ApplicationHttpResponse): Record<string, string>;
+  parse(
+    action: ConnectorAction,
+    response: ApplicationHttpResponse,
+    credentials: ApplicationCredentials,
+    params: Record<string, string>
+  ): Record<string, string>;
   loaders: Partial<
     Record<
       ConnectorLoader,
@@ -243,7 +254,7 @@ const servicenow: ProviderAdapter = {
     url.searchParams.set("sysparm_display_value", "false");
     return { url: url.toString(), method: "GET" };
   },
-  parse(action, response): Record<string, string> {
+  parse(action, response, credentials, params): Record<string, string> {
     if (action.key.endsWith(".delete")) return { deleted: "true" };
     const body = parseJson(response.text) as { result?: unknown } | null;
     const result = body?.result;
@@ -256,7 +267,16 @@ const servicenow: ProviderAdapter = {
       };
     }
     const record = (result ?? {}) as Record<string, unknown>;
-    return { sys_id: str(record.sys_id), number: str(record.number) };
+    const sysId = str(record.sys_id);
+    const base = (credentials.baseUrl ?? "").replace(/\/$/, "");
+    return {
+      sys_id: sysId,
+      number: str(record.number),
+      url:
+        sysId && base
+          ? `${base}/nav_to.do?uri=${encodeURIComponent(`${serviceNowTable(params.table)}.do?sys_id=${sysId}`)}`
+          : "",
+    };
   },
   loaders: {
     "servicenow.tables": (_arg, credentials) => {
@@ -332,6 +352,78 @@ function salesforceVersion(connection: ApplicationConnection): string {
     : SALESFORCE_DEFAULT_VERSION;
 }
 
+/** Case action field → Case API field (#1087). */
+const SALESFORCE_CASE_FIELDS: ReadonlyArray<readonly [string, string]> = [
+  ["subject", "Subject"],
+  ["description", "Description"],
+  ["priority", "Priority"],
+  ["status", "Status"],
+  ["origin", "Origin"],
+  ["supplied_email", "SuppliedEmail"],
+  ["supplied_name", "SuppliedName"],
+];
+
+/** A 15- or 18-character Salesforce record id; anything else never reaches a URL. */
+const SALESFORCE_ID = /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/;
+
+function salesforceRecordId(raw: string | undefined, label: string): string {
+  const id = (raw ?? "").trim();
+  if (!SALESFORCE_ID.test(id)) {
+    throw new ConnectorFailure("invalid_params", `${label} must be a Salesforce record id`);
+  }
+  return id;
+}
+
+/**
+ * The Case body: only the fields filled in, each a JSON string value. The
+ * template values were resolved as plain text and land here as values of an
+ * object `JSON.stringify` serializes, so a quote in a Visitor's message is an
+ * escaped character, never the end of the value.
+ */
+function salesforceCaseBody(params: Record<string, string>): Record<string, string> {
+  const body: Record<string, string> = {};
+  for (const [param, field] of SALESFORCE_CASE_FIELDS) {
+    const value = (params[param] ?? "").trim();
+    if (value) body[field] = value;
+  }
+  return body;
+}
+
+/**
+ * Create and update both end in a read of the Case, because neither write
+ * returns the CaseNumber a Visitor is told and a later action quotes.
+ */
+function salesforceCaseWrite(
+  action: ConnectorAction,
+  params: Record<string, string>,
+  base: string
+): PreparedRequest {
+  const read = (id: string): PreparedRequest => ({
+    url: `${base}/sobjects/Case/${id}?fields=Id,CaseNumber`,
+    method: "GET",
+  });
+  if (action.key.endsWith(".update")) {
+    const id = salesforceRecordId(params.case_id, "Case id");
+    return {
+      url: `${base}/sobjects/Case/${id}`,
+      method: "PATCH",
+      body: salesforceCaseBody(params),
+      then: () => read(id),
+      thenOptional: true,
+    };
+  }
+  return {
+    url: `${base}/sobjects/Case`,
+    method: "POST",
+    body: salesforceCaseBody(params),
+    then: (response) => {
+      const id = str((parseJson(response.text) as { id?: unknown } | null)?.id);
+      return SALESFORCE_ID.test(id) ? read(id) : null;
+    },
+    thenOptional: true,
+  };
+}
+
 const salesforce: ProviderAdapter = {
   probeAction: "salesforce.contact.get",
   hosts: (credentials) => {
@@ -340,6 +432,13 @@ const salesforce: ProviderAdapter = {
   },
   prepare(action, params, credentials, connection) {
     const base = salesforceBase(credentials);
+    if (action.effect === "write") {
+      return salesforceCaseWrite(
+        action,
+        params,
+        `${base}/services/data/${salesforceVersion(connection)}`
+      );
+    }
     const fields = (params.fields ?? "Id").trim() || "Id";
     if (!/^[\w.]+(\s*,\s*[\w.]+)*$/.test(fields)) {
       throw new ConnectorFailure("invalid_params", "Fields must be a comma-separated list of field names");
@@ -354,7 +453,16 @@ const salesforce: ProviderAdapter = {
     url.searchParams.set("q", soql);
     return { url: url.toString(), method: "GET" };
   },
-  parse(_action, response): Record<string, string> {
+  parse(action, response, credentials, params): Record<string, string> {
+    if (action.effect === "write") {
+      const record = (parseJson(response.text) ?? {}) as Record<string, unknown>;
+      const id = str(record.Id ?? record.id ?? (action.key.endsWith(".update") ? params.case_id : ""));
+      return {
+        case_id: id,
+        case_number: str(record.CaseNumber),
+        case_url: id ? `${salesforceBase(credentials)}/lightning/r/Case/${id}/view` : "",
+      };
+    }
     const body = parseJson(response.text) as
       | { totalSize?: number; records?: Array<Record<string, unknown>> }
       | null;
@@ -377,6 +485,28 @@ const salesforce: ProviderAdapter = {
           : [];
       },
     }),
+    "salesforce.picklist": (arg, credentials, connection) => {
+      const [object, fieldName] = arg.split(".");
+      if (!object || !fieldName || !/^\w+$/.test(object)) {
+        throw new ConnectorFailure("invalid_params", "A picklist is named <Object>.<Field>");
+      }
+      return {
+        url: `${salesforceBase(credentials)}/services/data/${salesforceVersion(connection)}/sobjects/${object}/describe`,
+        method: "GET",
+        parse: (body) => {
+          const fields = (body as { fields?: Array<Record<string, unknown>> } | null)?.fields;
+          const field = Array.isArray(fields)
+            ? fields.find((candidate) => candidate.name === fieldName)
+            : undefined;
+          const values = field?.picklistValues;
+          return Array.isArray(values)
+            ? (values as Array<Record<string, unknown>>)
+                .filter((value) => value.active !== false)
+                .map((value) => ({ value: str(value.value), label: str(value.label || value.value) }))
+            : [];
+        },
+      };
+    },
   },
   testConnection(credentials, connection) {
     return {
@@ -860,7 +990,12 @@ async function send(
   const next = hop < MAX_HOPS ? prepared.then?.(response) : null;
   if (next) {
     const extra = next.extraHost ? [...hosts, next.extraHost] : hosts;
-    return send(session, next, client, extra, hop + 1);
+    if (!prepared.thenOptional) return send(session, next, client, extra, hop + 1);
+    try {
+      return await send(session, next, client, extra, hop + 1);
+    } catch {
+      return response;
+    }
   }
   return response;
 }
@@ -905,6 +1040,18 @@ function resolveParams(
   return params;
 }
 
+/** The params exactly as given, each field falling back to its default. */
+function literalParams(
+  action: ConnectorAction,
+  settings: ConnectorActionSettings
+): Record<string, string> {
+  const params: Record<string, string> = {};
+  for (const field of action.fields) {
+    params[field.name] = connectorParamValue(action, settings.params, field.name);
+  }
+  return params;
+}
+
 /** A ServiceNow table name is an identifier; anything else is refused before egress. */
 function serviceNowTable(raw: string | undefined): string {
   const table = (raw ?? "").trim();
@@ -941,7 +1088,12 @@ export function connectorFailure(
  */
 export async function executeConnectorAction(
   settings: ConnectorActionSettings,
-  context: TemplateContext,
+  /**
+   * The turn's template values, or null to run the params literally: a
+   * ticket channel's fields are a Visitor's own words, and a `{{user.name}}`
+   * they typed is text, not a variable to fill in.
+   */
+  context: TemplateContext | null,
   runtime: ConnectorRuntime,
   deps: ConnectorDeps = {}
 ): Promise<ConnectorOutcome> {
@@ -955,14 +1107,16 @@ export async function executeConnectorAction(
   let session: Session | null = null;
   try {
     session = await openSession(action, settings.connectionId!, runtime, client);
+    const params =
+      context === null ? literalParams(action, settings) : resolveParams(action, settings, context);
     const prepared = session.adapter.prepare(
       action,
-      resolveParams(action, settings, context),
+      params,
       session.credentials,
       session.connection
     );
     const response = await send(session, prepared, client);
-    const outputs = session.adapter.parse(action, response);
+    const outputs = session.adapter.parse(action, response, session.credentials, params);
     return {
       ok: true,
       action: action.key,

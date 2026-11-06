@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import type { Role } from "@agent-hub/core";
+import { capabilityTier, type Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, createOrgPinnedDb, getMockDb } from "@agent-hub/db";
 import type { Db } from "@agent-hub/db";
 import {
@@ -132,7 +132,7 @@ describe("the action catalogue", () => {
     for (const specs of Object.values(TEAMMATE_ACTION_CATALOG)) {
       for (const spec of specs) {
         expect(["member", "edit"]).toContain(
-          spec.operation.capability
+          capabilityTier(spec.operation.capability)
         );
       }
     }
@@ -495,8 +495,8 @@ describe("provenance", () => {
 
 describe("granting", () => {
   it("is admin work, one rung above editing the Teammate", () => {
-    expect(setTeammateGrantsOp.capability).toBe("manageMembers");
-    expect(listTeammateGrantsOp.capability).toBe("member");
+    expect(setTeammateGrantsOp.capability).toBe("teammates:grants");
+    expect(listTeammateGrantsOp.capability).toBe("teammates:view");
   });
 
   it("replaces the whole set, and revoking removes the row", async () => {
@@ -543,7 +543,7 @@ describe("granting", () => {
     const db = getMockDb();
     const context = ctx({ db });
     const teammate = await createTeammateOp.run(context, { name: "Nora" });
-    expect(teammate.capabilityCeiling).toBe("edit");
+    expect(teammate.actionCeiling).toBe("edit");
     expect(teammate.approvalBypass).toBe(false);
 
     await setTeammateGrantsOp.run(context, {

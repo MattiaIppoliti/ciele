@@ -39,10 +39,14 @@ pub enum DbScope {
     Pinned,
 }
 
+/// The ladder tier the caller acts at. A Support Agent ranks just above a
+/// Viewer and below an Editor, as `memberRoleRank` and `role_rank` rank it:
+/// every Viewer operation, no Editor one (inventory #1165 §4.9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum Role {
     Viewer,
+    SupportAgent,
     Editor,
     Admin,
     Owner,
@@ -59,6 +63,10 @@ pub struct Claims {
     #[serde(default)]
     pub email: Option<String>,
     pub role: Role,
+    /// The caller's Capabilities (ADR-0028). Present, they decide; absent (a
+    /// web app from before Roles), the role does.
+    #[serde(default)]
+    pub caps: Option<Vec<String>>,
     pub scope: DbScope,
     /// base64url SHA-256 of the request body.
     pub body: String,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { FolderKanban, LayoutGrid, List, Lock, Plus, Search, Star } from "lucide-react";
+import { LayoutGrid, List, Lock, Plus, Search, Star } from "lucide-react";
 import { Badge, Button, Card, Input } from "@agent-hub/ui";
 import type { Project, ProjectStatus } from "@agent-hub/core";
 import { PROJECT_STATUSES } from "@agent-hub/core";
@@ -77,7 +77,7 @@ export function ProjectsIndex({
           </Button>
         </SlotPortal>
       )}
-      <SectionHeading icon={FolderKanban} title="Projects" className="mb-4" />
+      <SectionHeading title="Projects" className="mb-4" />
       {projects.length === 0 && archived.length === 0 ? (
         <EmptyState
           className="flex-1"

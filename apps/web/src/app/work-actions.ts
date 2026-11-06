@@ -64,7 +64,7 @@ import type {
 } from "@agent-hub/core";
 import { CapabilityRefusedError, requireMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { resolvableImprovements, type ResolvableImprovement } from "@/lib/work/improvement-tasks";
 import { WORK_FILES_BUCKET, putWorkFile } from "@/lib/storage/work-files";
 import { objectStorageClient } from "@/lib/supabase/service";
@@ -197,7 +197,7 @@ export async function getWorkContextAction(): Promise<
   if (!directory.ok) return directory;
   return {
     ok: true,
-    value: { directory: directory.value, today: todayUtc(), viewerId: session.userId, canEdit: canEdit(session.role) },
+    value: { directory: directory.value, today: todayUtc(), viewerId: session.userId, canEdit: can(session, "projects:edit") },
   };
 }
 

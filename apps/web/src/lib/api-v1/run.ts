@@ -1,6 +1,7 @@
+import { isAssistantLevelCapability } from "@agent-hub/core";
 import { OrgPinnedDbError } from "@agent-hub/db";
 import { observe, reportError } from "@agent-hub/diagnostics";
-import { OperationError, type Operation, type OperationContext } from "@ciele/ops";
+import { OperationError, authorizeOperation, type Operation, type OperationContext } from "@ciele/ops";
 import {
   resolveApiKeyContext,
   requireApiCapability,
@@ -40,8 +41,13 @@ export async function runApiOperation<In, Out>(
   }, async () => {
     const ctx = await resolveApiKeyContext(request);
     if (ctx instanceof Response) return ctx;
-    const denied = requireApiCapability(ctx, op.capability);
-    if (denied) return denied;
+    // Refused before the input is read, as before Roles. An Assistant-level
+    // operation waits for its input, because the Role on that Assistant decides.
+    const assistantLevel = op.capability !== "member" && isAssistantLevelCapability(op.capability);
+    if (!assistantLevel) {
+      const denied = requireApiCapability(ctx, op.capability);
+      if (denied) return denied;
+    }
     const throttled = options.throttle?.(ctx);
     if (throttled) return throttled;
 
@@ -51,9 +57,12 @@ export async function runApiOperation<In, Out>(
     }
 
     const opCtx: OperationContext = {
+      surface: request.headers.get("x-ciele-surface") === "mcp" ? "mcp" : "api",
       organizationId: ctx.organizationId,
       userId: ctx.actorUserId,
       role: ctx.role,
+      capabilities: ctx.capabilities,
+      delegatedCapabilities: ctx.keyCapabilities,
       // A key has no email, so an assignee rule never matches it; its decisions
       // are the admin override's and are attributed to the key.
       actorName: `API key ${ctx.keyId}`,
@@ -75,6 +84,18 @@ export async function runApiOperation<In, Out>(
         apiKey: { keyId: ctx.keyId, memberId: ctx.actorUserId },
       }),
     };
+
+    if (assistantLevel) {
+      const { allowed, capabilities } = await authorizeOperation(opCtx, op, parsed.data);
+      if (!allowed) {
+        // Refused by the Organization Role: 403, as for any other operation.
+        // Refused only by the Role on this Assistant: 404, the answer a denied
+        // Assistant already gives, so a key cannot tell it from one that does
+        // not exist.
+        return requireApiCapability(ctx, op.capability) ?? apiError(404, "not_found", "Not found");
+      }
+      opCtx.capabilities = capabilities;
+    }
 
     let result: Out;
     try {

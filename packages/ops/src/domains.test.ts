@@ -1,8 +1,10 @@
+import { RETENTION_BOUNDS_MESSAGE } from "@agent-hub/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Concept, Role } from "@agent-hub/core";
 import {
   IMPROVEMENT_PRIORITY_VALUES,
   IMPROVEMENT_STATUS_VALUES,
+  ticketingLegacyAlertKey,
 } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import { createAssistantOp } from "./assistants";
@@ -43,7 +45,8 @@ import { setSsoIdentityOp, validateSsoIdentityOp } from "./data";
 import {
   createHelpDeskOp,
   createSupportChannelOp,
-  connectServiceNowOp,
+  setTicketingTargetOp,
+  disconnectTicketingIntegrationOp,
   deleteSupportChannelOp,
   getHelpDeskOp,
   listHelpDesksOp,
@@ -198,36 +201,113 @@ describe("help desk operations", () => {
     expect(JSON.stringify(channel)).not.toContain("channel-secret");
     expect(channel.config.hasBearerToken).toBe(true);
 
-    const connected = await connectServiceNowOp.run(ctx(), {
-      helpDeskId: desk.id,
-      name: "ServiceNow",
-      baseUrl: "https://example.service-now.com",
-      clientId: "client",
-      clientSecret: "client-secret",
-      username: "integration-user",
-      password: "password-secret",
-    });
     const serialized = JSON.stringify({
-      connected,
       list: await listHelpDesksOp.run(ctx(), {}),
       detail: await getHelpDeskOp.run(ctx(), { id: desk.id }),
     });
-    expect(serialized).not.toContain("client-secret");
-    expect(serialized).not.toContain("password-secret");
-    expect(serialized).not.toContain("plain:");
-    expect(connected.ticketingIntegration?.hasCredentials).toBe(true);
+    expect(serialized).not.toContain("channel-secret");
+  });
 
-    expect(
-      connectServiceNowOp.input.safeParse({
+  it("does not activate ticketing when the deployment has no ticketing target support", async () => {
+    const db = getMockDb();
+    const desk = await db.createHelpDesk(DEMO_ORG.id, { name: "Waiting for ticketing" });
+    const connection = await db.createApplicationConnection({ organizationId: DEMO_ORG.id, provider: "salesforce", name: "Service org", sealedCredentials: "sealed" });
+    const unavailable = { ...db, getHelpDesk: async () => ({ ...desk, ticketingTarget: undefined }) };
+    await expect(setTicketingTargetOp.run(ctx({ db: unavailable }), { helpDeskId: desk.id, connectionId: connection.id })).rejects.toThrow(/temporarily unavailable/i);
+    expect((await db.getHelpDesk(desk.id))?.ticketingTarget).toBeNull();
+  });
+
+  it("names an Organization-owned Salesforce or ServiceNow connection as the ticketing target (#1088)", async () => {
+    const db = getMockDb();
+    const desk = await createHelpDeskOp.run(ctx(), { name: "Ticket desk" });
+    const salesforce = await db.createApplicationConnection({
+      organizationId: DEMO_ORG.id,
+      provider: "salesforce",
+      name: "Service org",
+      sealedCredentials: "sealed",
+    });
+    const servicenow = await db.createApplicationConnection({
+      organizationId: DEMO_ORG.id,
+      provider: "servicenow",
+      name: "Instance",
+      sealedCredentials: "sealed",
+    });
+
+    const sf = await setTicketingTargetOp.run(ctx(), {
+      helpDeskId: desk.id,
+      connectionId: salesforce.id,
+      table: "ignored",
+    });
+    expect(sf.ticketingTarget).toEqual({ provider: "salesforce", connectionId: salesforce.id });
+
+    const sn = await setTicketingTargetOp.run(ctx(), {
+      helpDeskId: desk.id,
+      connectionId: servicenow.id,
+      requesterEmailField: "u_email",
+    });
+    expect(sn.ticketingTarget).toEqual({
+      provider: "servicenow",
+      connectionId: servicenow.id,
+      table: "incident",
+      requesterEmailField: "u_email",
+    });
+    expect(JSON.stringify(sn)).not.toContain("sealed");
+
+    await expect(
+      setTicketingTargetOp.run(ctx(), {
         helpDeskId: desk.id,
-        name: "Unsafe",
-        baseUrl: "http://example.service-now.com",
-        clientId: "client",
-        clientSecret: "secret",
-        username: "user",
-        password: "password",
-      }).success
-    ).toBe(false);
+        connectionId: servicenow.id,
+        table: "incident; drop",
+      })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    await expect(
+      setTicketingTargetOp.run(ctx(), { helpDeskId: desk.id, connectionId: "missing" })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    // Another Organization's desk is not found, whatever connection it names.
+    await expect(
+      setTicketingTargetOp.run(foreignCtx(), { helpDeskId: desk.id, connectionId: salesforce.id })
+    ).rejects.toMatchObject({ code: "not_found" });
+
+    const cleared = await disconnectTicketingIntegrationOp.run(ctx(), { helpDeskId: desk.id });
+    expect(cleared.ticketingTarget).toBeNull();
+  });
+
+  it("clears the retired-registration Alert once the desk has a target (#1089)", async () => {
+    const db = getMockDb();
+    const desk = await createHelpDeskOp.run(ctx(), { name: "Legacy desk" });
+    await db.raiseAlert(DEMO_ORG.id, {
+      type: "integration",
+      title: "Reconnect ServiceNow ticketing",
+      detail: "",
+      sourceKey: ticketingLegacyAlertKey(desk.id),
+    });
+    const connection = await db.createApplicationConnection({
+      organizationId: DEMO_ORG.id,
+      provider: "servicenow",
+      name: "Instance",
+      sealedCredentials: "sealed",
+    });
+    await setTicketingTargetOp.run(ctx(), { helpDeskId: desk.id, connectionId: connection.id });
+    const active = await db.listActiveAlerts(DEMO_ORG.id, 100);
+    expect(active.map((alert) => alert.sourceKey)).not.toContain(ticketingLegacyAlertKey(desk.id));
+  });
+
+  it("refuses a Member-owned connection as a ticketing target", async () => {
+    const db = getMockDb();
+    const desk = await createHelpDeskOp.run(ctx(), { name: "Personal desk" });
+    const personal = await db.createApplicationConnection({
+      organizationId: DEMO_ORG.id,
+      provider: "salesforce",
+      name: "Mine",
+      sealedCredentials: "sealed",
+    });
+    await db.updateApplicationConnection(personal.id, {
+      ownerType: "member",
+      ownerMemberId: DEMO_MEMBER.userId,
+    });
+    await expect(
+      setTicketingTargetOp.run(ctx(), { helpDeskId: desk.id, connectionId: personal.id })
+    ).rejects.toThrow(/Organization-owned/);
   });
 });
 
@@ -363,8 +443,31 @@ describe("organization administration operations", () => {
     ).toBe(false);
   });
 
+  it("keeps every Data retention window between one month and five years", () => {
+    expect(
+      organizationPatchSchema.parse({
+        messageRetentionDays: 30,
+        improvementRetentionDays: null,
+        auditRetentionDays: 1825,
+      })
+    ).toEqual({ messageRetentionDays: 30, improvementRetentionDays: null, auditRetentionDays: 1825 });
+    for (const field of [
+      "transcriptRetentionDays",
+      "messageRetentionDays",
+      "improvementRetentionDays",
+      "auditRetentionDays",
+    ]) {
+      const tooShort = organizationPatchSchema.safeParse({ [field]: 29 });
+      expect(tooShort.success, field).toBe(false);
+      expect(tooShort.error?.issues[0]?.message).toBe(RETENTION_BOUNDS_MESSAGE);
+      expect(organizationPatchSchema.safeParse({ [field]: 1826 }).success, field).toBe(false);
+    }
+    // Audit records are always swept: there is no keep-forever value.
+    expect(organizationPatchSchema.safeParse({ auditRetentionDays: null }).success).toBe(false);
+  });
+
   it("requires member-management capability to enumerate invite tokens", () => {
-    expect(listInvitesOp.capability).toBe("manageMembers");
+    expect(listInvitesOp.capability).toBe("members:manage");
   });
 
   it("prevents an admin key from changing or removing an owner", async () => {

@@ -1,3 +1,4 @@
+import { runDueJobs } from "@agent-hub/agent";
 import { getWidgetDb } from "@/lib/widget-db";
 import {
   createSupabaseServiceClient,
@@ -26,7 +27,8 @@ export async function drainDueExportJobs(input?: {
   }
   const client = createSupabaseServiceClient();
   const db = getWidgetDb();
-  return runDueExportJobs(
+  await db.queueDueExportSchedules(new Date().toISOString(), 100);
+  const result = await runDueExportJobs(
     {
       db,
       render: (job) => renderExportArtifact(client, job),
@@ -37,4 +39,6 @@ export async function drainDueExportJobs(input?: {
       limit: input?.limit ?? EXPORT_JOB_BATCH_SIZE,
     }
   );
+  await runDueJobs({ db }, { kinds: ["notify_export_ready"], limit: 5 });
+  return result;
 }

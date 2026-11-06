@@ -34,6 +34,8 @@ const LEGACY_PREFIX = "plain:";
 export const SEALED_TEXT_COLUMNS = [
   { table: "provider_connections", column: "encrypted_key" },
   { table: "sso_connections", column: "encrypted_secret" },
+  { table: "outbound_webhook_secrets", column: "encrypted_secret" },
+  { table: "mcp_server_secrets", column: "encrypted_token" },
   { table: "assistant_api_integrations", column: "encrypted_credential" },
   // The retired Entities feature sealed each sync source's header list here as
   // one JSON blob. Nothing reads it any more, but the rows stay in the

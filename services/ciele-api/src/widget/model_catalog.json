@@ -1,0 +1,59 @@
+{
+  "catalog": {
+    "google": [
+      { "id": "gemini-3.5-flash", "label": "Gemini 3.5 Flash" },
+      { "id": "gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash Lite" },
+      { "id": "gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash Lite" }
+    ],
+    "anthropic": [
+      { "id": "claude-opus-4-8", "label": "Claude Opus 4.8" },
+      { "id": "claude-sonnet-5", "label": "Claude Sonnet 5" }
+    ],
+    "openai": [
+      { "id": "gpt-5.1", "label": "GPT-5.1" },
+      { "id": "gpt-5.4-mini", "label": "GPT-5.4 mini" }
+    ],
+    "openai_compatible": []
+  },
+  "retired": {
+    "anthropic": { "claude-haiku-4-5": "claude-sonnet-5" },
+    "openai": { "gpt-5.1-mini": "gpt-5.4-mini" },
+    "google": { "gemini-3.1-flash-lite": "gemini-3.5-flash-lite" }
+  },
+  "gateway": {
+    "google": {
+      "gemini-3.5-flash": "google/gemini-3.5-flash",
+      "gemini-3.5-flash-lite": "google/gemini-3.5-flash-lite",
+      "gemini-2.5-flash-lite": "google/gemini-2.5-flash-lite"
+    },
+    "anthropic": {
+      "claude-opus-4-8": "anthropic/claude-opus-4.8",
+      "claude-sonnet-5": "anthropic/claude-sonnet-5"
+    },
+    "openai": {
+      "gpt-5.1": null,
+      "gpt-5.4-mini": "openai/gpt-5.4-mini"
+    }
+  },
+  "sources": ["platform", "api_key", "federated", "ai_gateway", "platform_gateway"],
+  "sourceNames": {
+    "platform": "Platform plan",
+    "api_key": "API key",
+    "federated": "Keyless",
+    "ai_gateway": "AI Gateway · your key",
+    "platform_gateway": "AI Gateway · platform",
+    "subscription": "Personal subscription"
+  },
+  "providerNames": {
+    "google": "Google",
+    "anthropic": "Anthropic",
+    "openai": "OpenAI",
+    "openai_compatible": "OpenAI-compatible"
+  },
+  "platformEnv": {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "google": "GOOGLE_GENERATIVE_AI_API_KEY"
+  },
+  "platformGatewayEnv": "AI_GATEWAY_API_KEY"
+}

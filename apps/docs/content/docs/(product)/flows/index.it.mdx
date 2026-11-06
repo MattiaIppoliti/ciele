@@ -1,9 +1,9 @@
 ---
-title: Flows
+title: Flussi
 description: Instrada i messaggi e gli eventi proattivi verso azioni di risposta ordinate.
 ---
 
-Un Flow contiene un trigger, le condizioni disponibili e le azioni ordinate. Il
+Un Flow contiene un trigger, le condizioni disponibili e le azioni in ordine. Il
 router elabora i Flow abilitati nell'ordine configurato.
 
 ## Flussi di messaggi
@@ -12,8 +12,8 @@ Il trigger **User sends a message** utilizza l'Intent Classification. Un
 classificatore di modelli seleziona il Flow più idoneo quando è disponibile un
 modello.
 
-Il router delle parole chiave fornisce un fallback in caso di modalità offline e
-di errore. Entrambi i router utilizzano lo stesso filtro dei candidati.
+Il router delle keyword fornisce un fallback offline e in caso di errore.
+Entrambi i router utilizzano lo stesso filtro dei candidati.
 
 Il Flow bloccato **Default behavior** rimane l'ultimo. Gestisce un messaggio
 idoneo quando nessun Flow precedente risulta vincente.
@@ -31,13 +31,32 @@ Consulta [Notifications](/flows/notifications).
 
 ## Ordine dei flussi
 
-Posiziona i Flow di messaggi specifici prima dei Flow di messaggi generici.
+Posiziona i Flussi di messaggi specifici prima dei Flussi di messaggi generici.
 L'ordine controlla anche la scorciatoia integrata Basic Interaction.
 
 Un Flow personalizzato corrispondente, posizionato prima, può gestire un
 messaggio di cortesia prima del Flow predefinito Basic Interaction.
 
 Quando [Study Mode](/assistants/tools-and-skills#enable-study-mode) è attivo,
-una richiesta di esercizio di studio viene inoltrata direttamente al flusso
-Study Mode. Per quella richiesta non viene eseguita la classificazione
-dell'intento.
+una richiesta di esercizio di studio viene indirizzata direttamente al flusso
+Study Mode. La classificazione dell'intento non viene eseguita per quella
+richiesta.
+
+
+## Pianificazione con orari lavorativi
+
+La condizione **Schedule** offre un **Absolute window** o un **Business hours**.
+Per Business hours, seleziona un programma dell'organizzazione con nome e scegli
+**During business hours** o **Outside business hours**. Entrambe le opzioni
+includono i giorni festivi e il fuso orario del programma. Per una finestra
+assoluta, imposta lo start, l'end (opzionale) e il timezone. Una nuova
+condizione inizia con il fuso orario predefinito dell'organizzazione.
+
+Schedule è un filtro rigido che precede Intent Classification. Non entra nel
+prompt del classificatore. Un Flow pubblicato legge gli orari di lavoro in tempo
+reale, quindi una festività modificata viene applicata senza necessità di
+ripubblicazione. L'editor segnala un **schedule** mancante. In fase di
+esecuzione, un programma mancante non è valutabile, utilizzando le regole
+esistenti Any/All. Non puoi eliminare un programma utilizzato da un Flow
+dell'editor o dall'ultima Publication. Il rifiuto indica il Flow. I Flussi con
+trigger proattivo non hanno ancora condizioni.

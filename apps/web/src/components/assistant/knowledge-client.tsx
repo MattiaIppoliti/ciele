@@ -1,5 +1,8 @@
 "use client";
 
+import { FaqDuplicateCheck } from "@/components/knowledge/faq-duplicate-check";
+import { FaqImportWarnings } from "@/components/knowledge/faq-import-warnings";
+import { FaqHistory } from "@/components/knowledge/faq-history";
 import { TableEditableCell } from "@/components/ui/table-editable-cell";
 import { SourceStatusBadge } from "@/components/knowledge/source-status-badge";
 
@@ -1773,6 +1776,7 @@ function FaqDialog({
   const initialAnswer = faq?.body ?? "";
   const [question, setQuestion] = useState(initialQuestion);
   const [answer, setAnswer] = useState(initialAnswer);
+  const [baseline, setBaseline] = useState({ question: initialQuestion, answer: initialAnswer });
   const [showErrors, setShowErrors] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
@@ -1783,7 +1787,7 @@ function FaqDialog({
   const answerMissing = !answer.trim();
   const questionInvalid = showErrors && questionMissing;
   const answerInvalid = showErrors && answerMissing;
-  const dirty = question !== initialQuestion || answer !== initialAnswer;
+  const dirty = question !== baseline.question || answer !== baseline.answer;
 
   const { leave } = useUnsavedChanges({
     dirty: open && dirty,
@@ -1913,7 +1917,8 @@ function FaqDialog({
                 </div>
               </DialogSection>
             </DialogBody>
-            <DialogFooter>
+            <div className="px-6 pb-4">{faq?.sourceId ? <FaqHistory sourceId={faq.sourceId} onRestored={restored => { setQuestion(restored.question); setAnswer(restored.answer); setBaseline(restored); }} /> : <FaqDuplicateCheck question={question} collectionId={collectionId} />}</div>
+          <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -1963,6 +1968,7 @@ function ImportFaqsDialog({
   collectionId: string;
   onClose: () => void;
 }) {
+  const [duplicates, setDuplicates] = useState<import("@agent-hub/core").FaqImportDuplicate[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -1989,7 +1995,7 @@ function ImportFaqsDialog({
     formData.set("file", file);
     startTransition(async () => {
       try {
-        const { imported, skipped } = await importFaqsAction(formData);
+        const { imported, skipped, duplicates: matches, duplicateCheckIncomplete } = await importFaqsAction(formData);
         if (imported > 0) {
           toast.success(
             `Imported ${imported} FAQ${imported === 1 ? "" : "s"}` +
@@ -2004,7 +2010,13 @@ function ImportFaqsDialog({
               : "Nothing imported, the file has no valid rows",
           );
         }
-        if (imported > 0) onClose();
+        if (imported > 0) {
+          setFile(null);
+          setDuplicates(matches);
+          if (matches.length) toast.warning(`${matches.length} imported rows may duplicate another FAQ. Review the import summary.`);
+          if (duplicateCheckIncomplete) toast.warning("Some duplicate checks were unavailable. The import completed.");
+          if (!matches.length) onClose();
+        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Import failed");
       }
@@ -2018,6 +2030,7 @@ function ImportFaqsDialog({
           <DialogTitle>Import FAQs</DialogTitle>
         </DialogHeader>
         <DialogBody className="space-y-4">
+          <FaqImportWarnings duplicates={duplicates} />
           <DialogSection>
             <div
               onDragOver={(e) => {

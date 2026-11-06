@@ -292,16 +292,14 @@ export function AssistantSectionLoading({
       aria-label="Loading assistant section"
     >
       <span className="sr-only">Loading…</span>
-      {/* SectionHeading: the 4rem icon tile beside a text-2xl title and a
-          text-sm description. */}
-      <div className="flex items-center justify-between gap-6">
-        <div className="flex min-w-0 flex-1 items-center gap-5">
-          <Skeleton className="size-16 shrink-0 rounded-2xl" />
-          <div className="min-w-0 flex-1">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="mt-1 h-5 w-3/4 max-w-xl" />
-          </div>
+      {/* SectionHeading: an icon on the first line of a display-size title
+          (`text-display`, line-height 1), then a text-base description. */}
+      <div className="min-w-0">
+        <div className="text-display flex items-center gap-[0.25em]">
+          <Skeleton className="size-[0.6em] shrink-0 rounded-lg" />
+          <Skeleton className="h-[0.8em] w-[5em] max-w-full" />
         </div>
+        <Skeleton className="mt-3 h-5 w-3/4 max-w-xl" />
       </div>
       <SectionBody />
     </div>

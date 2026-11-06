@@ -210,7 +210,7 @@ describe("basic_reply", () => {
     expect(model.doStreamCalls).toHaveLength(1);
     expect(usage).toEqual([{ inputTokens: 10, outputTokens: 5 }]);
     expect(result.parts).toEqual([
-      { type: "text", action: "basic_reply", text: "Hello! How can I help?" },
+      { type: "text", action: "basic_reply", generated: true, text: "Hello! How can I help?" },
     ]);
     // Streamed, so the text arrives as deltas and is NOT re-emitted as a part.
     expect(events.map((e) => e.type)).toEqual([
@@ -1149,6 +1149,7 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
     // Exactly one generative invocation: a refusal while gathering is terminal,
     // so the write phase never runs, and refusals are not shopped around.
     expect(model.doStreamCalls).toHaveLength(1);
+    expect(result.ending).toBe("refused");
   });
 
   it("shows the raw finish reason only on the preview surface", async () => {
@@ -1171,8 +1172,9 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
     const result = await ACTION_HANDLERS.search_knowledge(ctx);
 
     expect(result.parts.map((p) => p.type)).toEqual(["text", "text"]);
-    expect((result.parts[0] as { text: string }).text).toBe("Partial ans");
+    expect((result.parts[0] as { text: string }).text).toBe("Partial ansPartial ans");
     expect((result.parts[1] as { text: string }).text).toContain("cut short");
+    expect(result.ending).toBe("length_cutoff");
     // Truncation offers no escalation push.
     expect(result.parts.some((p) => p.type === "help_desk")).toBe(false);
   });
@@ -1262,6 +1264,7 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
     });
 
     const result = await ACTION_HANDLERS.search_knowledge(ctx);
+    expect(result.ending).toBe("insufficient");
 
     expect(result.effects).toEqual([
       {
@@ -1430,6 +1433,7 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
       type: "clarify",
       question: "Which intake year do you mean?",
     });
+    expect(result.ending).toBe("clarified");
     expect(events.some((e) => e.type === "text-delta")).toBe(false);
   });
 

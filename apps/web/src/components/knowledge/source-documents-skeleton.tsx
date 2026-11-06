@@ -17,6 +17,13 @@ export function SourceDocumentsSkeleton() {
           <Skeleton className="h-4 w-32" />
         </div>
       </header>
+      <div className="px-6 pb-4">
+        <div className="bg-card space-y-4 rounded-xl border p-6">
+          <Skeleton className="h-4 w-72" />
+          <div className="flex flex-wrap gap-6">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="space-y-2"><Skeleton className="h-3 w-28" /><Skeleton className="h-5 w-16" /></div>)}</div>
+          <Skeleton className="h-3 w-96 max-w-full" />
+        </div>
+      </div>
       <div className="min-h-0 flex-1 px-6 pb-6">
         <Skeleton className="mb-2 h-3 w-28" />
         <div className="bg-card divide-y rounded-xl border">

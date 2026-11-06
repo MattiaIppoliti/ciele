@@ -22,6 +22,7 @@ import { buildCollectionSearcher } from "./retrieval";
 import { errorClassOf, recordRuntimeEvent } from "./telemetry";
 import { prepareTraceForStorage } from "./trace";
 import { createTurnObserver } from "./turn-observer";
+import { TurnClock, activeTurnClock, timedDb, withTurnClock } from "./turn-clock";
 import type { ChatReplyPart, RuntimeEvent } from "./types";
 import { summarizeTurnUsage } from "./usage";
 import { runExternalTeammateHarness } from "./ag-ui";
@@ -175,6 +176,8 @@ export function projectTeammateUsage(input: {
     credentialKind: event.credentialKind,
     inputTokens: event.inputTokens,
     outputTokens: event.outputTokens,
+    cacheReadTokens: event.cacheReadTokens,
+    cacheWriteTokens: event.cacheWriteTokens,
     spenders: {
       teammateId: input.teammateId,
       memberId: input.attribution.memberId ?? null,
@@ -190,7 +193,29 @@ export function projectTeammateUsage(input: {
  * this seam owns execution, public event projection, trace/audit folding,
  * usage projection and the telemetry facts derived from the answer.
  */
-export async function executeTeammateAnswer(options: {
+export async function executeTeammateAnswer(
+  options: TeammateAnswerOptions
+): Promise<TeammateAnswerOutcome> {
+  // A Conversation turn already runs under its own clock. A Channel answer
+  // does not, so it opens one here and its telemetry carries the summary
+  // explicitly: the container records it after this scope has ended (#1112).
+  if (activeTurnClock()?.kind === "turn") return answerTeammate(options, null);
+  const clock = new TurnClock(performance.now() - (Date.now() - options.telemetry.startedAt));
+  clock.trigger = "channel";
+  const forward = options.forward;
+  const clocked: TeammateAnswerOptions = {
+    ...options,
+    db: timedDb(options.db),
+    ...(options.systemDb ? { systemDb: timedDb(options.systemDb) } : {}),
+    forward: (event) => {
+      if (event.type === "text-delta" || event.type === "part") clock.markFirstToken();
+      forward(event);
+    },
+  };
+  return withTurnClock(clock, () => answerTeammate(clocked, clock));
+}
+
+interface TeammateAnswerOptions {
   db: Db;
   /** Internal accounting and audit writes; data access remains on `db`. */
   systemDb?: Db;
@@ -205,7 +230,14 @@ export async function executeTeammateAnswer(options: {
   attribution: TeammateAnswerAttribution;
   /** Container-owned auxiliary decisions, metered on failure too. */
   additionalUsage?: TeammateEngineResult["usage"];
-}): Promise<TeammateAnswerOutcome> {
+}
+
+async function answerTeammate(
+  options: TeammateAnswerOptions,
+  /** The clock this answer opened for itself; null under a turn's own. */
+  clock: TurnClock | null
+): Promise<TeammateAnswerOutcome> {
+  const timings = () => (clock ? { timings: clock.summary() } : {});
   const observer = createTurnObserver(options.forward);
   // Keep completed calls outside the success result: later model requests or
   // persistence may fail after these tokens were already spent.
@@ -255,6 +287,7 @@ export async function executeTeammateAnswer(options: {
           messageId,
           kind: "chat_turn",
           status: "succeeded",
+          outcome: result.outcome ?? "answered",
           surface: options.telemetry.surface,
           flowId: result.flowId,
           flowName: result.flowName,
@@ -264,6 +297,7 @@ export async function executeTeammateAnswer(options: {
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
           toolCalls: observer.toolCalls,
+          ...timings(),
         }),
     };
   } catch (error) {
@@ -279,11 +313,13 @@ export async function executeTeammateAnswer(options: {
           conversationId: options.telemetry.conversationId,
           kind: "chat_turn",
           status: "failed",
+          outcome: "failed",
           surface: options.telemetry.surface,
           durationMs: Date.now() - options.telemetry.startedAt,
           toolCalls: observer.toolCalls,
           ...summarizeTurnUsage([...spent, ...(options.additionalUsage ?? [])]),
           errorClass: errorClassOf(error),
+          ...timings(),
         }),
     };
   }
@@ -336,16 +372,21 @@ export async function teammateMemorySections(
     projectBody(shared),
   ]);
 
+  // Dated lines render with their age, so the model weighs a note from March
+  // as a note from March (memory-documents.ts).
+  const today = new Date().toISOString().slice(0, 10);
   return [
     ...memoryPromptSections({
       user: user?.body,
       agent: agent?.body,
       project: ownBody,
       projectName: own?.name,
+      today,
     }),
     ...memoryPromptSections({
       project: sharedBody,
       projectName: shared?.name,
+      today,
     }),
   ];
 }

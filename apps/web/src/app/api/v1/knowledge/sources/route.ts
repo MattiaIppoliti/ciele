@@ -24,6 +24,9 @@ export async function GET(request: Request) {
     status: url.searchParams.get("status") ?? undefined,
     assistantId: url.searchParams.get("assistantId") ?? undefined,
     query: url.searchParams.get("q") ?? undefined,
+    unused: url.searchParams.has("unused") ? url.searchParams.get("unused") === "true" : undefined,
+    sort: url.searchParams.get("sort") ?? undefined,
+    ascending: url.searchParams.has("ascending") ? url.searchParams.get("ascending") === "true" : undefined,
     page: num("page"),
     pageSize: num("pageSize"),
   });
@@ -36,6 +39,7 @@ export async function GET(request: Request) {
       name: item.name,
       kind: item.kind,
       status: item.status,
+      usage: item.usage,
       conceptCount: item.conceptCount,
       answerPreview: item.answerPreview,
       linkedAssistants: item.linkedAssistants,

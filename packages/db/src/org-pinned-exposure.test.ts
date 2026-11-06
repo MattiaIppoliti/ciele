@@ -20,12 +20,19 @@ describe("org-pinned table exposure", () => {
   it("exposes exactly the tables an /api/v1 route or the api-surface gate reaches", () => {
     expect([...pinnedTableNames()].sort()).toEqual([
       "assistantGoals",
+      "businessHours",
+      "exportSchedules",
+      "faqHistory",
       "httpFlowRuns",
+      "improvementValidations",
       "knowledgeMemories",
+      "mcpServerConnections",
+      "outboundWebhookSubscriptions",
       "projectFiles",
       "projectMembers",
       "projectMilestones",
       "projects",
+      "quickTexts",
       "reviewRequests",
       "skills",
       "taskCommentReactions",
@@ -39,6 +46,7 @@ describe("org-pinned table exposure", () => {
       "teammateGrants",
       "teammateRoutines",
       "teammates",
+      "webhookDeliveries",
       "workActivity",
     ]);
   });

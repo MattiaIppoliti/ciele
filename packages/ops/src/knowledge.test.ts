@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Concept, Role, Source } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import { createAssistantOp } from "./assistants";
@@ -6,6 +6,7 @@ import {
   addOrgSourceOp,
   addSourceOp,
   createFaqOp,
+  importFaqsOp,
   deleteSourceOp,
   extractSourceMemoriesOp,
   forgetKnowledgeMemoryOp,
@@ -26,6 +27,9 @@ import {
   renameSourceOp,
   unlinkSourceOp,
   updateOrgFaqOp,
+  setDocumentReviewOp,
+  listFaqHistoryOp,
+  restoreFaqVersionOp,
 } from "./knowledge";
 import { OperationError, type OperationContext } from "./operation";
 
@@ -83,7 +87,7 @@ async function newOwnedSource() {
 
 describe("knowledge hub operations (PRD #726)", () => {
   it("declares the catalogue contract", () => {
-    expect(setSourceLinksOp.capability).toBe("edit");
+    expect(setSourceLinksOp.capability).toBe("knowledge:edit");
     expect(
       setSourceLinksOp.entities({ sourceId: "s", assistantIds: [] }, undefined as never)
     ).toEqual([{ kind: "knowledgeHub" }]);
@@ -202,7 +206,7 @@ describe("knowledge hub operations (PRD #726)", () => {
   });
 
   it("declares the org-level add's contract", async () => {
-    expect(addOrgSourceOp.capability).toBe("edit");
+    expect(addOrgSourceOp.capability).toBe("knowledge:edit");
     const assistant = await newAssistant("Library Contract");
     const { source } = await addOrgSourceOp.run(ctx(), {
       name: "Org Text",
@@ -555,11 +559,11 @@ describe("knowledge memories (#926)", () => {
   }
 
   it("declares the catalogue contract", () => {
-    expect(listDocumentMemoriesOp.capability).toBe("member");
+    expect(listDocumentMemoriesOp.capability).toBe("knowledge:view");
     // A forget is an editorial decision about the Organization's knowledge,
     // the same rank as editing the Document it was read from.
-    expect(forgetKnowledgeMemoryOp.capability).toBe("edit");
-    expect(restoreKnowledgeMemoryOp.capability).toBe("edit");
+    expect(forgetKnowledgeMemoryOp.capability).toBe("knowledge:delete");
+    expect(restoreKnowledgeMemoryOp.capability).toBe("knowledge:edit");
     expect(listDocumentMemoriesOp.entities(
       { sourceId: "s", documentPath: "p" },
       []
@@ -696,7 +700,7 @@ describe("one Document (#928)", () => {
     // everywhere the seed has not put one.
     expect(view.memoryCount).toBe(1);
     // Reading a body is a member right, the same as reading the row.
-    expect(getSourceDocumentOp.capability).toBe("member");
+    expect(getSourceDocumentOp.capability).toBe("knowledge:view");
   });
 
   it("refuses a Document id that belongs to another Source", async () => {
@@ -844,7 +848,7 @@ describe("a Document's chunks (#929)", () => {
 
   it("pages a Document's chunks in body order", async () => {
     const { source, document } = await newChunkedDocument(4);
-    expect(listDocumentChunksOp.capability).toBe("member");
+    expect(listDocumentChunksOp.capability).toBe("knowledge:view");
 
     const all = await listDocumentChunksOp.run(ctx(), {
       sourceId: source.id,
@@ -1020,7 +1024,7 @@ describe("a Document's Summary (#931)", () => {
   });
 
   it("is a member read: opening a Document is not an edit", async () => {
-    expect(getDocumentSummaryOp.capability).toBe("member");
+    expect(getDocumentSummaryOp.capability).toBe("knowledge:view");
     expect(
       getDocumentSummaryOp.entities(
         { sourceId: "s", documentId: "d" },
@@ -1138,7 +1142,7 @@ describe("the Memories tab's reads (#932)", () => {
 describe("the memories backfill (#933)", () => {
   it("is an edit, and reports what the port queued", async () => {
     const { source } = await newOwnedSource();
-    expect(extractSourceMemoriesOp.capability).toBe("edit");
+    expect(extractSourceMemoriesOp.capability).toBe("knowledge:edit");
 
     const asked: Array<{ sourceId: string }> = [];
     const result = await extractSourceMemoriesOp.run(
@@ -1300,7 +1304,7 @@ describe("searchKnowledgeOp", () => {
       },
       expect.objectContaining({ rank: 2, documentId: "c2" }),
     ]);
-    expect(searchKnowledgeOp.capability).toBe("member");
+    expect(searchKnowledgeOp.capability).toBe("knowledge:view");
     expect(searchKnowledgeOp.entities({} as never, result as never)).toEqual([]);
   });
 
@@ -1339,4 +1343,101 @@ describe("source label editing", () => {
     const other = await createAssistantOp.run(ctx(), { title: "Unlinked" });
     await expect(renameSourceOp.run(ctx(), { sourceId: source.id, name: "Wrong scope", assistantId: other.id })).rejects.toMatchObject({ code: "not_found" });
   });
+});
+
+
+describe("FAQ quality lifecycle", () => {
+  it("reviews current text, records edits and restores through re-embedding", async () => {
+    vi.useFakeTimers();
+    try {
+    const db = getMockDb();
+    const library = await db.getOrCreateOrgLibraryCollection(DEMO_ORG.id);
+    const assistant = await newAssistant("Quality lifecycle");
+    const { concept } = await createFaqOp.run(ctx(), { collectionId: library.id, question: "Original question", answer: "Original answer", assistantIds: [assistant.id] });
+    const sourceId = concept.sourceId!;
+    const input = { sourceId, documentId: concept.id, reviewed: true };
+    const reviewed = await setDocumentReviewOp.run(ctx(), input);
+    expect(reviewed.frontmatter.verified).toEqual([expect.objectContaining({ by: `human:${DEMO_MEMBER.userId}` })]);
+    await expect(setDocumentReviewOp.run(ctx({ agentAuthor: "agent:test" }), input)).rejects.toMatchObject({ code: "invalid_input" });
+    await expect(setDocumentReviewOp.run(foreignCtx(), input)).rejects.toMatchObject({ code: "not_found" });
+    await renameSourceOp.run(ctx(), { sourceId, name: "Changed question" });
+    expect((await getOrgFaqOp.run(ctx(), { sourceId })).question).toBe("Changed question");
+    expect((await db.getConcept(concept.id))?.frontmatter.verified).toBeUndefined();
+    const [version] = await listFaqHistoryOp.run(ctx(), { sourceId });
+    expect(version).toMatchObject({ question: "Original question", answer: "Original answer", actor: `human:${DEMO_MEMBER.userId}` });
+    const embedded: unknown[] = [];
+    await setDocumentReviewOp.run(ctx(), input);
+    const restored = await restoreFaqVersionOp.run(ctx({ ports: { reembedConcept: async args => { embedded.push(args); } } }), { sourceId, versionId: version.id });
+    expect(restored.frontmatter.title).toBe("Original question");
+    expect(restored.frontmatter.verified).toBeUndefined();
+    expect(embedded).toHaveLength(1);
+    expect((await listFaqHistoryOp.run(ctx(), { sourceId })).map(row => row.question)).toContain("Changed question");
+    await expect(restoreFaqVersionOp.run(foreignCtx(), { sourceId, versionId: version.id })).rejects.toMatchObject({ code: "not_found" });
+    } finally { vi.useRealTimers(); }
+  });
+});
+
+
+it("reports existing and repeated CSV questions without refusing imports or repeating checks", async () => {
+  const db = getMockDb();
+  const library = await db.getOrCreateOrgLibraryCollection(DEMO_ORG.id);
+  const assistant = await newAssistant("CSV duplicate warnings");
+  const checked: string[] = [];
+  const context = ctx();
+  const result = await importFaqsOp.run({ ...context, ports: { ...context.ports, findFaqDuplicates: async ({ question }) => {
+    checked.push(question);
+    return [{ documentId: "existing-doc", sourceId: "existing-source", question, answerPreview: "Existing answer", similarity: 1 }];
+  } } }, { collectionId: library.id, assistantIds: [assistant.id], rows: [{ question: "Reset password?", answer: "One" }, { question: "Reset password?", answer: "Two" }] });
+  expect(result.imported).toBe(2);
+  expect(checked).toEqual(["Reset password?"]);
+  expect(result.duplicates).toMatchObject([{ row: 1, existing: [{ sourceId: "existing-source" }] }, { row: 2, rows: [1] }]);
+  const failed = await importFaqsOp.run({ ...context, ports: { ...context.ports, findFaqDuplicates: async () => { throw new Error("Unavailable"); } } }, { collectionId: library.id, assistantIds: [assistant.id], rows: [{ question: "Another question?", answer: "Still imported" }] });
+  expect(failed).toMatchObject({ imported: 1, duplicateCheckIncomplete: true });
+});
+
+it("retains each concurrent agent editor even with the same generated timestamp", async () => {
+  vi.useFakeTimers();
+  try {
+    const db=getMockDb();
+    const library=await db.getOrCreateOrgLibraryCollection(DEMO_ORG.id);
+    const assistant=await newAssistant("Concurrent FAQ authorship");
+    const context=ctx({ agentAuthor:"Content writer" });
+    const { concept }=await createFaqOp.run(context,{ collectionId:library.id,question:"Concurrent question",answer:"Original",assistantIds:[assistant.id] });
+    const sourceId=concept.sourceId!;
+    const original=db.listConceptsBySource.bind(db);
+    let release!: () => void;
+    const barrier=new Promise<void>(resolve => { release=resolve; });
+    let waiting=0;
+    const reads=vi.spyOn(db,"listConceptsBySource").mockImplementation(async (id,limit) => {
+      const result=await original(id,limit);
+      if (id===sourceId) { if (++waiting===2) release(); await barrier; }
+      return result;
+    });
+    await Promise.all([updateOrgFaqOp.run(context,{ sourceId,question:"Concurrent question",answer:"One" }),updateOrgFaqOp.run(context,{ sourceId,question:"Concurrent question",answer:"Two" })]);
+    reads.mockRestore();
+    const history=await listFaqHistoryOp.run(ctx(),{ sourceId });
+    expect(history).toHaveLength(2);
+    expect(history.every(entry => entry.actor==="teammate/Content writer")).toBe(true);
+    expect(history.map(entry => entry.answer)).toContain("Original");
+    expect(history.map(entry => entry.answer)).toContain("One");
+  } finally { vi.restoreAllMocks(); vi.useRealTimers(); }
+});
+
+it("treats restoring identical historical text as an edit with a new version and no review", async () => {
+  const db=getMockDb();
+  const library=await db.getOrCreateOrgLibraryCollection(DEMO_ORG.id);
+  const assistant=await newAssistant("Identical FAQ restore");
+  const { concept }=await createFaqOp.run(ctx(),{ collectionId:library.id,question:"Same question",answer:"A",assistantIds:[assistant.id] });
+  const sourceId=concept.sourceId!;
+  await updateOrgFaqOp.run(ctx(),{ sourceId,question:"Same question",answer:"B" });
+  await updateOrgFaqOp.run(ctx(),{ sourceId,question:"Same question",answer:"A" });
+  const versions=await listFaqHistoryOp.run(ctx(),{ sourceId });
+  const version=versions.find(entry => entry.answer==="A")!;
+  await setDocumentReviewOp.run(ctx(),{ sourceId,documentId:concept.id,reviewed:true });
+  const reembed=vi.fn(async () => undefined);
+  const restored=await restoreFaqVersionOp.run(ctx({ ports:{ reembedConcept:reembed } }),{ sourceId,versionId:version.id });
+  expect(restored.body).toBe("A");
+  expect(restored.frontmatter.verified).toBeUndefined();
+  expect(await listFaqHistoryOp.run(ctx(),{ sourceId })).toHaveLength(versions.length+1);
+  expect(reembed).toHaveBeenCalledTimes(1);
 });

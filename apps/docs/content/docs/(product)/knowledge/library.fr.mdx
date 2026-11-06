@@ -1,39 +1,280 @@
 ---
 title: Bibliothèque
-description: Gérez les sources de l'organisation et choisissez les assistants qui répondent à partir de chacune d'entre elles.
+description: Gérez les sources de l’organisation et choisissez quels assistants répondent à partir de chacune d’elles.
 ---
 
-**Library** est la vue de la Connaissance de l'Organisation. Elle répertorie
-toutes les sources détenues par l'organisation, pour l'ensemble des assistants.
-Ouvrez-la depuis la navigation principale.
+**Library** est la vue Organisation de la Knowledge. Elle répertorie toutes les
+Sources appartenant à l'Organisation, pour l'ensemble des Assistants. Ouvrez-la
+depuis la navigation principale.
 
-Un Assistant effectue une recherche dans une Source uniquement lorsqu'un lien
-relie les deux. La Bibliothèque est l'endroit où vous créez et modifiez ces
-liens.
+Un Assistant ne recherche dans une Source que lorsqu’un lien les relie. La
+Library est l’endroit où vous créez et modifiez ces liens.
 
 ## Onglets
 
-| Onglet | Contenu |
+| Tab | Contents |
 | --- | --- |
-| Sites Web | Sources de sites Web et de pages. |
-| Fichiers | Fichiers importés et texte collé. |
-| Applications | Contenu synchronisé à partir d'applications externes connectées. |
+| Websites | Sources de type site web et page. |
+| Files | Fichiers importés et texte collé. |
+| Applications | Contenu synchronisé depuis les Applications externes connectées. |
 | FAQs | Paires de questions et de réponses sélectionnées. |
 
-Chaque onglet affiche un point d'état. Le point indique le pire état de
-l'onglet. Une erreur a priorité sur le traitement, et le traitement a priorité
-sur le statut prêt.
+Chaque onglet affiche un point d’état. Le point indique le statut le plus
+défavorable dans l’onglet. Une erreur a priorité sur le statut « Processing »,
+et le statut « Processing » a priorité sur le statut « Ready ».
 
-## Trouver une source
+## Colonne Status
 
-Utilisez le champ de recherche pour trouver le nom de la source. Utilisez les
-filtres pour restreindre la liste en fonction du statut ou de l'assistant
-associé. Chaque filtre est stocké dans l'adresse de la page, ce qui vous permet
-de partager la vue filtrée.
+Chaque onglet comporte une colonne **Status**. Elle affiche l’une des trois
+valeurs suivantes pour chaque Source :
+
+| Status | Signification |
+| --- | --- |
+| Ready | La Source répond aux questions. |
+| Processing | Ciele explore le site web ou indexe le document. |
+| Error | La dernière tentative a échoué. La cellule indique le motif. |
+
+## Rechercher une Source
+
+Utilisez le champ de recherche pour le nom de la Source. Utilisez les filtres
+pour restreindre la liste par statut ou par Assistant associé. Chaque filtre est
+stocké dans l’adresse de la page, ce qui vous permet de partager la vue filtrée.
+
+## Trier et filtrer une colonne
+
+Sélectionnez un en-tête de colonne. Un menu s’ouvre, affichant les sens de tri
+pour cette colonne, ainsi que son filtre lorsqu’elle en possède un. Une colonne
+triée affiche une flèche. Une colonne filtrée affiche un point.
+
+| Table | Sort | Filter |
+| --- | --- | --- |
+| Onglet Library | Name, Status, Last updated at | Name, Status, Linked assistants |
+| Les documents d’une source | Document, Updated | Status |
+| Assistant **Knowledge** | Chaque colonne contenant une valeur | Name and Status |
+
+La Library et les Documents d’une Source contiennent plus de lignes qu’une seule
+page. Ciele les trie dans la base de données, de sorte que l’ordre couvre toutes
+les lignes et pas seulement la page que vous voyez. Le choix se trouve dans
+l’adresse de la page, et vous pouvez la partager.
+
+## Le menu de la ligne
+
+Cliquez avec le bouton droit de la souris sur une ligne. Un menu s’ouvre,
+affichant les actions disponibles pour cette ligne. Il propose les mêmes actions
+que les commandes situées à l’extrémité de la ligne, dans un emplacement
+accessible sans défilement latéral.
+
+| Table | Actions |
+| --- | --- |
+| Onglet Library | Open, Copy ID, Manage linked assistants, Extract memories, Delete. Les fichiers offrent également les options Manage direct access et Download original. Les FAQ proposent également Edit FAQ. |
+| The Documents of a Source | Open, Copy ID, Exclude from retrieval ou Restore. |
+| Assistant **Knowledge** | Open Documents, Copy ID, Re-crawl, Edit, Remove. Les FAQ proposent Edit FAQ, Copy answer et Delete FAQ. |
+| Les mémoires d’un document | Open memory, Copy text, Forget ou Restore. |
+
+Cliquez avec le bouton droit de la souris sur un en-tête de colonne pour
+appliquer le même tri et le même filtre ; l’en-tête s’ouvre lui-même, avec
+**Reset column width** en dessous.
+
+## Redimensionner une colonne
+
+Faites glisser la ligne située entre deux en-têtes de colonne. Double-cliquez
+sur cette ligne pour rétablir la colonne à sa largeur initiale. Chaque
+navigateur conserve ses propres largeurs pour chaque tableau.
+
+## Ouvrir une ligne
+
+Déplacez le pointeur sur la première cellule d'une ligne. Un contrôle **Open**
+s’affiche à droite de la cellule. Sélectionnez-le pour ouvrir cette ligne.
+
+## Sélectionner plusieurs lignes
+
+Chaque tableau de connaissances comporte une colonne de cases à cocher. Les
+éditeurs voient la colonne. Les lecteurs ne la voient pas.
+
+1. Cochez la case de chaque ligne que vous souhaitez sélectionner.
+2. Pour sélectionner toutes les lignes de la page, cochez la case située dans
+   l'en-tête du tableau.
+3. Une barre s’ouvre au-dessus des lignes. Elle indique le nombre d’éléments et
+   les actions disponibles.
+4. Sélectionnez une action, ou sélectionnez le contrôle de fermeture pour
+   annuler la sélection.
+
+La sélection ne conserve que les lignes présentes sur la page. Un changement de
+page, une recherche ou une modification de filtre supprime les lignes qui
+sortent du tableau.
+
+| Table | Actions disponibles |
+| --- | --- |
+| Onglet Library | **Delete**, pour chaque Source et chaque Assistant associé. |
+| Assistant **Knowledge**, Websites et Documents | **Remove**. La confirmation propose la suppression de cet Assistant ou la suppression pour l’Organisation. |
+| Assistant **Knowledge**, FAQ | **Delete**. L’action devient **Remove** si un autre Assistant utilise également l’une des FAQ sélectionnées. La confirmation propose ensuite la suppression de cet Assistant, ou la suppression pour l'Organisation. |
+| Les Documents d’une Source | **Exclude from retrieval** et **Restore**. |
+| Les Memories d’un Document | **Forget**. |
+
+## Ouvrir une Source
+
+Sélectionnez le nom de la Source dans n’importe quel onglet. Ciele ouvre les
+Documents de cette Source. Le nombre **Documents** dans la colonne Content ouvre
+la même page.
+
+| Column | Contents |
+| --- | --- |
+| Document | Le titre du Document, avec son adresse ou son chemin d’accès indiqué en dessous. |
+| Memories | Le nombre de mémoires provenant de ce document. |
+| Status | Ready, Excluded ou Pending. |
+| Updated | Date à laquelle Ciele a stocké ce Document pour la dernière fois. Sélectionnez la colonne pour modifier l'ordre. |
+
+**Pending** signifie que Ciele a stocké le Document mais ne l’a pas indexé. Un
+Document en attente n'est pas disponible pour la recherche dans la base de
+connaissances. **Excluded** signifie qu'un administrateur a exclu le Document de
+l'index de recherche.
+
+La page affiche 50 Documents à la fois. Utilisez les commandes de pagination
+situées sous le tableau pour accéder aux autres Documents. Le bouton Retour du
+navigateur vous ramène à l’onglet Library. Lorsque vous ouvrez un Document et
+revenez en arrière, le tableau affiche la même page dans le même ordre.
+
+Les éditeurs voient un menu en haut à droite de la page. **Re-crawl now** lance
+un nouveau crawl d’un site web. **Delete** supprime la Source pour tous les
+Assistants associés. Dans la section Assistant **Knowledge**, le menu propose
+également **Remove from this assistant**, qui conserve la Source dans la
+Library.
+
+La section Assistant **Knowledge** contient la même page. Là, seules les Sources
+liées à cet Assistant sont affichées.
+
+## Ouvrir un Document
+
+Sélectionnez un titre de Document dans le tableau. Ciele ouvre ce Document. La
+page comporte trois onglets.
+
+| Tab | Contents |
+| --- | --- |
+| Memories | Les souvenirs de ce Document. |
+| Content | Le texte stocké du Document. |
+| Chunks | Les parties que l’index de recherche contient. |
+
+**Content** est le premier onglet. Il affiche le texte tel que Ciele l’a stocké.
+Utilisez la commande de copie située dans le coin du volet pour copier
+l’intégralité du texte. Un Document long affiche la première partie.
+Sélectionnez **Show all** pour le reste.
+
+Lorsque la Source est un fichier importé, **Download original** vous fournit le
+fichier. Ciele n'affiche pas le fichier dans la page.
+
+La colonne **Details** située à droite comporte trois groupes. **Source**
+indique le nom de la Collection, la Source et la manière dont le Document est
+arrivé. **Identity** contient l’identifiant du Document, son chemin et son type.
+**Activity** indique la date de stockage, le nombre de blocs et le contrôle
+d’exclusion.
+
+**Excluded from retrieval** exclut le Document de l’index de recherche. Un
+Editor peut le modifier. Un Viewer ne voit que l’état. Lorsque vous excluez un
+Document, Ciele supprime ses chunks. Lorsque vous l’incluez à nouveau, Ciele
+réindexe le Document.
+
+La carte située sous la section Details affiche un **Summary** du Document.
+Ciele génère le Summary lorsqu’un membre ouvre le Document pour la première
+fois. Ciele le conserve pour tous les lecteurs ultérieurs. Un recrawl qui
+modifie la page supprime le Summary. Le prochain lecteur en obtient un nouveau.
+
+La carte affiche un **Excerpt** à la place lorsqu’il n’y a pas de Summary. Un
+Excerpt correspond au début du Content. Ciele affiche un Excerpt lorsque
+l’Organisation n’a pas de connexion à un fournisseur et lorsque le Summary a
+échoué. Étant donné que Ciele génère un Summary uniquement lors de la première
+ouverture, la plupart des Documents n’ont pas de Summary.
+
+L’onglet **Chunks** affiche les parties du Document contenues dans l’index de
+recherche. Ciele compare une question à ces parties, afin qu’elles vous
+indiquent pourquoi un Assistant a utilisé ce Document. Chaque carte affiche son
+numéro et le début de son texte. Sélectionnez une carte pour lire l’intégralité
+du texte. La boîte de dialogue comporte des flèches pour accéder à la partie
+précédente et à la partie suivante, ainsi que le nombre de mots et une commande
+de copie. Utilisez le champ de recherche pour trouver un mot dans les parties de
+la page. Ciele affiche 50 parties à la fois.
+
+## Mémoires
+
+Ciele lit chaque Document et conserve les faits durables qu’il énonce. Un
+souvenir est une phrase accompagnée de la partie du Document qui l’étaye.
+Utilisez les mémoires pour voir ce qu’un Assistant a appris à partir d’une page,
+sans avoir à lire la page en entier.
+
+Ciele extrait les mémoires après l’ingestion, en arrière-plan. Le Document est
+disponible pour la recherche dans la base de connaissances avant la fin de
+l’extraction. Chaque Document conserve un maximum de 20 mémoires.
+
+| Condition | Résultat |
+| --- | --- |
+| L’organisation n’a aucune connexion à un fournisseur | Ciele n’extrait aucune mémoire et n’affiche aucune alerte. |
+| Un recrawl ne modifie pas la page | Ciele conserve les mémoires et n’effectue aucune nouvelle requête. |
+| Un recrawl modifie la page | Ciele effectue une nouvelle extraction. Un fait que la page énonce à nouveau conserve son statut. |
+| L’extraction échoue | Ciele affiche une alerte pour la Source. L’alerte disparaît lors de la prochaine réussite. |
+
+Ciele refuse un fait lorsque le texte le justifiant ne figure pas dans le
+Document. Cela permet de supprimer les faits inventés avant qu’ils ne deviennent
+des mémoires.
+
+**Cost** : une requête de petit modèle pour chaque Document, pour chaque crawl
+qui le modifie. La page Usage présente ce travail.
+
+### Connaissances antérieures à cette fonctionnalité
+
+Ciele extrait les mémoires lors de l’ingestion. Une Source que Ciele a explorée
+avant l’introduction de cette fonctionnalité n’a pas de mémoires. Le prochain
+crawl de cette Source les extrait. L’onglet Memories de chacun de ses Documents
+vous indique lequel de ces cas s’applique :
+
+| L’onglet indique | Signification |
+| --- | --- |
+| Les mémoires nécessitent une connexion à un fournisseur | Connectez un modèle dans Settings, AI. |
+| No memories yet | Rien n’a encore extrait ce document. Le prochain crawl s’en chargera, ou un Editor sélectionnera **Extract memories**. |
+| Extracting | Une tâche est en cours. La ligne indique combien de Documents de la Source sont encore en file d’attente, et elle se met à jour automatiquement. |
+| Échec de l’extraction | Consultez l’alerte relative à la Source. |
+
+Pour obtenir des mémoires avant le prochain crawl, sélectionnez **Extract
+memories**. La commande se trouve sur la page Documents de la Source et dans la
+ligne Library. Un utilisateur disposant du rôle Editor ou d’un rôle supérieur
+peut l’utiliser. Ciele met uniquement en file d’attente les Documents qui en ont
+besoin et vous indique leur nombre. Une deuxième sélection pendant que le
+travail est en cours n’ajoute rien à la file d’attente.
+
+**Cost** : une seule et même requête de petit modèle pour chaque Document en
+file d’attente. Ciele ne lance aucune extraction pour votre Organisation sans
+cette action ou sans un crawl.
+
+### L’onglet Memories
+
+L’onglet **Memories** d’un Document répertorie ses mémoires. L’intitulé de
+l’onglet indique le nombre de mémoires actives. Le tableau Documents affiche le
+même nombre dans sa colonne Memories.
+
+Sélectionnez une ligne pour ouvrir la mémoire. La boîte de dialogue affiche la
+phrase, ses identifiants et le nombre de fois où la page a énoncé le fait. La
+section **Evidence** contient le texte du Document qui étaye la phrase.
+Sélectionnez **Open chunk** pour afficher la partie de l'index de recherche qui
+le contient.
+
+### Oublier un souvenir
+
+Un Editor peut **oublier** un souvenir, avec un motif facultatif. Un Viewer voit
+le souvenir, mais n’a aucun contrôle.
+
+Forget est un état, pas une suppression :
+
+- le souvenir reste dans le Document, avec ses éléments de preuve et son motif
+- le souvenir quitte le système de récupération, de sorte qu’aucun Assistant ne
+  l’utilise
+- l’onglet le masque jusqu’à ce que vous sélectionniez **Show forgotten**
+- **Restore** lui redonne vie
+
+Un crawl ultérieur n’annule pas un oubli. Lorsque la page énonce à nouveau le
+fait, Ciele comptabilise la nouvelle déclaration et maintient le souvenir
+oublié.
 
 ## Assistants associés
 
-La colonne **Linked assistants** répertorie tous les Assistants qui répondent
+La colonne **Linked assistants** indique le nom de chaque Assistant qui répond
 depuis la Source.
 
 1. Ouvrez le menu de la ligne Source.
@@ -41,52 +282,111 @@ depuis la Source.
 3. Sélectionnez ou désélectionnez chaque Assistant.
 4. Enregistrez la sélection.
 
-La sélection enregistrée remplace l'ensemble de liens précédent. Un Assistant
+La sélection enregistrée remplace l’ensemble de liens précédent. Un Assistant
 que vous désélectionnez cesse de rechercher dans la Source. La Source et ses
-Concepts restent dans l'Organisation.
+Documents restent dans l’Organisation.
 
 ## Accès direct
 
-**Direct access** s'applique aux Sources de type fichier. Lorsqu'il est activé
-pour un lien, l'Assistant peut remettre au Visiteur le fichier original avec la
-citation. Lorsqu'elle est désactivée, l'Assistant cite le fichier mais ne le
-transmet pas.
+**Direct access** s'applique aux Sources de type fichier. Lorsqu’elle est
+activée pour un lien, l’Assistant peut fournir au Visiteur le fichier original
+accompagné de la citation. Lorsqu’elle est désactivée, l’Assistant cite le
+fichier mais ne le transmet pas.
 
-L'accès direct est une propriété d'un lien. Définissez-la par Assistant, et non
+L’accès direct est une propriété d’un lien. Définissez-la par Assistant, et non
 par Source. La valeur par défaut est off.
 
 ## Ajouter une source depuis la bibliothèque
 
-1. Sélectionnez l'onglet requis.
-2. Sélectionnez l'action « Ajouter » pour ce type de source.
+1. Sélectionnez l’onglet requis.
+2. Sélectionnez l’action add pour ce type de Source.
 3. Saisissez le contenu de la source ou sélectionnez le fichier.
 4. Sélectionnez les Assistants à associer.
-5. Démarrez l'ingestion.
+5. Démarrer l’ingestion.
 
-Une Source ajoutée ici doit être liée à au moins un Assistant. Rien n'effectue
-de recherche dans une Source non liée.
+Une Source ajoutée ici doit être associée à au moins un Assistant. Aucune
+recherche n’est effectuée dans une Source non liée.
 
-## Supprimer par opposition à effacer
+## Supprimer par rapport à effacer
 
-La Library et l'Assistant editor proposent deux opérations distinctes.
+La Library et l’éditeur de l’Assistant proposent deux opérations distinctes.
 
 | Opération | Effet |
 | --- | --- |
-| Supprimer de cet Assistant | Supprime un lien. Les autres Assistants conservent la Source. |
-| Supprimer | Supprime la Source et ses Concepts pour chaque Assistant lié. |
+| Remove from this Assistant | Supprime un lien. Les autres Assistants conservent la Source. |
+| Delete | Supprime la Source et ses Documents pour chaque Assistant lié. |
 
-Lorsqu'une Source est liée à plusieurs Assistants, l'éditeur d'Assistant propose
-d'abord la suppression. La confirmation de suppression indique chaque Assistant
-qui perd la connaissance.
+Lorsqu’une Source est liée à plusieurs Assistants, l’éditeur d’Assistant propose
+d’abord la suppression. La confirmation de suppression indique le nom de chaque
+Assistant qui perd les connaissances.
 
-Lorsqu'un seul Assistant est lié, l'éditeur supprime directement la Source.
+Lorsqu’un seul Assistant est associé, l’éditeur supprime directement la Source.
 
-## Connaissances partagées dans l'éditeur d'Assistant
+## Connaissances partagées dans l’éditeur d’Assistant
 
 La section Assistant **Knowledge** répertorie les Sources ajoutées au sein de
 cet Assistant. Un panneau **Shared knowledge** situé en dessous répertorie les
-sources de l'organisation liées depuis la bibliothèque.
+Sources de l’organisation liées depuis la Library.
 
-Ensemble, ces deux listes constituent l'ensemble du périmètre de recherche de
-l'Assistant. Utilisez **Open in Library** pour modifier un lien ou son accès
+Ensemble, ces deux listes constituent la portée de recherche complète de
+l’Assistant. Utilisez **Open in Library** pour modifier un lien ou son accès
 direct.
+
+
+## Examiner un document
+
+Ouvrez une Source, puis ouvrez un Document. Un Editor peut sélectionner **Mark
+as reviewed**. La révision enregistre le Member et l’heure. Sélectionnez
+**Remove my review** pour supprimer uniquement votre propre avis. La liste
+Document affiche chaque niveau de confiance (Trust tier). Utilisez son filtre
+pour rechercher des Documents examinés ou non vérifiés.
+
+Une vérification s’applique au texte actuel. La modification d’une question ou
+d’une réponse de la FAQ supprime ses vérifications. Un crawl de site web ou une
+synchronisation d’application conserve les revues lorsque le corps du contenu
+reste identique. Une modification du corps de texte les supprime. Ces libellés
+aident les Membres à vérifier leurs connaissances. Ils ne modifient pas les
+résultats de la recherche. Les collègues ne peuvent pas marquer des Documents
+comme ayant été examinés pour un Membre.
+
+## Historique et restauration de la FAQ
+
+Ouvrez un éditeur de FAQ et sélectionnez **History**. Chaque version indique son
+auteur, l'heure, la question et la réponse complète. La liste conserve les 50
+versions précédentes les plus récentes, la plus récente figurant en premier.
+Sélectionnez **Restore** et confirmez pour enregistrer ce texte. Le texte actuel
+devient une nouvelle entrée dans l'historique. Restore met à jour l’index de
+recherche et efface les révisions. La suppression de la FAQ entraîne également
+la suppression de son historique. Les membres peuvent consulter History, mais ne
+peuvent ni réécrire ni supprimer des entrées individuelles.
+
+## Vérifier les doublons de FAQ
+
+Dans **New FAQ**, saisissez la question et sélectionnez **Check for
+duplicates**. La vérification affiche jusqu’à trois FAQ similaires issues de la
+même Collection, avec un aperçu de la réponse et un lien d’édition.
+L’avertissement n’empêche jamais la création. La vérification utilise un
+embedding par question, ou une recherche textuelle lorsqu’aucun modèle
+d’embedding n’est disponible. Une importation CSV signale les correspondances
+avec les FAQ existantes et les lignes précédentes. Il importe toutes les lignes
+valides malgré les avertissements de doublons.
+
+## Chiffres relatifs aux citations de sources
+
+Ouvrez une Source pour consulter ses réponses citées, les retours positifs et
+négatifs, la dernière citation ainsi que les Assistants contributeurs au cours
+des 30 derniers jours. La Library dispose d’un tri **Cited (30d)** et d’un
+filtre **Unused (90d)**. Chaque réponse compte une Source une seule fois. Les
+chiffres incluent les réponses des Visiteurs provenant des Assistants. Ils
+excluent les aperçus internes des Members, les Teammates et les notifications
+proactives. Les rapports présentent des décomptes, jamais le texte des messages.
+
+## API, CLI et MCP
+
+Le Developer Panel répertorie les points de terminaison suivants : Document
+review, FAQ History, restore, duplicate checks et Source usage. Utilisez
+`ciele sources documents`, `review`, `remove-review` et `usage` pour les
+vérifications de Document et de Source. Utilisez `ciele faqs get`, `update`,
+`history`, `restore` et `check` pour la maintenance de la FAQ. L’outil MCP
+`manage_knowledge` expose les mêmes opérations. La vérification humaine reste
+une action personnelle du Member.

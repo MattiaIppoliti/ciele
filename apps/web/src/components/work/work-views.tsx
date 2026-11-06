@@ -5,14 +5,11 @@ import Link from "next/link";
 import {
   CalendarDays,
   ChartGantt,
-  CircleCheckBig,
   FlaskConical,
   List,
-  ListChecks,
   Plus,
   SquareKanban,
   Table2,
-  type LucideIcon,
 } from "lucide-react";
 import { Badge, Button } from "@agent-hub/ui";
 import type { ProjectFile, ProjectMilestone, SavedView, Task, TaskDependency, TaskLabelLink, WorkLayout, WorkViewQuery } from "@agent-hub/core";
@@ -53,10 +50,10 @@ function NewTaskButton({ onClick }: { onClick: () => void }) {
 }
 
 /** A page title above the toolbar, on the views' gutter. */
-function WorkPageHeader({ icon, title, description }: { icon: LucideIcon; title: string; description?: ReactNode }) {
+function WorkPageHeader({ title, description }: { title: string; description?: ReactNode }) {
   return (
     <header className="shrink-0 px-6 pt-5 pb-3">
-      <SectionHeading icon={icon} title={title} description={description} />
+      <SectionHeading title={title} description={description} />
     </header>
   );
 }
@@ -227,7 +224,6 @@ export function MyTasksView({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <WorkPageHeader
-        icon={CircleCheckBig}
         title="My Tasks"
         description={
           <span aria-live="polite">
@@ -330,7 +326,7 @@ export function AllTasksView({
           </Button>
         </SlotPortal>
       )}
-      <WorkPageHeader icon={ListChecks} title="All tasks" />
+      <WorkPageHeader title="All tasks" />
       <div className="min-h-0 flex-1">
         <TaskListView
           scope="all-tasks"

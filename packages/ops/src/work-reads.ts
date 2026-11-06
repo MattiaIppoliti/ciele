@@ -40,7 +40,7 @@ export interface WorkDirectory {
 
 export const workDirectoryOp = defineOperation({
   name: "work.directory",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -104,7 +104,7 @@ export interface ProjectWorkspace extends TaskSet {
 
 export const projectWorkspaceOp = defineOperation({
   name: "work.project",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ id, includeArchived: z.boolean().optional() }),
   entities: () => [],
@@ -145,7 +145,7 @@ export interface MyTasks extends TaskSet {
 
 export const myTasksOp = defineOperation({
   name: "work.myTasks",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -175,7 +175,7 @@ export const myTasksOp = defineOperation({
 
 export const allTasksOp = defineOperation({
   name: "work.allTasks",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -218,7 +218,7 @@ async function withCommentExcerpts(ctx: OperationContext, entries: WorkActivity[
 
 export const workActivityOp = defineOperation({
   name: "work.activity",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ projectId: id.optional(), taskId: id.optional(), limit: z.number().int().min(1).max(500).optional() }),
   entities: () => [],
@@ -245,7 +245,7 @@ export const workActivityOp = defineOperation({
 /** What the Archive shows: archived Tasks and Projects the caller can see. */
 export const workArchiveOp = defineOperation({
   name: "work.archive",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],

@@ -1,6 +1,5 @@
 import { redactFlowsSecrets } from "@agent-hub/core";
 import { notFound } from "next/navigation";
-import { Workflow } from "lucide-react";
 import { FlowsList } from "@/components/assistant/flows-list";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
@@ -23,7 +22,6 @@ export default async function FlowsPage({
   return (
     <div className="mx-auto max-w-4xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
-        icon={Workflow}
         title="Flows"
         description="First matching flow wins."
       />

@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Configurez les origines, les secrets, les comptes, les modèles, l'e-mail et les workers optionnels.
+description: Configurez les origines, les secrets, les comptes, les modèles, les e-mails et les services optionnels.
 ---
 
 Le script de bootstrap écrit `deploy/.env`. Utilisez `deploy/.env.example` comme
@@ -9,7 +9,7 @@ référence de variable actuelle.
 ## Origines publiques
 
 Définissez `PUBLIC_URL` sur l'origine publique de l'application. Définissez
-`SUPABASE_PUBLIC_URL` sur l'origine de la passerelle de base de données
+`SUPABASE_PUBLIC_URL` sur l’origine de la passerelle de base de données
 accessible depuis le navigateur.
 
 Recompilez l'application après avoir modifié `SUPABASE_PUBLIC_URL`. Le bundle du
@@ -21,69 +21,171 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 
 ## Secrets générés
 
-La pile nécessite Postgres, JSON Web Token, un rôle de service, le chiffrement
-de l'application et des secrets cron. Laissez le script de bootstrap les
-générer.
+La pile nécessite Postgres, un JSON Web Token, un rôle de service, le
+chiffrement de l’application et des secrets cron. Laissez le script de bootstrap
+les générer.
 
 Ne modifiez pas `JWT_SECRET`, `ANON_KEY` ou `SERVICE_ROLE_KEY` indépendamment
-les uns des autres. Ils constituent une seule configuration de signature.
+les uns des autres. Ils constituent une configuration de signature unique.
 
 ## Comptes et e-mail
 
-Le premier compte devient le propriétaire de l'organisation. Définissez
+Le premier compte devient le propriétaire de l’organisation. Définissez
 `DISABLE_SIGNUP=true` une fois que les comptes requis existent.
 
 Sans configuration SMTP, `MAILER_AUTOCONFIRM=true` confirme automatiquement les
 nouveaux comptes.
 
-Les actions d'e-mail au runtime utilisent `RESEND_API_KEY` et `EMAIL_FROM`. Ils
-signalent un résultat « unconfigured » lorsque l'une ou l'autre de ces valeurs
-est absente.
+Les actions d’e-mail au runtime utilisent `RESEND_API_KEY` et `EMAIL_FROM`. Ils
+signalent un résultat non configuré lorsque l’une ou l’autre de ces valeurs est
+absente.
 
-## Points de terminaison des modèles
+## Points de terminaison de modèle
 
 Configurez les clés des fournisseurs Anthropic, OpenAI ou Google. Vous pouvez
-également configurer un endpoint de chat et d'embedding compatible avec OpenAI.
+également configurer un endpoint de chat et d’embedding compatible avec OpenAI.
 Définissez `OPENAI_COMPATIBLE_CONTEXT_WINDOW` sur la taille de contexte
 configurée du serveur de chat, avec un minimum de 8 192 tokens. Ciele vérifie
-l'intégralité de la requête avant d'appeler le modèle. Si le contenu requis
+l’intégralité de la requête avant d’appeler le modèle. Si le contenu requis
 dépasse cette fenêtre, utilisez un modèle plus grand ou réduisez la requête.
 
 La recherche dans la base de connaissances utilise la correspondance lexicale
-lorsqu'aucun modèle d'embedding n'est disponible.
+lorsqu’aucun modèle d’embedding n’est disponible.
 
 ## Capacité de chat
 
-Chaque tour de conversation qui appelle un modèle utilise un slot avant son
+Chaque tour de conversation qui appelle un modèle occupe un slot avant son
 premier appel de modèle. Les slots sont dans la base de données ; par
-conséquent, toutes les instances de l'application partagent un même compteur.
+conséquent, toutes les instances de l’application partagent un même compteur.
 
 | Variable | Valeur par défaut | Effet |
 |---|---|---|
 | `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | Nombre maximal de tours exécutés simultanément pour une même Organisation. |
 | `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Le nombre maximal de tours exécutés simultanément sur une seule clé de fournisseur de plateforme. |
-| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Durée pendant laquelle un tour attend un slot libre, en millisecondes. La valeur maximale est `60000`. |
+| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Durée pendant laquelle un tour attend un emplacement libre, en millisecondes. La valeur maximale est `60000`. |
 
-Définissez une limite à `0` ou `off` pour la supprimer. Laissez la variable vide
-pour utiliser la valeur par défaut.
+Définissez une limite à `0` ou à `off` pour la supprimer. Laissez la variable
+vide pour utiliser la valeur par défaut.
 
-Un tour qui n'obtient aucun slot pendant le temps d'attente n'est pas exécuté.
+Un tour qui n’obtient aucun slot pendant le temps d’attente n’est pas exécuté.
 Le widget indique au Visiteur de réessayer dans quelques secondes.
 
-Lorsqu'un fournisseur refuse une requête en raison de sa limite de taux,
-l'application tente à nouveau la requête après un délai aléatoire. Le widget
+Lorsqu’un fournisseur refuse une requête en raison de sa limite de taux,
+l’application tente à nouveau la requête après un délai aléatoire. Le widget
 affiche le même message si toutes les tentatives échouent.
 
-Le widget limite également chaque Visitor à 12 messages par minute. Une seule
-adresse réseau peut envoyer 300 messages par minute à un seul Assistant. De
-nombreux Visiteurs peuvent partager une même adresse, par exemple sur un réseau
-d'entreprise.
+Le widget limite également chaque Visitor à 12 messages par minute. Une adresse
+réseau peut envoyer 300 messages par minute à un Assistant. De nombreux
+Visiteurs peuvent partager une même adresse, par exemple sur un réseau
+d’entreprise.
 
-Les tours effectués dans le cadre d'un abonnement personnel n'occupent pas de
-slot.
+L’application lit l’adresse réseau à partir de l’en-tête `X-Forwarded-For`. Par
+défaut, elle utilise la première adresse de l’en-tête. Ceci est correct en
+l’absence de proxy et avec l’overlay TLS fourni, car Caddy supprime la valeur
+envoyée par le client.
+
+Certains proxys ajoutent leur appelant à la fin de l’en-tête et conservent la
+valeur provenant du client. Parmi les exemples, citons nginx avec
+`$proxy_add_x_forwarded_for` et la plupart des équilibreurs de charge cloud.
+Derrière de tels proxys, définissez `CIELE_TRUSTED_PROXY_HOPS` sur le nombre de
+ces proxys. Ensuite, l’application utilise l’adresse ajoutée par le proxy le
+plus extérieur, et un client ne peut pas la modifier.
+
+Les activations d’un abonnement personnel n’occupent pas de slot.
+
+## Point de terminaison MCP hébergé
+
+Définissez `CIELE_MCP_READ_ONLY=1` dans `deploy/.env` pour que le point de
+terminaison MCP hébergé, `/api/mcp`, refuse toute action de mutation. Ce
+paramètre s’applique à chaque clé API. Cela s’applique lorsque l’application
+répond au point de terminaison et lorsque le service Rust y répond.
+
+## Service API Rust
+
+Le service Rust optionnel exécute certaines opérations à la place de
+l’application. Il répond également directement à certains points de terminaison
+`/api/v1`. Il est désactivé par défaut. La pile lit son fichier Compose,
+`deploy/docker-compose.rust.yml`, uniquement lorsque `COMPOSE_FILE` le
+répertorie.
+
+Exécutez le script de bootstrap avec l’option `--rust` :
+
+```bash
+./deploy/bootstrap.sh --rust
+```
+
+Le script ajoute le fichier à `COMPOSE_FILE` dans `deploy/.env` et génère le
+secret partagé. Le service est compilé à partir des sources, également en mode
+image.
+
+| Variable | Valeur par défaut | Effet |
+|---|---|---|
+| `CIELE_RUST_API_SECRET` | Generated | Le secret partagé entre l’application et le service. |
+| `CIELE_RUST_OPERATIONS` | All ported operations | Les opérations qui s’exécutent dans le service, séparées par des virgules. |
+| `CIELE_RUST_DATABASE_URL` | The bundled Postgres | La connexion à la base de données pour le service. Définissez-la lorsque vous utilisez une base de données externe. |
+| `CIELE_RUST_LOG` | `info` | Le niveau de journalisation du service. |
+| `CIELE_RUST_MCP` | `1` | Définissez `0` pour conserver le point de terminaison MCP hébergé dans l’application. |
+| `CIELE_RUST_WIDGET_ROUTES` | Empty | Les points de terminaison de widget auxquels le service répond, séparés par des virgules. Une valeur vide n’envoie aucun point de terminaison de widget au service. |
+
+Le service répond à ces points de terminaison lorsque leur opération est en
+`CIELE_RUST_OPERATIONS` :
+
+- `GET /api/v1/alerts` et `POST /api/v1/alerts/{id}/resolve`
+- `GET /api/v1/improvements`
+- `GET /api/v1/task-labels` et `POST /api/v1/task-labels`
+- `PATCH /api/v1/task-labels/{id}` et `DELETE /api/v1/task-labels/{id}`
+
+Le service vérifie la clé API lui-même. Les réponses sont identiques aux
+réponses de l’application. Tous les autres points de terminaison sont redirigés
+vers l’application.
+
+Le service répond également au point de terminaison MCP hébergé, `/api/mcp`,
+avec les mêmes outils. Un outil destiné à l’un des points de terminaison
+ci-dessus s’exécute dans le service. D’autres outils appellent l’application
+avec la clé API de l’appelant.
+
+Une modification effectuée via le service n’entraîne pas l’actualisation de la
+console. Les pages Alerts, Projects et Tasks peuvent afficher d’anciennes
+données jusqu’à ce que vous les rechargiez. La palette de recherche peut
+afficher l’ancien nom d’un Label pendant un maximum de 30 secondes.
+
+Si le service s’arrête, l’application ne répond pas à ces points de terminaison
+pour lui. Les requêtes échouent jusqu’au redémarrage du service. Pour effectuer
+une restauration immédiate, supprimez `docker-compose.rust.yml` de
+`COMPOSE_FILE` et redémarrez la pile.
+
+### Points de terminaison des widgets
+
+Le service peut également répondre à certains points de terminaison publics de
+widgets. Ceci est désactivé par défaut. Pour l’activer, définissez
+`CIELE_RUST_WIDGET_ROUTES` dans `deploy/.env`, puis redémarrez la pile. Par
+exemple :
+
+```bash
+CIELE_RUST_WIDGET_ROUTES=config,session
+```
+
+Le service peut répondre à ces points de terminaison de widget : `config`,
+`session`, `feedback`, `conversation-feedback`, `conversations`, `help-desks`,
+`memories` et `sources`. Le point de terminaison `sources` correspond au
+téléchargement d’un fichier Source. Tous les autres points de terminaison de
+widget sont redirigés vers l’application.
+
+La pile fournit au service la clé de chiffrement, les clés de modèle et le
+stockage de fichiers de l’application. De ce fait, un Visitor qui se connecte
+reste connecté, et la liste des modèles dans le widget reste identique.
+
+Si le service s’arrête, un endpoint de widget répertorié échoue. Le widget
+affiche une erreur jusqu’à ce que le service redémarre. Pour effectuer une
+récupération immédiate, définissez `CIELE_RUST_WIDGET_ROUTES` sur une valeur
+vide et redémarrez la pile.
+
+Pour arrêter le service, supprimez `docker-compose.rust.yml` de `COMPOSE_FILE`.
+Ensuite, redémarrez la pile. Toutes les opérations s'exécutent alors à nouveau
+dans l'application.
 
 ## TLS
 
 Terminez TLS dans un serveur mandataire inverse. Ensuite, définissez les deux
-variables d'origine publique sur leurs adresses HTTPS et reconstruisez
-l'application.
+variables d’origine publique sur leurs adresses HTTPS et reconstruisez
+l’application.

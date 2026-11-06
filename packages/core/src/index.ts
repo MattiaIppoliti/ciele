@@ -276,6 +276,47 @@ export {
 export { withReviewBeforeConnectorWrites, withReviewBeforeConnectorWriteSteps } from "./review-gate";
 export type { FlowTriggerKind, HttpFlowMethod, HttpFlowRequest } from "./http-flow";
 
+// Custom Roles built from granular Capabilities (#1164, ADR-0028): the
+// catalogue, the built-in defaults, the RLS tier a set derives, dependencies.
+export {
+  BUILTIN_ROLE_DESCRIPTIONS,
+  BUILTIN_ROLE_KEYS,
+  BUILTIN_ROLE_NAMES,
+  CAPABILITIES,
+  CAPABILITY_BUNDLES,
+  CAPABILITY_CATALOG,
+  assistantLevelCapabilities,
+  builtinKeyOfSyntheticId,
+  builtinOrgRole,
+  builtinRoleDefaults,
+  capabilitiesAllow,
+  capabilitiesForLadderRole,
+  capabilitiesRelyingOn,
+  capabilityDefinition,
+  capabilityTier,
+  effectiveAssistantCapabilities,
+  intersectCapabilities,
+  isAssistantLevelCapability,
+  isBuiltinRoleKey,
+  isCapability,
+  isEditedBuiltin,
+  isOwnerOnlyCapability,
+  compareOrgRoles,
+  orderCapabilities,
+  roleTierFor,
+  withRequiredCapabilities,
+} from "./capabilities";
+export type {
+  AssistantRoleOverride,
+  BuiltinRoleKey,
+  Capability,
+  CapabilityBundle,
+  CapabilityDefinition,
+  CapabilityLevel,
+  CapabilityRequirement,
+  CapabilityTier,
+} from "./capabilities";
+
 // Teammate action grants (#770): a grant row is the grant, the ceiling caps
 // every granted domain at once, and approval-bypass is the one explicit
 // relaxation of ADR-0017's human-accept invariant.
@@ -283,6 +324,7 @@ export {
   actionRefusal,
   ceilingAllowsCapability,
   memberRoleRank,
+  roleLabel,
   roleAllowsCapability,
   mayAcceptSuggestedFix,
 } from "./teammate-grants";
@@ -425,6 +467,16 @@ export type {
   ConnectorField,
   ConnectorLoader,
 } from "./connector-catalog";
+// The "Create a ticket" Support Channel (#1088, #1089): form → ticket →
+// catalogued Connector action → filed record.
+export {
+  filedTicketFromOutputs,
+  ticketConnectorSettings,
+  ticketFromForm,
+  ticketingLegacyAlertKey,
+  ticketingTargetIssue,
+} from "./ticket-channel";
+export type { TicketDraft } from "./ticket-channel";
 
 // The Insights read model. `computeInsightsOverview` is the oracle the SQL
 // aggregate `get_insights_overview` is checked against (ADR-0010); the seven
@@ -535,6 +587,14 @@ export type { FundingBucket } from "./funding";
 // identifies rows the removed no-key fallback wrote, which a rotation has to
 // find before it can re-seal them.
 export { sealSecret, openSecret, isLegacyPlaintextSecret } from "./crypto";
+export {
+  OUTBOUND_WEBHOOK_EVENTS, OUTBOUND_WEBHOOK_EXAMPLES,
+  isOutboundWebhookEvent, isOutboundWebhookEventType, outboundWebhookRetryAt,
+} from "./outbound-webhooks";
+export type {
+  OutboundWebhookEventType, OutboundWebhookData, OutboundWebhookEvent,
+  OutboundWebhookSubscription, WebhookDelivery,
+} from "./outbound-webhooks";
 
 // What an uploaded file actually is, before a parser reads it (#801, CYB-09):
 // magic-byte agreement with the claimed extension, and the two things an
@@ -564,7 +624,7 @@ export { thrownMessage } from "./thrown-message";
 // and the readiness predicate the dialog, the save and the worker agree on.
 export { SLACK_BOT_SCOPES, slackBotConfig, slackBotReady } from "./slack-bot";
 export type { SlackBotConfig } from "./slack-bot";
-export { isOpenImprovement } from "./improvements";
+export { isOpenImprovement, IMPROVEMENT_WORKFLOW } from "./improvements";
 
 // Per-message model choice: the allow-list an Assistant or Teammate offers,
 // and the one rule that turns a client's string into the model a turn runs.
@@ -660,3 +720,71 @@ export type { WorkGroup, WorkViewContext } from "./work-view";
 
 // Individually configured Flow action occurrences and legacy settings projection.
 export { flowActionSteps, flowForActionStep } from "./flow-actions";
+
+// Human operators in a Conversation (#1082, #1083).
+export {
+  AI_OPERATOR,
+  DEFAULT_WAIT_TIMEOUT_MINUTES,
+  MAX_WAIT_TIMEOUT_MINUTES,
+  canOperateConversations,
+  effectiveOperatorState,
+  suppressesTurn,
+  waitExpiresAt,
+  waitTimedOut,
+  waitingQueue,
+} from "./operator";
+export type { WaitingEntry } from "./operator";
+
+// Operator assignment per Help Desk (#1084).
+export {
+  DEFAULT_OPERATOR_CAPACITY,
+  OPERATOR_PRESENCE_LEASE_MS,
+  effectiveOperatorStatus,
+  deskHasAvailableOperator,
+  pickOperator,
+} from "./operator-assignment";
+export type {
+  DeskOperator,
+  OperatorAssignmentInput,
+  OperatorStatus,
+} from "./operator-assignment";
+
+// Quick Texts in the Inbox reply box (#1085).
+export {
+  QUICK_TEXT_PICKER_LIMIT,
+  filterQuickTexts,
+  insertQuickText,
+  slashQueryAt,
+} from "./quick-texts";
+export type { SlashQuery } from "./quick-texts";
+
+export type { McpToolPolicy, RemoteMcpTool, DiscoveredMcpTool, McpServerConnection, McpToolSelection } from "./remote-mcp";
+export { effectiveMcpToolPolicy, reconcileMcpTools } from "./remote-mcp";
+
+export { businessHoursAt, channelAvailabilityNow } from "./business-hours";
+
+export { documentReview, documentEditFrontmatter } from "./document-review";
+
+export { sourceUsage } from "./source-usage";
+
+export { FAQ_DUPLICATE_THRESHOLD, faqDuplicateScore } from "./faq-duplicates";
+export { exportScheduleSlot, exportScheduleDue, exportScheduleWindow } from "./export-schedules";
+
+// Data retention windows per data type (Settings > Data retention).
+export {
+  DEFAULT_AUDIT_RETENTION_DAYS,
+  RETENTION_BOUNDS_MESSAGE,
+  RETENTION_MAX_DAYS,
+  RETENTION_MIN_DAYS,
+  isRetentionWindowValid,
+  retentionPeriodDays,
+  retentionPeriodFromDays,
+} from "./retention";
+export type { RetentionDataType, RetentionPeriod, RetentionUnit } from "./retention";
+
+// The audit log's action labels (Settings > Audit log).
+export { AUDIT_ACTIONS, AUDIT_SYSTEM_ACTOR, auditActionInfo } from "./audit-log";
+export type { AuditActionInfo, AuditActionTone } from "./audit-log";
+
+// A Member's rank on one Assistant: overrides and the selected scope.
+export { assistantAccessRank } from "./assistant-access";

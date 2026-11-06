@@ -90,6 +90,7 @@ export const POST = withRequestDiagnostics("/api/teammates/channels/[channelId]/
         organizationId: session.organization!.id,
         userId: session.userId,
         role: session.role,
+        capabilities: session.capabilities,
         actorEmail: session.email,
         // The channel's bound Project is where this thread's decisions belong,
         // so it wins over whatever the Teammate is attached to elsewhere

@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_HINT_COOKIE, authHintIsCurrent } from "@/lib/auth-hint";
-import { isMarketingPath } from "@/lib/console-routes";
+import { isAppRoute, isMarketingPath } from "@/lib/console-routes";
+import { rustRewrite } from "@/lib/rust-routing";
 
 function marketingOrigin(): URL {
   const configured = process.env.CIELE_MARKETING_ORIGIN?.trim();
@@ -127,6 +128,15 @@ function signedOutHint(request: NextRequest, response: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
+  // A request the Rust service answers itself goes there before anything else
+  // here runs: an /api/v1 endpoint of a listed operation (#1134), the hosted
+  // MCP endpoint under CIELE_RUST_MCP=1 (#1135), a widget endpoint named in
+  // CIELE_RUST_WIDGET_ROUTES (#1136). The service checks the key or serves the
+  // public endpoint itself, and the route handler never starts. With the
+  // variables unset this is null and every request reaches Next.js as before.
+  const rust = rustRewrite(request.method, request.nextUrl);
+  if (rust) return NextResponse.rewrite(rust);
+
   // Documentation is a separate app served at its own origin (apps/docs, see
   // #410). The legacy ciele.app/docs path is not a route here, without this it
   // hits the auth gate below and dead-ends at a 404, so send it (and any
@@ -175,8 +185,12 @@ export async function middleware(request: NextRequest) {
     return demo;
   }
 
+  // An unknown path is public too, so it reaches the 404 page instead of a
+  // /login redirect (see `isAppRoute`).
   const isPublic =
-    isMarketingPath(pathname) || PUBLIC_PATHS.some((re) => re.test(pathname));
+    !isAppRoute(pathname) ||
+    isMarketingPath(pathname) ||
+    PUBLIC_PATHS.some((re) => re.test(pathname));
 
   /**
    * Anonymous fast path (the first load of ciele.app).

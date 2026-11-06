@@ -8,6 +8,7 @@
  * affected, and overlapping paths dedupe on the web side.
  */
 export type MutatedEntity =
+  | { kind: "exportSchedules" }
   | { kind: "assistantList" }
   /** One Assistant's config: the dashboard card and the whole editor layout. */
   | { kind: "assistant"; id: string }
@@ -25,8 +26,11 @@ export type MutatedEntity =
   | { kind: "crawlerSettings" }
   /** The org members roster. */
   | { kind: "members" }
+  /** Settings → Roles and every Role picker (#1164). */
+  | { kind: "roles" }
   /** Organization identity shown in settings and the app shell. */
   | { kind: "organization" }
+  | { kind: "applicationConnection"; id: string }
   /** The org API keys page (#618). */
   | { kind: "apiKeys" }
   /** The operational Alerts page. */
@@ -43,6 +47,11 @@ export type MutatedEntity =
   | { kind: "improvementTasks" }
   /** The conversation Inbox. */
   | { kind: "inbox" }
+  /** The Organization's Quick Texts (#1085): their settings page. */
+  | { kind: "quickTexts" }
+  | { kind: "webhookSettings" }
+  | { kind: "mcpSettings" }
+  | { kind: "businessHoursSettings" }
   /** The org-level Knowledge hub (PRD #726). */
   | { kind: "knowledgeHub" }
   /** The AI Teammates roster (#768). */

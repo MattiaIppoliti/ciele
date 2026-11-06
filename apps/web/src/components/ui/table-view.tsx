@@ -198,7 +198,7 @@ export function TableViewProvider({ children, empty, headingType, bodyType }: {
   return (
     <TableViewContext value={view}>
       <div data-slot="table-container" ref={containerRef}
-        className="relative w-full overflow-x-auto rounded-3xl border bg-table-sheet shadow-light"
+        className="no-scrollbar relative min-w-0 overflow-x-auto rounded-3xl border bg-table-sheet shadow-light"
         onPointerUp={finishSelection} onPointerLeave={finishSelection}
         onCopy={(event) => {
           if (!range || !(event.target instanceof HTMLElement)
@@ -214,7 +214,15 @@ export function TableViewProvider({ children, empty, headingType, bodyType }: {
         }}>
         {React.cloneElement(children, {}, nodes.map((node) =>
           React.isValidElement<{ children?: React.ReactNode }>(node) && node.type === "colgroup"
-            ? React.cloneElement(node, {}, order.map((index) => cols[index])) : node))}
+            ? React.cloneElement(node, {}, order.map((index, position) => {
+              const col = cols[index];
+              // The last column takes whatever the others leave, so a narrowed
+              // layout ends flush with the sheet instead of on blank space.
+              // The table is `max(--table-width, 100%)` wide, so when the
+              // columns overflow this one still gets its own width.
+              return position === order.length - 1 && React.isValidElement<{ style?: React.CSSProperties }>(col)
+                ? React.cloneElement(col, { style: { ...col.props.style, width: "auto" } }) : col;
+            })) : node))}
       </div>
       {!empty && range && <div data-slot="table-view-footer" aria-live="polite"
         className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-xs text-muted-foreground">

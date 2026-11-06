@@ -1,4 +1,5 @@
-import type { Flow, FlowCondition } from "./types";
+import { businessHoursAt } from "./business-hours";
+import type { BusinessHours, Flow, FlowCondition } from "./types";
 
 /**
  * Objective Flow Conditions: the deterministic half of the Conditions step
@@ -18,6 +19,8 @@ import type { Flow, FlowCondition } from "./types";
 
 /** The facts objective conditions are evaluated against. */
 export interface FlowRoutingContext {
+  /** Live Organization schedules; Publications store only references. */
+  businessHours?: readonly BusinessHours[];
   /**
    * The page the Visitor is on: the Conversation's launch URL. Absent for
    * surfaces that cannot report one (an unwired host, the editor Preview).
@@ -40,6 +43,7 @@ export type FlowConditionDefect =
   | "url_value_missing"
   | "url_pattern_too_long"
   | "url_regex_invalid"
+  | "schedule_business_hours_missing"
   | "schedule_start_missing"
   | "schedule_start_invalid"
   | "schedule_end_invalid"
@@ -97,7 +101,8 @@ export function isObjectiveFlowCondition(condition: FlowCondition): boolean {
  * must never silently switch a live Flow off.
  */
 export function flowConditionDefect(
-  condition: FlowCondition
+  condition: FlowCondition,
+  businessHours?: readonly BusinessHours[]
 ): FlowConditionDefect | null {
   if (condition.kind === "url") {
     const value = condition.value.trim();
@@ -113,6 +118,9 @@ export function flowConditionDefect(
     return null;
   }
   if (condition.kind === "schedule") {
+    if (condition.mode === "business_hours") {
+      return !condition.businessHoursId || (businessHours && !businessHours.some(schedule => schedule.id === condition.businessHoursId)) ? "schedule_business_hours_missing" : null;
+    }
     if (!(condition.startAt ?? "").trim()) return "schedule_start_missing";
     const start = wallClock(condition.startAt);
     if (!start) return "schedule_start_invalid";
@@ -161,6 +169,12 @@ export function evaluateFlowCondition(
   if (condition.kind === "schedule") {
     const now = context.now;
     if (!now) return null;
+    if (condition.mode === "business_hours") {
+      const schedule = context.businessHours?.find(schedule => schedule.id === condition.businessHoursId);
+      if (!schedule) return null;
+      const open = businessHoursAt(schedule, now).available;
+      return condition.direction === "during" ? open : !open;
+    }
     const start = wallClock(condition.startAt);
     if (!start) return null;
     const local = wallClockInZone(now, condition.timezone);

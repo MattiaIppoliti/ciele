@@ -1,0 +1,52 @@
+---
+title: MCP servers
+description: Connect external tools for Teammates and published Assistants.
+---
+
+An **MCP Server Connection** connects your Organization to an external Model Context Protocol server. The server supplies tools. Ciele controls which tools can run.
+
+## Register a server
+
+An Owner or Admin opens **Settings → MCP servers**, selects **Add server**, and enters a name and Streamable HTTP URL. A bearer token is optional. Ciele seals the token in a separate credential store. It never returns the token in connection settings or a Publication snapshot.
+
+Ciele checks the URL and discovers the tool names, descriptions and input schemas. Public HTTPS endpoints are required in production. Private addresses and redirects are refused. Ciele negotiates both the modern and legacy protocol eras.
+
+Each new tool starts **Off**. A server's read-only annotation is a hint. It does not grant permission.
+
+## Review tool policies
+
+Each tool has one policy:
+
+| Policy | Behavior |
+| --- | --- |
+| Run freely | Ciele can call the tool without a Member's approval. |
+| Ask first | A Teammate shows an approval card with the tool and redacted arguments before calling it. |
+| Off | Ciele does not offer the tool. |
+
+Approving a call runs the saved action once through the action approval claim. Declining leaves it refused. Changing a policy is a consequential configuration operation.
+
+**Refresh** discovers the current definitions. A policy is attached to the definition hash the Admin reviewed. When a description, schema or another definition field changes, the tool shows **Changed** and is suspended. Review the current definition and set its policy again. Removed tools stay visible for review and cannot run.
+
+## Enable servers for a Teammate
+
+In the Teammate's execution settings, an Owner or Admin chooses registered MCP servers. The native Ciele harness offers enabled tools under a server prefix, so server tool names cannot collide. A Teammate cannot register its own server or change a policy.
+
+Ask first waits for the invoking Member, an Owner or an Admin. The call uses the saved arguments after approval. Its policy and the Teammate's access are checked again before it runs.
+
+## Enable tools for an Assistant
+
+Open the Assistant's **Tools & Skills → MCP servers**. Choose its Run freely tools and publish. Ask first tools cannot run for Visitors. Publish refuses a selection that requires approval, is disabled, or has an old definition hash.
+
+A Publication stores only server ids, tool names and definition hashes. Ciele reads the credential on the server when a call runs. At turn time, a tool must still have the Run freely policy and the same definition hash. Otherwise Ciele omits it and raises an Alert asking you to review and republish. Preview uses the same rules.
+
+A Visitor turn makes at most five MCP calls. Tool results are external data. They are not knowledge Sources and are never added as citations.
+
+## Inspect calls and failures
+
+The Turn Trace and Inbox show the server, tool, redacted arguments, status and result summary. Remote results pass through Ciele's untrusted-content fence. Large results stay in a bounded store for the turn. The model reads further windows with a result handle and receives the total length.
+
+An approved Ask first result is saved with its Conversation or Channel. The next turn receives a protected first window and can read the rest by handle without repeating the external call. Other Conversations cannot read that result.
+
+Each connection attempt and tool call has a total 30-second deadline. Responses are capped at one mebibyte. A failed connection raises an Alert. The next successful connection clears it.
+
+Delete a server to stop offering its tools. Existing Assistant selections then require review before publishing again.

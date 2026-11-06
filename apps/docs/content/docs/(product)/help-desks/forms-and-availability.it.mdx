@@ -1,34 +1,51 @@
 ---
 title: Moduli e disponibilità
-description: Raccogli i dati di escalation richiesti e mostra quando un canale è disponibile.
+description: Raccogli i dati di escalation necessari e mostra quando un canale è disponibile.
 ---
 
 ## Aggiungi campi al modulo
 
-Aggiungi solo i dati di cui il team ricevente ha bisogno. Contrassegna un campo
-come obbligatorio quando il canale non può funzionare senza di esso.
+Aggiungi solo i dati di cui il team destinatario ha bisogno. Contrassegna un
+campo come obbligatorio quando il canale non può funzionare senza di esso.
 
-Prova il modulo come Visitatore. Verifica che i campi obbligatori impediscano un
-invio incompleto.
+Prova il modulo come Visitor. Verifica che i campi obbligatori impediscano
+l'invio di un modulo incompleto.
 
 ## Allega i dati della conversazione
 
-Un Help Desk può allegare a un'escalation le informazioni configurate della
-Conversazione. I dati disponibili possono includere un riepilogo, la cronologia,
-i dati dell'utente e i metadati.
+Un Help Desk può allegare a un'escalation le informazioni configurate relative
+alla Conversation. I dati disponibili possono includere un riepilogo, la
+cronologia, i dati utente e i metadati.
 
-Seleziona i dati minimi richiesti dal team ricevente. Verifica che la selezione
-sia conforme ai tuoi requisiti di privacy.
+Seleziona i dati minimi richiesti dal team destinatario. Verifica la selezione
+rispetto ai tuoi requisiti in materia di privacy.
 
 ## Configura la disponibilità
 
-Imposta la programmazione del canale e il fuso orario. Il widget mostra se il
-canale è disponibile e può indicare il suo prossimo orario disponibile.
+Imposta l'orario di disponibilità del canale e il fuso orario. Il widget indica
+se il canale è disponibile e può mostrare il suo prossimo orario di
+disponibilità.
 
 Utilizza il fuso orario del team che riceve l'escalation. Verifica il limite
 all'inizio e alla fine di una finestra di disponibilità.
 
-## Invio di e-mail
+## Consegna delle email
 
-Il canale Email richiede un trasporto Resend configurato. Quando è assente,
-Ciele segnala che l'e-mail non è stata inviata.
+Il canale Email richiede un trasporto Resend configurato. Quando non è presente,
+Ciele segnala che l'email non è stata inviata.
+
+
+## Riutilizza gli orari di lavoro dell'organizzazione
+
+Seleziona **Business hours** nella scheda Availability di un canale, quindi
+scegli un programma con nome. Crea e modifica i programmi in
+[Settings](/organization). Gli orari settimanali, il fuso orario e i giorni
+festivi derivano da quel programma. Più canali possono utilizzare lo stesso
+orario. Un giorno festivo li chiude tutti, e la successiva apertura del Widget
+salta le date di chiusura.
+
+**Always available** e **Limited availability** mantengono il loro comportamento
+esistente. La disponibilità limitata mantiene i propri intervalli settimanali e
+il proprio fuso orario. Le nuove impostazioni del canale partono dal fuso orario
+predefinito dell'organizzazione. Non è possibile eliminare un programma mentre è
+utilizzato da un canale. Il rifiuto indica il nome del canale.

@@ -4,10 +4,11 @@ import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 import { SlotPortal, TOP_BAR_SLOT } from "@/components/shell/slot-portal";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { ExportJobKind, ExportJobStatus, InsightsFilter } from "@agent-hub/core";
+import type { ExportSchedule, ExportJobKind, ExportJobStatus, InsightsFilter } from "@agent-hub/core";
 import { Download, FileText, RotateCw } from "lucide-react";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { retryExportJobAction } from "@/app/(admin)/insights/exports/actions";
+import { ScheduledExportsPanel } from "./scheduled-exports-panel";
 import { CreateExportDialog } from "@/components/insights/create-export-dialog";
 
 import { Button } from "@agent-hub/ui";
@@ -30,6 +31,7 @@ export interface ExportRow {
 }
 
 const KIND_LABELS: Record<ExportJobKind, string> = {
+  audit_log: "Audit log",
   insights_overview: "Aggregated insights",
   insights_datapoints: "Datapoints",
   insights_languages: "Languages",
@@ -65,7 +67,13 @@ export function ExportsClient({
   rows,
   assistants,
   defaultFilter,
+  schedules,
+  members,
+  canManageSchedules,
 }: {
+  schedules: { available: boolean; items: ExportSchedule[] };
+  members: Array<{ userId: string; email: string }>;
+  canManageSchedules: boolean;
   rows: ExportRow[];
   assistants: Array<{ id: string; title: string }>;
   defaultFilter: InsightsFilter;
@@ -110,6 +118,7 @@ export function ExportsClient({
       </p>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <ScheduledExportsPanel items={schedules.items} available={schedules.available} members={members} assistants={assistants} defaultFilter={defaultFilter} canManage={canManageSchedules} />
         {rows.length === 0 ? (
           <EmptyState
             className="rounded-xl border border-dashed"

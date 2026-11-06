@@ -59,6 +59,7 @@ import { CanvasToolbar } from "@/components/assistant/canvas-toolbar";
 import { CommandBar } from "@/components/assistant/command-bar";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import { isTypingTarget } from "@/lib/typing-target";
+import { useBusinessHours } from "@/lib/hooks/use-business-hours";
 import { newFlowCondition } from "@/lib/flow-conditions";
 import type { FlowDraft, FlowDraftStatus } from "@/lib/flow-editor";
 import {
@@ -282,6 +283,7 @@ function FlowCanvasInner({
   onAskAgent,
   agentOpen,
 }: FlowCanvasViewProps) {
+  const calendars = useBusinessHours();
   const projection = useMemo(
     () => projectFlowCanvas(draft, { isDefaultFlow }),
     [draft, isDefaultFlow]
@@ -621,7 +623,7 @@ function FlowCanvasInner({
         case "condition":
           handlers.setConditions([
             ...draft.conditions,
-            newFlowCondition(choice.condition, crypto.randomUUID()),
+            newFlowCondition(choice.condition, crypto.randomUUID(), calendars.defaultTimezone),
           ]);
           selectAndOpen(CONDITIONS_NODE_ID);
           return;
@@ -640,7 +642,7 @@ function FlowCanvasInner({
           selectAndOpen(actionNodeId("connector"));
       }
     },
-    [draft.conditions, handlers, selectAndOpen]
+    [draft.conditions, handlers, selectAndOpen, calendars.defaultTimezone]
   );
 
   const entries = useMemo(

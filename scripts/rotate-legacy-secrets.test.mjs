@@ -108,6 +108,8 @@ check("the column inventory names every sealed text column the schema has", () =
     "application_connections.sealed_credentials",
     "assistant_api_integrations.encrypted_credential",
     "entity_sync_configs.sealed_headers",
+    "mcp_server_secrets.encrypted_token",
+    "outbound_webhook_secrets.encrypted_secret",
     "provider_connections.encrypted_key",
     "sso_connections.encrypted_secret",
   ]);

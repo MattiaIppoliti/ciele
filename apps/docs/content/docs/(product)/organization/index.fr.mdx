@@ -1,34 +1,37 @@
 ---
-title: Paramètres de l'organisation
+title: Paramètres de l’organisation
 description: Gérez les membres, les connexions aux fournisseurs, les clés API, l'utilisation et la facturation.
 ---
 
-Une Organisation constitue la délimitation du tenant pour les données et les
+Une organisation constitue la limite de tenant pour les données et les
 autorisations de Ciele.
 
 Utilisez **Settings** pour les domaines suivants :
 
-- **General** pour les informations relatives à l'organisation.
+- **General** pour les informations relatives à l’organisation.
+- **Business hours** pour les plannings partagés, les jours fériés et le fuseau
+  horaire par défaut.
 - **Members** pour les adhésions, les invitations et les rôles.
 - **AI Provider** pour les connexions aux fournisseurs.
-- **Crawling** pour le crawler de site web de l'Organisation, tel que son propre
+- **Crawling** pour le crawler de site web de l’Organisation, tel que son propre
   compte Apify.
-- **API Keys** pour les identifiants d'authentification programmatiques.
+- **API Keys** pour les identifiants programmatiques.
 - **Usage** pour l'utilisation récente des ressources et les limites.
 - **Billing** pour le forfait géré et le compte de facturation.
 
-L'édition auto-hébergée n'affiche pas de catalogue d'abonnements gérés.
+L’édition auto-hébergée n’affiche pas de catalogue d’abonnements gérés.
 
-Les rôles des membres et les rôles des clés API utilisent la même hiérarchie
-d'autorisations. Une clé API ne peut pas recevoir un Role supérieur à celui de
-son créateur.
+Un Role est un ensemble de capacités. Les membres, les invitations et les clés
+API utilisent les mêmes Roles. Une clé API ne peut pas disposer d’une capacité
+que son créateur n’a pas.
 
 La zone **AI Provider** contrôle également la
-[mémoire à long terme](/data/long-term-memory). Il comprend des outils
-permettant d'effacer les mémoires stockées d'un Visitor.
+[mémoire à long terme](/data/long-term-memory). Elle comprend des outils
+permettant d’effacer les mémoires stockées d’un Visitor.
 
-L'onglet **General** comporte deux paramètres de conservation : l'un pour les
-traces de raisonnement et l'autre pour les conversations complètes. Voir
+L’onglet **Data retention** définit la durée de conservation des conversations,
+des messages, des améliorations et des enregistrements d’audit. L’onglet
+**General** conserve la fenêtre des traces de raisonnement. Voir
 [Data retention](/organization/data-retention).
 
 ## Apparence personnelle
@@ -37,5 +40,89 @@ Dans la barre latérale, développez **Settings** et sélectionnez **Personal
 settings**, puis **Theme**. Si vous ne voyez pas **Settings**, ouvrez le menu du
 compte et sélectionnez **Profile**, puis **Theme**. Choisissez **Light**,
 **Dark** ou **System**, puis sélectionnez la palette **Midnight** ou **Mist
-Blue**. Ces préférences s'appliquent à votre console et sont enregistrées dans
+Blue**. Ces préférences s’appliquent à votre console et sont enregistrées dans
 ce navigateur. Le widget publié conserve son style Assistant.
+
+
+## Heures d’ouverture et jours fériés
+
+Un membre disposant de la capacité **edit** peut ouvrir **Settings → Business
+hours**. Créez un planning nommé, sélectionnez son fuseau horaire IANA et
+définissez les plages d’ouverture hebdomadaires. Une journée peut comporter
+plusieurs créneaux. Une heure de fermeture antérieure à l’heure d’ouverture se
+prolonge jusqu’au jour suivant. Un planning est défini comme le planning par
+défaut de l'organisation. Vous pouvez modifier la valeur par défaut lorsque vous
+éditez un planning.
+
+Ajoutez des jours fériés nommés sous la forme d’une date unique ou d’une plage
+de dates inclusive. Sélectionnez **Repeat yearly** pour une fermeture annuelle.
+Un jour férié entraîne la fermeture de l’ensemble de la journée locale, y
+compris les heures qui se prolongent depuis la nuit précédente. Les canaux et
+les conditions de Flow lisent ces paramètres en temps réel. Une modification de
+jour férié s’applique sans qu’il soit nécessaire de republier un Assistant.
+
+Le fuseau horaire par défaut de l’organisation constitue la valeur initiale pour
+les nouveaux plannings, les conditions de disponibilité des canaux et les
+conditions de planification des flux. Les fuseaux horaires existants et les
+rapports Insights ne changent pas. La suppression est refusée tant qu’un canal,
+un Flow d’éditeur ou un Flow de la dernière Publication utilise le planning. Le
+refus indique les noms de ces canaux et de ces flux.
+
+Le Developer Panel de cette page affiche le **Business hours API**. Utilisez
+`/api/v1/business-hours`, `ciele business-hours` ou `manage_configuration` dans
+MCP pour gérer les mêmes paramètres. Définissez le fuseau horaire par défaut
+avec `PATCH /api/v1/business-hours/timezone` ou
+`ciele business-hours timezone Europe/Rome --yes`.
+
+
+## Journal d’audit
+
+Les propriétaires et les administrateurs ouvrent **Settings → Audit log** pour
+consulter les modifications de configuration. Chaque ligne affiche **When**,
+**Action**, **Actor** et **Target**. Les heures sont indiquées en UTC.
+
+- Sélectionnez **Filter by action** pour afficher une ou plusieurs actions.
+- Sélectionnez **Filter by actor** pour afficher les modifications d’un membre,
+  ou de **System**.
+- Sélectionnez le contrôle de date pour afficher une seule période.
+- Sélectionnez **When** pour afficher les entrées les plus anciennes en premier.
+
+L’acteur est le membre qui a effectué la modification. Lorsqu’une clé API ou un
+Teammate a effectué la modification, l’acteur est la clé ou le Teammate. Le
+membre pour lequel il agit s’affiche en dessous. Les modifications qui n’ont été
+effectuées par aucune personne affichent **System**.
+
+Sélectionnez l'icône en forme d'œil sur une ligne pour ouvrir **Entry details**.
+Le panneau affiche l’acteur, la cible, la surface, le résultat et les entités
+concernées. Les liens ouvrent les entités qui existent encore. Certaines
+modifications affichent également **Changes** : les rôles, les invitations, les
+clés API, l’accès des assistants et les paramètres de l’organisation. Chaque
+champ affiche sa valeur avant et après.
+
+Le journal enregistre les opérations d’écriture et les opérations consécutives,
+y compris les exécutions ayant échoué. Une opération composite crée une seule
+entrée pour son appel externe. Elle n’enregistre ni les entrées d’opération, ni
+les identifiants, ni le texte du visiteur, ni les opérations de lecture. Un
+échec d’enregistrement n’interrompt pas l’opération. Les diagnostics signalent
+l’échec.
+
+Sélectionnez **Export CSV** pour mettre en file d’attente les filtres actuels
+dans les tâches d’exportation existantes. L’exportation apparaît dans **Insights
+→ Exports** lorsqu’elle est prête. Les exportations d’audit restent réservées
+aux Owners et aux Admins. Les membres ne peuvent pas réécrire ni supprimer les
+entrées d’audit. Le nettoyage de rétention supprime les entrées plus anciennes
+que la période **Audit records** dans l’onglet **Data retention**. La valeur par
+défaut est de 180 jours. La suppression d’une organisation entraîne également la
+suppression de ses entrées d’audit.
+
+Le journal d’audit est également accessible depuis l’API, la CLI et le serveur
+MCP. Chacun est en lecture seule et nécessite une clé autorisée à gérer les
+membres.
+
+```bash
+ciele audit-log list --actor system --from 2026-11-01
+curl "https://ciele.app/api/v1/audit-log?action=apiKeys.create" \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Sur le serveur MCP, utilisez l’action `audit_log_list` de `manage_organization`.

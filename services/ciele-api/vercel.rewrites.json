@@ -1,0 +1,60 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/v1/alerts",
+      "destination": "https://ciele-api.invalid/api/v1/alerts"
+    },
+    {
+      "source": "/api/v1/alerts/:id/resolve",
+      "destination": "https://ciele-api.invalid/api/v1/alerts/:id/resolve"
+    },
+    {
+      "source": "/api/v1/improvements",
+      "destination": "https://ciele-api.invalid/api/v1/improvements"
+    },
+    {
+      "source": "/api/v1/task-labels",
+      "destination": "https://ciele-api.invalid/api/v1/task-labels"
+    },
+    {
+      "source": "/api/v1/task-labels/:id",
+      "destination": "https://ciele-api.invalid/api/v1/task-labels/:id"
+    },
+    {
+      "source": "/api/mcp",
+      "destination": "https://ciele-api.invalid/api/mcp"
+    },
+    {
+      "source": "/api/widget/:assistantId/config",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/config"
+    },
+    {
+      "source": "/api/widget/:assistantId/session",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/session"
+    },
+    {
+      "source": "/api/widget/:assistantId/feedback",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/feedback"
+    },
+    {
+      "source": "/api/widget/:assistantId/conversation-feedback",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/conversation-feedback"
+    },
+    {
+      "source": "/api/widget/:assistantId/conversations",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/conversations"
+    },
+    {
+      "source": "/api/widget/:assistantId/help-desks",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/help-desks"
+    },
+    {
+      "source": "/api/widget/:assistantId/memories",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/memories"
+    },
+    {
+      "source": "/api/widget/:assistantId/sources/:sourceId/download",
+      "destination": "https://ciele-api.invalid/api/widget/:assistantId/sources/:sourceId/download"
+    }
+  ]
+}

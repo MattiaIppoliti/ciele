@@ -3,8 +3,8 @@ title: API v1
 description: Richiama l'attuale API di amministrazione di Ciele utilizzando una chiave API dell'organizzazione.
 ---
 
-L'API di Ciele utilizza JSON su HTTP. Tutti i percorsi della versione 1 iniziano
-con `/api/v1`.
+L'API di Ciele utilizza JSON tramite HTTP. Tutti i percorsi della versione 1
+iniziano con `/api/v1`.
 
 [Apri la documentazione interattiva dell'API](/api-reference) per esplorare
 tutte le operazioni pubbliche per dominio. Scarica lì il contratto OpenAPI
@@ -31,12 +31,20 @@ curl https://ciele.app/api/v1/whoami \
   --header "Authorization: Bearer $CIELE_API_KEY"
 ```
 
-Per l'autohosting, sostituisci `https://ciele.app` con l'origin pubblica di
+Per l'autohosting, sostituisci `https://ciele.app` con l'origin pubblico di
 Ciele.
+
+La risposta include `capabilities`: le funzionalità della chiave. Una chiave può
+eseguire solo le operazioni consentite sia dal suo Role che dal suo creatore.
+
+In un'operazione relativa a un singolo Assistente, si applica il Role del
+creatore su quell'Assistente. Se solo quel Role dell'Assistente rifiuta
+l'operazione, l'API restituisce `404`, come nel caso di un Assistente che non
+esiste.
 
 ## Errori di risposta
 
-Gli errori utilizzano un unico JSON envelope:
+Gli errori utilizzano un unico envelope JSON:
 
 ```json
 {
@@ -53,16 +61,16 @@ I codici di stato più comuni sono:
 | --- | --- |
 | `400` | Il corpo della richiesta non è formattato correttamente oppure manca un file obbligatorio. |
 | `401` | La chiave è mancante, non valida o revocata. |
-| `403` | Il Role della chiave non consente l'operazione. |
+| `403` | Il ruolo della chiave non consente l'operazione. |
 | `404` | La risorsa non esiste nell'Organization. |
 | `409` | La richiesta è in conflitto con lo stato corrente. |
 | `422` | L'input analizzato non supera la convalida. |
 
 ## Impaginazione
 
-Utilizza i parametri di paginazione indicati per ciascuna operazione. Gli
-elenchi basati su cursore restituiscono `nextCursor`. Passalo come `cursor`
-nella richiesta successiva.
+Usa i parametri di paginazione indicati per ciascuna operazione. Gli elenchi
+basati su cursore restituiscono `nextCursor`. Passalo come `cursor` nella
+richiesta successiva.
 
 ## Tentativi di ripetizione sicuri
 
@@ -75,29 +83,28 @@ Questi sono esempi. La [API reference](/api-reference) elenca il set completo e
 aggiornato delle operazioni.
 
 - Assistenti: list, read, create, update, duplicate e delete.
-- Flow: list, read, create, update, reorder e delete.
-- Knowledge: gestisci Collections, Sources, FAQ e i link dell'Assistente su
+- Flows: list, read, create, update, reorder e delete.
+- Knowledge: gestisci Collections, Sources, FAQs e i link dell'Assistente su
   ciascuna Source.
 - Publication: leggi lo stato, pubblica, annulla la pubblicazione e ripristina
   una pubblicazione.
 - Inbox: rivedi, esporta, appunta, annota, valuta ed elimina le Conversations.
 - Miglioramenti: elenca, leggi e aggiorna gli elementi.
-- Memories: controlla le impostazioni ed esegui la cancellazione della Memory
+- Memories: controlla le impostazioni ed esegui la cancellazione della memoria
   con ambito definito.
 - SSO: gestisci le attestazioni di identità, le impostazioni di connessione, la
   convalida e la disconnessione.
-- Help Desks: gestisci i desk, i canali di escalation, l'ordinamento e
-  ServiceNow.
+- Help Desks: gestisci i desk, i canali di escalation, l'ordinamento e il
+  ticketing target.
 - Teammates: gestisci gli AI Teammates e leggi le tue conversazioni con i
   Teammates.
 - Projects: gestisci i Projects, le loro milestone e i documenti di progetto che
   i Teammate leggono.
-- Tasks: elenca, leggi, crea, modifica, archivia ed elimina Tasks, aggiungi
-  commenti e gestisci le etichette (Labels) delle attività. L'elenco applica
-  filtri per Project, assignee, status, Label, date di scadenza, testo e
-  Improvement, e utilizza un cursore per ogni pagina. Una chiave legge solo i
-  Progetti che il suo membro può leggere. Un commento indica quel membro come
-  autore.
+- Tasks: elenca, leggi, crea, modifica, archivia ed elimina le Tasks, commentale
+  e gestisci le Labels delle Tasks. L'elenco applica filtri per Project,
+  assignee, status, Label, date di scadenza, testo e Improvement, e utilizza un
+  cursore per ogni pagina. Una chiave legge solo i Projects che il suo membro
+  può leggere. Un commento indica quel membro come autore.
 - Reviews: elenca, leggi e prendi decisioni sulle richieste di Human review.
 - Channels: leggi e modella i canali dei colleghi del team a cui partecipi e i
   loro roster. Non esiste un endpoint per inviare un messaggio: un messaggio
@@ -105,14 +112,20 @@ aggiornato delle operazioni.
   console.
 - Configuration: gestisci Skills, Assistant Goals e Alerts operativi.
 - Organization: gestisci le impostazioni, i Members, gli Invites e le API keys.
+  Limita un Member agli Assistant selezionati.
 - Integrations: gestisci le integrazioni dell'API dell'Assistente e le
   connessioni ai provider di modelli.
-- Usage: consulta i meter del piano e scopri chi ha speso i crediti di una
-  finestra. Sola lettura. La ripartizione della spesa mantiene separate le sue
-  dimensioni. Una risposta indica sia il membro del team che ha eseguito
+- Utilizzo: consulta i contatori del piano e scopri chi ha utilizzato i crediti
+  di una finestra. Sola lettura. La ripartizione della spesa mantiene separate
+  le sue dimensioni. Una risposta indica sia il membro del team che ha eseguito
   l'operazione sia il collega che l'ha richiesta, quindi sommando le dimensioni
-  viene conteggiata due volte. L'acquisto di crediti non ha un endpoint: un
-  acquisto avviene in una schermata in cui una persona conferma un importo.
+  si conta due volte. L'acquisto di crediti non ha un endpoint: un acquisto
+  avviene in una schermata in cui una persona conferma un importo.
+- Audit log: consulta chi ha modificato cosa, da quale interfaccia, con il
+  valore precedente e successivo per le modifiche a role, invitation, key,
+  access e settings. Sola lettura. Filtra per action, actor e date. Per
+  consultare dati più vecchi, invia `createdAt` e `id` dell'ultima voce che hai
+  come `before` e `beforeId`.
 
 Utilizza il documento OpenAPI per i campi delle richieste, l'autenticazione e i
 codici di stato delle risposte documentati.

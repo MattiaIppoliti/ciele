@@ -141,7 +141,7 @@ async function requireManageableChannel(
  */
 export const listChannelsOp = defineOperation({
   name: "channels.list",
-  capability: "member",
+  capability: "channels:use",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -172,7 +172,7 @@ export interface ChannelMention {
 /** The groups where this Member has an unread mention, one entry per group. */
 export const listChannelMentionsOp = defineOperation({
   name: "channels.mentions",
-  capability: "member",
+  capability: "channels:use",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -206,7 +206,7 @@ export const listChannelMentionsOp = defineOperation({
 
 export const getChannelOp = defineOperation({
   name: "channels.get",
-  capability: "member",
+  capability: "channels:use",
   effect: "read",
   input: idSchema,
   entities: () => [],
@@ -231,7 +231,7 @@ export const channelInputSchema = z.object({
 
 export const createChannelOp = defineOperation({
   name: "channels.create",
-  capability: "member",
+  capability: "channels:use",
   effect: "write",
   input: channelInputSchema,
   entities: () => [{ kind: "channelList" as const }],
@@ -275,7 +275,7 @@ export const channelTeammatesSchema = z.object({ teammateIds: ID_LIST });
 
 export const updateChannelOp = defineOperation({
   name: "channels.update",
-  capability: "member",
+  capability: "channels:use",
   effect: "write",
   input: z.object({
     id: z.string().min(1),
@@ -300,7 +300,7 @@ export const updateChannelOp = defineOperation({
  */
 export const deleteChannelOp = defineOperation({
   name: "channels.delete",
-  capability: "member",
+  capability: "channels:use",
   effect: "consequential",
   input: idSchema,
   entities: ({ id }) => channelEntities(id),
@@ -408,7 +408,7 @@ async function requireInviter(
 
 export const addChannelMembersOp = defineOperation({
   name: "channels.members.add",
-  capability: "member",
+  capability: "channels:use",
   effect: "write",
   input: z.object({ id: z.string().min(1), userIds: ID_LIST }),
   entities: ({ id }) => channelEntities(id),
@@ -424,7 +424,7 @@ export const addChannelMembersOp = defineOperation({
 
 export const addChannelTeammatesOp = defineOperation({
   name: "channels.teammates.add",
-  capability: "member",
+  capability: "channels:use",
   effect: "write",
   input: z.object({ id: z.string().min(1), teammateIds: ID_LIST }),
   entities: ({ id }) => channelEntities(id),
@@ -446,7 +446,7 @@ export const addChannelTeammatesOp = defineOperation({
  */
 export const removeChannelMemberOp = defineOperation({
   name: "channels.members.remove",
-  capability: "member",
+  capability: "channels:use",
   effect: "consequential",
   input: z.object({ id: z.string().min(1), userId: z.string().min(1) }),
   entities: ({ id }) => channelEntities(id),
@@ -464,7 +464,7 @@ export const removeChannelMemberOp = defineOperation({
 
 export const removeChannelTeammateOp = defineOperation({
   name: "channels.teammates.remove",
-  capability: "member",
+  capability: "channels:use",
   effect: "consequential",
   input: z.object({ id: z.string().min(1), teammateId: z.string().min(1) }),
   entities: ({ id }) => channelEntities(id),
@@ -494,7 +494,7 @@ export interface PostedChannelMessage {
 
 export const postChannelMessageOp = defineOperation({
   name: "channels.messages.post",
-  capability: "member",
+  capability: "channels:use",
   effect: "write",
   input: z.object({
     id: z.string().min(1),
@@ -565,7 +565,7 @@ async function markRead(
  */
 export const markChannelReadOp = defineOperation({
   name: "channels.read",
-  capability: "member",
+  capability: "channels:use",
   effect: "write",
   input: idSchema,
   entities: () => [{ kind: "channelList" as const }],
@@ -586,7 +586,7 @@ export const markChannelReadOp = defineOperation({
  */
 export const listOrgChannelsOp = defineOperation({
   name: "channels.oversight.list",
-  capability: "manageMembers",
+  capability: "channels:oversee",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -606,7 +606,7 @@ export const listOrgChannelsOp = defineOperation({
 /** One channel's transcript for oversight, membership not required. */
 export const readOrgChannelOp = defineOperation({
   name: "channels.oversight.read",
-  capability: "manageMembers",
+  capability: "channels:oversee",
   effect: "read",
   input: idSchema,
   entities: () => [],

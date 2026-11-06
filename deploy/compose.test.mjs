@@ -31,6 +31,7 @@ function check(label, fn) {
 const compose = read("docker-compose.yml");
 const imagesOverlay = read("docker-compose.images.yml");
 const workersOverlay = read("docker-compose.workers.yml");
+const rustOverlay = read("docker-compose.rust.yml");
 const standaloneWorkers = {
   "services/crawl4ai-worker/docker-compose.yml": read("../services/crawl4ai-worker/docker-compose.yml"),
 };
@@ -298,6 +299,48 @@ check("the tls overlay is the one deliberate public listener (#801, CYB-16)", ()
   assert.ok(!compose.includes("caddy"), "no caddy in the base file");
   assert.match(envExample, /^CIELE_DOMAIN=$/m);
   assert.match(envExample, /^CIELE_SUPABASE_DOMAIN=$/m);
+});
+
+check("the rust overlay adds the service on the data plane and points the app at it (#1134)", () => {
+  // It speaks to Postgres directly, like auth/rest/storage, and the app calls
+  // it over the HTTP plane. The app itself gains no zone: it still reaches
+  // Postgres only through the gateway, and the service only by name.
+  assert.deepEqual(serviceNetworks(rustOverlay), { "ciele-api": ["backend", "data"], app: null });
+  assert.deepEqual(publishedPorts(rustOverlay), [], "the app is the service's only caller");
+  assert.match(rustOverlay, /CIELE_RUST_API_SECRET:\s*\$\{CIELE_RUST_API_SECRET:\?[^}]+\}/);
+  assert.match(rustOverlay, /CIELE_RUST_API_URL: http:\/\/ciele-api:8080/);
+  assert.match(rustOverlay, /no-new-privileges:true/);
+  assert.ok(!compose.includes("ciele-api"), "the base file must not know the service: the overlay is the switch");
+  // The MCP endpoint's unported calls go to the app by name, never to a Host
+  // a request named (#801, CYB-03), and the app routes /api/mcp there (#1135).
+  assert.match(rustOverlay, /CIELE_MCP_API_ORIGIN: http:\/\/app:3000/);
+  assert.match(rustOverlay, /CIELE_RUST_MCP: \$\{CIELE_RUST_MCP:-1\}/);
+  // CIELE_RUST_MCP is the app's routing switch; the service never reads it.
+  const service = rustOverlay.slice(rustOverlay.indexOf("  ciele-api:"), rustOverlay.indexOf("\n  app:"));
+  assert.ok(!service.includes("CIELE_RUST_MCP"), "the service is not given a variable it ignores");
+});
+
+check("CIELE_MCP_READ_ONLY reaches whichever server answers /api/mcp (#1135)", () => {
+  // The app answers it without the overlay, and with CIELE_RUST_MCP=0 under
+  // it, so the base file passes the switch; the overlay passes it to the
+  // service. Either one alone would leave a door that still writes.
+  assert.match(compose, /^ {6}CIELE_MCP_READ_ONLY: \$\{CIELE_MCP_READ_ONLY:-\}$/m);
+  assert.match(rustOverlay, /^ {6}CIELE_MCP_READ_ONLY: \$\{CIELE_MCP_READ_ONLY:-\}$/m);
+  assert.match(envExample, /^CIELE_MCP_READ_ONLY=$/m);
+});
+
+check("the rust overlay's default list is every operation the service ports", () => {
+  // The web app's own list (`RUST_OPERATIONS`), which the parity test holds to
+  // the service's table; a stale default would silently leave a port unused.
+  const remote = read("../packages/ops/src/remote.ts");
+  const block = remote.slice(remote.indexOf("RUST_OPERATIONS"));
+  const ported = [...block.slice(block.indexOf("["), block.indexOf("]")).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  // The app's copy carries the default; the service's is empty, meaning all.
+  const fallback = [...rustOverlay.matchAll(/CIELE_RUST_OPERATIONS: \$\{CIELE_RUST_OPERATIONS:-([^}]*)\}/g)]
+    .map((m) => m[1])
+    .find(Boolean);
+  assert.ok(ported.length > 0);
+  assert.deepEqual(fallback?.split(",").sort(), ported.sort());
 });
 
 check("the workers overlay publishes no host port at all", () => {
@@ -656,6 +699,8 @@ const SCHEDULE_EXCEPTIONS = new Set([
   "/api/cron/check-assistant-availability",
   "/api/cron/finalize-crawls",
   "/api/cron/run-routines",
+  // Export schedules choose an hour; the authenticated external worker covers Hobby.
+  "/api/cron/run-exports",
   // Human review expiry (#841) is measured in hours, so the self-host ticks
   // hourly; the Hobby plan gets daily.
   "/api/cron/run-reviews",
@@ -685,6 +730,32 @@ check("the app receives the optional Slack event credentials", () => {
     assert.ok(compose.includes(`${key}: ${"${"}${key}:-}`));
     assert.ok(env.includes(`${key}=`));
   }
+});
+
+check("the rust overlay can send widget endpoints to the service, none by default (#1136)", () => {
+  // The app's switch, empty unless .env names endpoints.
+  assert.match(rustOverlay, /^ {6}CIELE_RUST_WIDGET_ROUTES: \$\{CIELE_RUST_WIDGET_ROUTES:-\}$/m);
+  assert.match(envExample, /^CIELE_RUST_WIDGET_ROUTES=$/m);
+  // The service answers them with the app's own values, under the app's names.
+  const service = rustOverlay.slice(rustOverlay.indexOf("  ciele-api:"), rustOverlay.indexOf("\n  app:"));
+  for (const key of ["APP_ENCRYPTION_KEY_PREVIOUS", "OPENAI_COMPATIBLE_BASE_URL", "OPENAI_COMPATIBLE_CHAT_MODEL", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "AI_GATEWAY_API_KEY"]) {
+    assert.ok(service.includes(`${key}: ${"${"}${key}:-}`), `ciele-api must receive ${key}`);
+  }
+  assert.match(service, /APP_ENCRYPTION_KEY: \$\{APP_ENCRYPTION_KEY:\?/);
+  // Source downloads reach Storage through the gateway, on the backend zone.
+  assert.match(service, /SUPABASE_URL: http:\/\/gateway:8000/);
+  assert.match(service, /SUPABASE_SERVICE_ROLE_KEY: \$\{SERVICE_ROLE_KEY:\?/);
+  // And the base file still knows nothing of the service's switches.
+  assert.ok(!compose.includes("CIELE_RUST_"), "the overlay is the only switch");
+});
+
+check("the app and the Rust service read the caller's address the same way (#1138)", () => {
+  // Both take a trusted-proxy hop count; one without it would rate-limit and
+  // record a different address for the same request.
+  assert.match(compose, /^ {6}CIELE_TRUSTED_PROXY_HOPS: \$\{CIELE_TRUSTED_PROXY_HOPS:-\}$/m);
+  const service = rustOverlay.slice(rustOverlay.indexOf("  ciele-api:"), rustOverlay.indexOf("\n  app:"));
+  assert.match(service, /^ {6}CIELE_TRUSTED_PROXY_HOPS: \$\{CIELE_TRUSTED_PROXY_HOPS:-\}$/m);
+  assert.match(envExample, /^CIELE_TRUSTED_PROXY_HOPS=$/m);
 });
 
 check("the scheduler runs exactly the jobs vercel.json schedules", () => {
@@ -733,7 +804,7 @@ check("bootstrap fills in every generated secret the compose files require", () 
     "EXTERNAL_DB_ADMIN_USER",
     "EXTERNAL_DB_ADMIN_PASSWORD",
   ];
-  const required = [compose, workersOverlay, imagesOverlay, read("docker-compose.external-db.yml")].flatMap((file) =>
+  const required = [compose, workersOverlay, rustOverlay, imagesOverlay, read("docker-compose.external-db.yml")].flatMap((file) =>
     [...file.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?/g)].map((m) => m[1])
   );
   const missing = [...new Set(required)]
@@ -871,13 +942,24 @@ try {
     assert.equal(new Set(minted).size, 2, "each worker credential must be its own secret");
   });
 
+  check("--rust adds its overlay and mints the shared secret, keeping the workers on", () => {
+    const before = envNow();
+    run("--rust");
+    const env = envNow();
+    assert.equal(env.COMPOSE_FILE, "docker-compose.yml:docker-compose.workers.yml:docker-compose.rust.yml");
+    assert.match(env.CIELE_RUST_API_SECRET, /^[0-9a-f]{64}$/);
+    assert.equal(env.CRAWL4AI_API_TOKEN, before.CRAWL4AI_API_TOKEN);
+    run("--rust");
+    assert.equal(envNow().CIELE_RUST_API_SECRET, env.CIELE_RUST_API_SECRET, "a second run must not re-mint it");
+  });
+
   check("adding --images later keeps the workers overlay on", () => {
     const before = envNow();
     run("--images", "v9.9.9");
     const env = envNow();
     assert.equal(
       env.COMPOSE_FILE,
-      "docker-compose.yml:docker-compose.workers.yml:docker-compose.images.yml"
+      "docker-compose.yml:docker-compose.workers.yml:docker-compose.rust.yml:docker-compose.images.yml"
     );
     assert.equal(env.CIELE_IMAGE_TAG, "v9.9.9");
     assert.equal(
@@ -888,10 +970,10 @@ try {
   });
 
   check("asking twice adds nothing twice", () => {
-    run("--workers", "--images", "v9.9.9");
+    run("--workers", "--rust", "--images", "v9.9.9");
     assert.equal(
       envNow().COMPOSE_FILE,
-      "docker-compose.yml:docker-compose.workers.yml:docker-compose.images.yml"
+      "docker-compose.yml:docker-compose.workers.yml:docker-compose.rust.yml:docker-compose.images.yml"
     );
   });
 } finally {
@@ -1181,6 +1263,20 @@ check("the provisioner enforces what the services silently assume", () => {
   // A pooler hostname or a hosted Supabase project is refused before connecting.
   assert.match(entrypoint, /\*-pooler\.\*/);
   assert.match(entrypoint, /db\.\*\.supabase\.co/);
+});
+
+check("hosted Hobby worker drains authenticated delivery jobs every five minutes", () => {
+  const hosted = read("docker-compose.hosted-worker.yml");
+  assert.match(hosted, /context: \.\/cron/);
+  assert.match(hosted, /CRONTAB: webhooks\.crontab/);
+  assert.match(hosted, /APP_URL: \$\{APP_URL:\?/);
+  assert.match(hosted, /CRON_SECRET: \$\{CRON_SECRET:\?/);
+  assert.match(hosted, /restart: unless-stopped/);
+  const jobs = read("cron/webhooks.crontab").split("\n").filter(line => line.trim() && !line.startsWith("#"));
+  assert.deepEqual(jobs, ["*/5 * * * * /usr/local/bin/run-job.sh /api/cron/finalize-crawls", "*/5 * * * * /usr/local/bin/run-job.sh /api/cron/run-exports"]);
+  const dockerfile = read("cron/Dockerfile");
+  assert.match(dockerfile, /ARG CRONTAB=crontab/);
+  assert.match(dockerfile, /COPY \$\{CRONTAB\} \/etc\/crontabs\/root/);
 });
 
 console.log(`\n${passed} checks passed.`);

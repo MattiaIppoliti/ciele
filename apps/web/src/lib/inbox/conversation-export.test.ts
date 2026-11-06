@@ -229,6 +229,17 @@ describe("conversationExportRows", () => {
     expect(row["Negative Feedback Count"]).toBe(1);
   });
 
+  it("marks a Member's replies and system lines as such (#1082)", () => {
+    const row = rowFor({}, [
+      message({ id: "a", role: "user", content: [{ type: "text", text: "Is anyone there?" }] }),
+      message({ id: "b", role: "system", content: [{ type: "text", text: "Dana joined the conversation" }], authorName: "Dana" }),
+      message({ id: "c", role: "operator", content: [{ type: "text", text: "Hi, I can help." }], authorName: "Dana" }),
+    ]);
+    expect(row.Messages.map((item) => item.Sender)).toEqual(["User", "System", "Operator"]);
+    expect(row.Messages[2].Content).toBe("Dana: Hi, I can help.");
+    expect(row.Messages[2].AgenticTrace).toBe("");
+  });
+
   it("gives each Messages[] item exactly the five reference fields", () => {
     const row = rowFor();
     for (const item of row.Messages) {

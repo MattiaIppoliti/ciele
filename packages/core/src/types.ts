@@ -572,7 +572,8 @@ export interface UrlCondition {
  * reason `ChannelAvailability` stores local opening hours plus a zone, "09:00
  * in Europe/Rome" has to stay 09:00 across a daylight-saving change.
  */
-export interface ScheduleCondition {
+export interface AbsoluteScheduleCondition {
+  mode?: "absolute";
   id: string;
   kind: "schedule";
   /** Wall-clock local date-time, `YYYY-MM-DDTHH:mm`. Required. */
@@ -582,6 +583,16 @@ export interface ScheduleCondition {
   /** IANA zone id, e.g. "Europe/Rome". Both bounds are read in this zone. */
   timezone: string;
 }
+
+export interface BusinessHoursScheduleCondition {
+  id: string;
+  kind: "schedule";
+  mode: "business_hours";
+  businessHoursId: string;
+  direction: "during" | "outside";
+}
+
+export type ScheduleCondition = AbsoluteScheduleCondition | BusinessHoursScheduleCondition;
 
 /**
  * One criterion a Flow must meet to stay a routing candidate.
@@ -873,6 +884,7 @@ export interface StudySubmission {
 }
 
 export interface AssistantTools {
+  remoteMcp?: import("./remote-mcp").McpToolSelection[];
   /** Defaults selected in Eval, scoped to this Assistant and pipeline stage. */
   evaluationModels?: Partial<Record<EvaluationStage, EvaluationCandidate>>;
   /** Built-in enablement overrides; unset = runtime default. */
@@ -1165,9 +1177,69 @@ export interface LocalInferenceJob {
   createdAt: string;
 }
 
-export type Role = "owner" | "admin" | "editor" | "viewer";
+/**
+ * A Member's Role. `support_agent` (#1086) is not a rung: it ranks as a
+ * Viewer in every ladder comparison, and answers Visitors through the named
+ * `operate` check (`canOperateConversations`).
+ */
+export type Role = "owner" | "admin" | "editor" | "viewer" | "support_agent";
+
+/**
+ * A Role an Organization defines (#1164, ADR-0028): a named set of
+ * Capabilities. Six are built in (`key` set); every one but Owner can be
+ * edited, and custom ones (`key` null) can be created and deleted.
+ */
+export interface OrgRole {
+  id: string;
+  organizationId: string;
+  /** The built-in this row is (`owner`, `admin`, … `data_viewer`), null for a custom Role. */
+  key: string | null;
+  name: string;
+  description: string;
+  /** Capability ids, in catalogue order. */
+  capabilities: string[];
+  /** Offered in the Organization-wide Role pickers. */
+  organizationLevel: boolean;
+  /** Offered when giving a Member a Role on one Assistant. */
+  assistantLevel: boolean;
+  /** The ladder Role RLS sees for holders of this Role. */
+  tier: Role;
+  /** Members holding it; API keys and pending invitations counted apart. */
+  memberCount: number;
+  apiKeyCount: number;
+  inviteCount: number;
+  /** Assistant assignments (`assistant_access` rows) that name it. */
+  assistantGrantCount: number;
+  /** The Role a new invitation starts with. */
+  memberDefault: boolean;
+  /** The Role a new Assistant assignment starts with. */
+  assistantDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrgRoleInput {
+  name: string;
+  description: string;
+  capabilities: string[];
+  organizationLevel: boolean;
+  assistantLevel: boolean;
+}
+
+/** What one Member may do in one Organization, as the auth seams resolve it. */
+export interface MemberGrant {
+  role: Role;
+  roleId: string | null;
+  roleName: string;
+  capabilities: string[];
+}
+
+/** Every Role, ladder first, for the schemas and pickers that list them. */
+export const ROLES = ["owner", "admin", "editor", "viewer", "support_agent"] as const satisfies readonly Role[];
 
 export interface Organization {
+  /** Starting timezone for new schedules and availability settings. */
+  defaultTimezone?: string;
   id: string;
   name: string;
   /** Circular logo shown in the org switcher, same treatment as an
@@ -1189,13 +1261,28 @@ export interface Organization {
    * page promises.
    */
   transcriptRetentionDays?: number | null;
+  /** Days a message is kept in a Conversation that stays; null = forever. */
+  messageRetentionDays?: number | null;
+  /** Days an Improvement may go without an update; null = forever. */
+  improvementRetentionDays?: number | null;
+  /** Days an audit log entry is kept; always enforced. */
+  auditRetentionDays?: number;
   createdAt: string;
 }
 
 export interface Member {
   userId: string;
   email: string;
+  /**
+   * The ladder Role RLS sees: a built-in's own name, or for a custom or
+   * edited Role the tier its Capabilities derive (`roleTierFor`). Display
+   * {@link roleName}; check Capabilities, not this.
+   */
   role: Role;
+  /** The Role the Member holds (`org_roles.id`); null one migration behind. */
+  roleId?: string | null;
+  /** That Role's name as the Organization calls it. */
+  roleName?: string;
   /** Profile fields, joined from `profiles`, null until the member (or the
    * signup trigger) has set them. */
   username: string | null;
@@ -1203,6 +1290,24 @@ export interface Member {
   lastName: string | null;
   avatarUrl: string | null;
   createdAt: string;
+  /**
+   * `selected` limits the Member to the Assistants they have an access row
+   * for; `all` (the default) is the org Role everywhere, overrides aside.
+   * Absent when read before 20261104132000.
+   */
+  assistantScope?: MemberAssistantScope;
+}
+
+export type MemberAssistantScope = "all" | "selected";
+
+/** One Assistant a Member has an override row for, with its Role there. */
+export interface MemberAssistantAccess {
+  assistantId: string;
+  /** `denied`, or the tier of {@link roleId} on that Assistant. */
+  role: AssistantAccessRole;
+  /** The Role given on that Assistant (`org_roles.id`); null for `denied`. */
+  roleId?: string | null;
+  roleName?: string;
 }
 
 /** The signed-in caller's own profile, Settings > Profile. */
@@ -1229,13 +1334,22 @@ export interface OrganizationPatch {
   traceRetentionDays?: number | null;
   /** Transcript retention window in days; null = keep forever (#801, CYB-12). */
   transcriptRetentionDays?: number | null;
+  /** Days a message is kept in a Conversation that stays; null = forever. */
+  messageRetentionDays?: number | null;
+  /** Days an Improvement may go without an update; null = forever. */
+  improvementRetentionDays?: number | null;
+  /** Days an audit log entry is kept; always enforced. */
+  auditRetentionDays?: number;
 }
 
 export interface Invite {
   id: string;
   organizationId: string;
   email: string;
+  /** The ladder tier of {@link roleId}, see `Member.role`. */
   role: Role;
+  roleId?: string | null;
+  roleName?: string;
   token: string;
   createdAt: string;
 }
@@ -1252,7 +1366,15 @@ export interface OrgApiKey {
   organizationId: string;
   name: string;
   secretHint: string;
+  /** The ladder tier of {@link roleId}, see `Member.role`. */
   role: Role;
+  roleId?: string | null;
+  roleName?: string;
+  /**
+   * The Capabilities of {@link roleId}, read with the key so the auth seam
+   * resolves a request in one query. Absent before Roles carried any.
+   */
+  roleCapabilities?: string[];
   /** Empty when the creating account was since deleted. */
   createdBy: string;
   createdAt: string;
@@ -1262,6 +1384,9 @@ export interface OrgApiKey {
 
 export interface OrgApiKeyInput {
   name: string;
+  /** The Role the key carries (`org_roles.id`). */
+  roleId: string;
+  /** Its ladder tier, for a database one migration behind. */
   role: Role;
   secretHash: string;
   secretHint: string;
@@ -1470,6 +1595,51 @@ export interface WidgetStyle {
 }
 
 /** Escalation destination configured at the organization level. */
+/**
+ * A Member who staffs a Help Desk's Live operator channel (#1084), with the
+ * most Conversations they hold at once.
+ */
+export interface HelpDeskOperator {
+  id: string;
+  organizationId: string;
+  helpDeskId: string;
+  memberId: string;
+  capacity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * An operator's own Available/Away status (#1084), one row per Member and
+ * Organization. Away is the default and what signing out sets.
+ */
+export interface OperatorPresence {
+  id: string;
+  organizationId: string;
+  memberId: string;
+  status: "available" | "away";
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A saved reply a Member inserts into the Inbox reply box instead of typing it
+ * again (#1085). Organization-wide: every Member who can reply can use every
+ * Quick Text. The body may carry Flow template variables, resolved against the
+ * Conversation being answered.
+ */
+export interface QuickText {
+  id: string;
+  organizationId: string;
+  title: string;
+  body: string;
+  /** Optional grouping shown in the picker and on the settings page. */
+  folder: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HelpDesk {
   id: string;
   organizationId: string;
@@ -1477,7 +1647,62 @@ export interface HelpDesk {
   description: string;
   /** Auto-generate an Improvement from the last AI answer on escalation. */
   autoGenerateImprovements: boolean;
+  /**
+   * The retired password-grant ServiceNow registration (#1089). Nothing files
+   * through it; it is read only to tell an admin to move to `ticketingTarget`,
+   * and a later migration deletes it with its sealed secrets.
+   */
   ticketingIntegration: TicketingIntegration | null;
+  /** Where the ticket channel files; absent while target setup is unavailable. */
+  ticketingTarget?: TicketingTarget | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A desk's ticketing target: an Organization-owned Application Connection
+ * the "Create a ticket" channel files through. No credential lives here, the
+ * Connection holds it, so the target can travel anywhere the desk does.
+ */
+export type TicketingTarget =
+  | { provider: "salesforce"; connectionId: string }
+  | {
+      provider: "servicenow";
+      connectionId: string;
+      /** The table the record goes into; `incident` by default. */
+      table: string;
+      /** The column that receives the requester's email; absent = the description. */
+      requesterEmailField?: string;
+    };
+
+export type TicketingProvider = TicketingTarget["provider"];
+
+/** A record a ticket channel filed, as the Inbox and the Widget show it. */
+export interface FiledTicket {
+  provider: TicketingProvider;
+  /** The Case id or the record sys_id. */
+  id: string;
+  /** The Case number or the record number, what a Visitor quotes. */
+  number: string;
+  /** A link to the record in the connected system. */
+  url: string;
+}
+
+/**
+ * One ticket-channel submission, claimed before the call so a retry with the
+ * same request id finds it instead of filing a second record (#1088).
+ */
+export interface EscalationTicket {
+  id: string;
+  organizationId: string;
+  idempotencyKey: string;
+  helpDeskId: string;
+  channelId: string;
+  conversationId: string | null;
+  provider: TicketingProvider;
+  status: "pending" | "filed" | "failed";
+  ticket: FiledTicket | null;
+  error: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1514,7 +1739,9 @@ export type ChannelKind =
   | "ticket"
   | "external_link"
   | "salesforce_chat"
-  | "api_endpoint";
+  | "api_endpoint"
+  /** A person from the team answers in the same chat, after a wait (#1083). */
+  | "live_operator";
 
 export type ChannelFieldType =
   | "user_email"
@@ -1569,6 +1796,11 @@ export interface SupportChannelConfig {
   basicPassword?: string;
   headers?: KeyValuePair[];
   queryParams?: KeyValuePair[];
+  /**
+   * Live operator only (#1083): minutes a Visitor waits for somebody to take
+   * the Conversation over before it goes back to the AI. Default 5.
+   */
+  waitTimeoutMinutes?: number;
 }
 
 /** Conversation detail toggles injected into the escalation payload. */
@@ -1608,11 +1840,41 @@ export interface DayAvailability {
   ranges: TimeRange[];
 }
 
-export type AvailabilityMode = "always" | "limited";
+export interface Holiday {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  yearly: boolean;
+}
+
+export interface BusinessHours {
+  id: string;
+  organizationId: string;
+  name: string;
+  timezone: string;
+  hours: Record<WeekDay, DayAvailability>;
+  holidays: Holiday[];
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Only calendar facts needed by a public channel; no internal holiday names. */
+export type BusinessHoursCalendar = Pick<BusinessHours, "id" | "timezone" | "hours"> & {
+  holidays: Pick<Holiday, "startDate" | "endDate" | "yearly">[];
+};
+
+export type BusinessHoursInput = Omit<BusinessHours, "id" | "organizationId" | "createdAt" | "updatedAt">;
+export type BusinessHoursPatch = Partial<Omit<BusinessHoursInput, "organizationId">>;
+
+export type AvailabilityMode = "always" | "limited" | "business_hours";
 
 /** When this channel may be offered to users. */
 export interface ChannelAvailability {
   mode: AvailabilityMode;
+  /** Required and validated when mode is business_hours. */
+  businessHoursId?: string;
   /** IANA timezone id, e.g. "Europe/Rome". */
   timezone: string;
   hours: Record<WeekDay, DayAvailability>;
@@ -1872,6 +2134,7 @@ export type TeammateVisibility = "org" | "private";
 
 /** Admin-controlled execution, independent of the Standing Role and Ciele Action Grants. */
 export interface TeammateRuntimeConfig {
+  mcpServerIds?: string[];
   harness: { kind: "ciele" } | { kind: "ag_ui"; connectionId: string };
   internet: boolean;
   computer: { browser: boolean; files: boolean; terminal: boolean };
@@ -1958,7 +2221,7 @@ export interface Teammate {
    * API keys or changes roles, so those rungs do not exist here at all rather
    * than existing and being refused.
    */
-  capabilityCeiling: TeammateCapabilityCeiling;
+  actionCeiling: TeammateActionCeiling;
   /**
    * Whether this Teammate may accept its own Suggested Fixes (#770), the one
    * explicit relaxation of ADR-0017's "a Member must accept" invariant. False
@@ -2013,9 +2276,9 @@ export const TEAMMATE_GRANT_DOMAINS: readonly TeammateGrantDomain[] = [
 export type TeammateSystemKind = "flows_agent" | "ciele_ai";
 
 /** How far inside a granted domain a Teammate may go. */
-export type TeammateCapabilityCeiling = "member" | "edit";
+export type TeammateActionCeiling = "member" | "edit";
 
-export const TEAMMATE_CAPABILITY_CEILINGS: readonly TeammateCapabilityCeiling[] = [
+export const TEAMMATE_CAPABILITY_CEILINGS: readonly TeammateActionCeiling[] = [
   "member",
   "edit",
 ];
@@ -2530,6 +2793,7 @@ export interface WorkActivity {
 }
 
 export const MEMBER_NOTIFICATION_KINDS = [
+  "conversation_assigned",
   "assigned",
   "mentioned",
   "commented",
@@ -2538,11 +2802,12 @@ export const MEMBER_NOTIFICATION_KINDS = [
 export type MemberNotificationKind = (typeof MEMBER_NOTIFICATION_KINDS)[number];
 
 /** A notice addressed to one Member about the work (#1048). */
-export interface MemberNotification {
+export interface WorkMemberNotification {
   id: string;
   organizationId: string;
   recipientId: string;
-  kind: MemberNotificationKind;
+  kind: Exclude<MemberNotificationKind, "conversation_assigned">;
+  conversationId?: null;
   projectId: string;
   taskId: string;
   commentId: string | null;
@@ -2555,6 +2820,14 @@ export interface MemberNotification {
   /** Hidden until this moment, then back in the list on its own. */
   snoozedUntil: string | null;
 }
+
+/** A durable assignment notice targets a Conversation rather than a Task. */
+export type MemberNotification = WorkMemberNotification | (Omit<WorkMemberNotification, "kind" | "projectId" | "taskId" | "conversationId"> & {
+  kind: "conversation_assigned";
+  projectId: null;
+  taskId: null;
+  conversationId: string;
+});
 
 export interface NotificationPreferences {
   id: string;
@@ -2765,7 +3038,7 @@ export type TeammatePatch = Partial<
  * ceiling or hand it approval-bypass in the same write.
  */
 export type TeammateGovernancePatch = Partial<
-  Pick<Teammate, "capabilityCeiling" | "approvalBypass" | "runtimeConfig">
+  Pick<Teammate, "actionCeiling" | "approvalBypass" | "runtimeConfig">
 >;
 
 /**
@@ -2798,6 +3071,7 @@ export type SourceStatus = "processing" | "ready" | "error";
 export type BackgroundJobKind =
   | "ingest_source"
   | "draft_improvement_proposal"
+  | "replay_improvement"
   /**
    * The same draft, for a failing standing Goal (#903). A separate kind
    * because its payload carries its own inputs: a goal eval persists no
@@ -2817,13 +3091,23 @@ export type BackgroundJobKind =
    */
   | "resume_webhook_conversation"
   | "answer_slack_mention"
+  | "deliver_outbound_webhook"
+  | "score_assistant_answer"
+  | "notify_export_ready"
   /**
    * One per Document of a committed generation (#930): ask the Organization's
    * model for the page's durable facts and write them as knowledge memories.
    * Its own kind, and its own job per Document, so the crawl finaliser never
    * holds its claim open for a model call per page.
    */
-  | "extract_document_memories";
+  | "extract_document_memories"
+  /**
+   * Fold the messages that left a long Conversation's recent window into its
+   * rolling summary (`conversation-history.ts`). Queued after a Teammate turn
+   * whose thread is longer than the window; the handler no-ops when there is
+   * nothing new to fold.
+   */
+  | "summarize_conversation";
 export type BackgroundJobStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface CrawlFinalizeClaim {
@@ -3156,6 +3440,8 @@ export interface AssistantSourceLink {
 
 /** One row of the hub's Websites / Files / FAQs tables. */
 export interface OrgKnowledgeSourceListItem {
+  /** Absent until the quality migration is available. */
+  usage?: SourceUsageStats;
   id: string;
   collectionId: string;
   name: string;
@@ -3176,6 +3462,7 @@ export interface OrgKnowledgeSourceListItem {
 
 /** Hub table filters; kinds picks the tab (websites/files/faqs buckets). */
 export interface OrgKnowledgeSourceFilter {
+  unused?: boolean;
   kinds: SourceKind[];
   /** Narrow to one ingest status; "" means all. */
   status?: SourceStatus | "";
@@ -3207,7 +3494,8 @@ export type OrgKnowledgeSourceSort =
   | "createdAt"
   | "name"
   | "status"
-  | "updatedAt";
+  | "updatedAt"
+  | "cited30";
 
 /**
  * The Documents table's orderable columns. Memories is a count from another
@@ -3235,6 +3523,7 @@ export interface OrgKnowledgeStatusCounts {
 }
 
 export interface OrgKnowledgeSourcePage {
+  qualityAvailable?: boolean;
   items: OrgKnowledgeSourceListItem[];
   /** Total rows matching the filter, across all pages. */
   total: number;
@@ -3274,7 +3563,7 @@ export interface BackgroundJob {
  * (`insights_datapoints`), or conversations per spoken language
  * (`insights_languages`).
  */
-export type ExportJobKind = "insights_overview" | "insights_datapoints" | "insights_languages";
+export type ExportJobKind = "audit_log" | "insights_overview" | "insights_datapoints" | "insights_languages";
 export type ExportJobStatus = "queued" | "running" | "done" | "error";
 export type ExportJobFormat = "csv" | "json" | "xlsx";
 
@@ -3377,6 +3666,7 @@ export interface KnowledgeMemory {
  * pages is megabytes the list has no use for.
  */
 export interface SourceDocumentListItem {
+  trustTier?: import("./okf").OkfTrustTier;
   id: string;
   /** The Document's path, what identifies it within its Source. */
   path: string;
@@ -3559,6 +3849,8 @@ export interface ConversationPreflightSignals {
 }
 
 export interface ConversationMetadata {
+  /** At least one generated answer was flagged by moderation. */
+  flaggedAnswer?: boolean;
   /** What the pre-flight read about this Conversation (#956), when it ran. */
   preflight?: ConversationPreflightSignals;
   /**
@@ -3654,7 +3946,22 @@ export interface ConversationMetadata {
   csatComment?: string;
   /** Which help desk, and which of its channels, an escalation went to. */
   escalationHelpDesk?: string;
+  escalationHelpDeskId?: string;
+  escalationChannelId?: string;
+  escalationInboxUrl?: string;
   escalationOption?: string;
+  /**
+   * The Chat summary sent with the escalation (#1081), shown in the Inbox
+   * rail. `escalationSummaryKey` is the escalation's request key: a retry with
+   * the same key reuses this text instead of calling the model again.
+   */
+  escalationSummary?: string;
+  escalationSummaryKey?: string;
+  /**
+   * What the Visitor filled in on a Live operator channel's form (#1083), so
+   * the Member who takes the Conversation over reads it in the Inbox rail.
+   */
+  operatorRequestFields?: Array<{ label: string; value: string }>;
   /**
    * The desk the pre-flight had recommended when the Visitor escalated (#955),
    * by name like `escalationHelpDesk`, and whether they took it. Absent when
@@ -3663,6 +3970,8 @@ export interface ConversationMetadata {
    */
   escalationRecommendedHelpDesk?: string;
   escalationFollowedRecommendation?: boolean;
+  /** The record a "Create a ticket" channel filed for this Conversation (#1088). */
+  escalationTicket?: FiledTicket;
   /** Imported per-user fields exposed as personalization variables. */
   externalUserData?: Record<string, string>;
   /** Where those fields came from (CSV upload name, LMS, integration). */
@@ -3705,8 +4014,52 @@ export interface Conversation {
    * before the column existed simply is not held.
    */
   legalHold?: boolean;
+  /**
+   * Creation time of the newest message the message-retention sweep deleted
+   * from this Conversation; null when none was. The Inbox says earlier
+   * messages were deleted instead of opening mid-thread without a reason.
+   */
+  messagesDeletedThrough?: string | null;
+  /**
+   * Who answers the Visitor right now (#1082, #1083): the AI, a Member who took
+   * the Conversation over, or nobody yet because the Visitor asked for a person
+   * and is waiting. Optional because a row read before the columns existed is
+   * simply answered by the AI.
+   */
+  operator?: ConversationOperator;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Who is answering a Conversation (#1082).
+ *
+ * - `ai`: the normal case, every Visitor message starts a Conversation Turn.
+ * - `held`: a Member took it over from the Inbox. Visitor messages are saved
+ *   and start no turn until the Member releases it.
+ * - `waiting`: the Visitor chose a Live operator Support Channel (#1083) and
+ *   nobody has taken it over yet. Visitor messages are saved and start no
+ *   turn. The wait expires `waitTimeoutMinutes` after `waitingSince`, derived
+ *   at read time by `effectiveOperatorState`, so no job has to end it.
+ */
+export type OperatorState = "ai" | "waiting" | "held";
+
+export interface ConversationOperator {
+  state: OperatorState;
+  /** The Member holding the Conversation; null unless `held`. */
+  memberId: string | null;
+  /** Display name shown to the Visitor and in the Inbox. */
+  memberName: string | null;
+  heldAt: string | null;
+  /** When the wait started; null unless the Conversation is or was waiting. */
+  waitingSince: string | null;
+  waitingHelpDeskId: string | null;
+  waitingChannelId: string | null;
+  /** Minutes before an unanswered wait hands the Conversation back to the AI. */
+  waitTimeoutMinutes: number | null;
+  /** The operator a waiting Conversation was assigned to (#1084). */
+  assignedMemberId: string | null;
+  assignedAt: string | null;
 }
 
 /**
@@ -3735,6 +4088,7 @@ export interface InboxConversation
 
 /** Server-owned filters for one bounded Inbox window. */
 export interface InboxQuery {
+  flaggedAnswer?: boolean;
   cursor?: string | null;
   limit?: number;
   search?: string;
@@ -3755,6 +4109,7 @@ export interface InboxQuery {
 
 /** One bounded Inbox window; the cursor is opaque to callers. */
 export interface InboxPage {
+  qualityAvailable?: boolean;
   conversations: InboxConversation[];
   nextCursor: string | null;
 }
@@ -3931,9 +4286,19 @@ export interface StoredMessage {
   /** Durable turn identity; gate resumptions use review-/webhook- IDs. Null on legacy rows. */
   requestId?: string | null;
   conversationId: string;
-  role: "user" | "assistant";
-  /** Reply parts for assistant messages, [{type:'text', text}] for user ones. */
+  /**
+   * `operator` is a Member answering a held Conversation (#1082); `system` is
+   * a line about the Conversation itself ("Dana joined the conversation").
+   * Neither is an AI answer: Insights, the Answer Verdict, Trust Tier inputs
+   * and feedback all read `assistant` only.
+   */
+  role: MessageRole;
+  /** Reply parts for assistant messages, [{type:'text', text}] for the others. */
   content: unknown[];
+  /** The Member who wrote an `operator` or `system` message. */
+  authorMemberId?: string | null;
+  /** Display name of that Member, frozen at write time. */
+  authorName?: string | null;
   flowId: string | null;
   flowName: string | null;
   feedback: -1 | 0 | 1;
@@ -3949,6 +4314,8 @@ export interface StoredMessage {
   createdAt: string;
 }
 
+export type MessageRole = "user" | "assistant" | "operator" | "system";
+
 /** Stable IDs for the Visitor's answer-reaction menu. */
 export type FeedbackReactionId =
   | "positive"
@@ -3958,7 +4325,7 @@ export type FeedbackReactionId =
 /** Message trimmed to what org-wide analytics (Insights) needs. */
 export interface InsightsMessage {
   conversationId: string;
-  role: "user" | "assistant";
+  role: MessageRole;
   feedback: -1 | 0 | 1;
   createdAt: string;
   /**
@@ -4096,6 +4463,46 @@ export interface InsightsOverview {
   };
 }
 
+/**
+ * Append-only evidence that an Improvement's correction holds: a Member's
+ * check of the customer widget (`manual`), or one bounded synthetic replay
+ * (`replay`) that starts `pending` and is settled by the job worker. It never
+ * moves the Improvement's status (see CONTEXT.md, "Improvement Validation").
+ */
+export interface ImprovementValidation {
+  id: string;
+  organizationId: string;
+  improvementId: string;
+  assistantId: string;
+  /** The Member who recorded or requested it; null once that Member is deleted. */
+  validatorId: string | null;
+  kind: "manual" | "replay";
+  status: "pending" | "pass" | "fail" | "error";
+  expectedBehavior: string;
+  changedResources: string;
+  detail: string;
+  publicationId: string | null;
+  /** `getAssistantValidationSnapshot` when recorded; a different current value means stale. */
+  snapshot: string;
+  cases: Array<{ question: string; expectations: GoalExpectations }>;
+  results: Array<{ question: string; answer: string; pass: boolean; detail: string }>;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/**
+ * The Improvements board's storage filters, applied before pagination and
+ * counting in both adapters and in the Rust port. `assigneeId: null` selects
+ * unassigned work; an omitted key does not filter.
+ */
+export interface ImprovementQuery {
+  search?: string;
+  priority?: ImprovementPriority;
+  assigneeId?: string | null;
+  projectId?: string;
+  assistantId?: string;
+}
+
 export type ImprovementStatus =
   | "to_do"
   | "in_progress"
@@ -4103,7 +4510,7 @@ export type ImprovementStatus =
   | "done"
   | "archived";
 
-/** Every lane of the Improvements board, in board order. */
+/** Stable persisted/API statuses; console lifecycle labels live in IMPROVEMENT_WORKFLOW. */
 export const IMPROVEMENT_STATUS_VALUES: readonly ImprovementStatus[] = [
   "to_do",
   "in_progress",
@@ -4323,7 +4730,9 @@ export type AiUsageStage =
    * decision (pre-flight, verifier tier, approval gate, Improvements dedup); the
    * trace, not the ledger, says which question map ran.
    */
-  | "decide";
+  | "decide"
+  /** The Chat summary an escalation carries to a help desk (#1081). */
+  | "escalation_summary";
 
 /**
  * Which credential answered a metered model call, the platform env key
@@ -4637,6 +5046,13 @@ export interface AiUsageInput {
   credentialKind?: AiCredentialKind | null;
   inputTokens: number;
   outputTokens: number;
+  /**
+   * Prompt-cache activity the provider reported, already included in
+   * `inputTokens`. Recorded to measure the cache, not to price it: the cost
+   * estimate still charges every input token at the full rate.
+   */
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
   /** Who spent it, beyond the Organization; absent where nothing is known. */
   spenders?: UsageSpenders;
   /** Which surface produced it; null on a row recorded before #848. */
@@ -4928,7 +5344,7 @@ export interface ObjectAccessEvent extends ObjectAccessEventInput {
 export interface RetentionSweepEventInput {
   organizationId: string;
   /** Which lifecycle ran: transcript deletion, or the older trace strip. */
-  policy: "transcripts" | "traces";
+  policy: "transcripts" | "traces" | "messages" | "improvements";
   retentionDays: number;
   /** The cutoff the sweep computed; rows older than this were the target. */
   cutoff: string;
@@ -4942,6 +5358,55 @@ export interface RetentionSweepEvent extends RetentionSweepEventInput {
   id: string;
   createdAt: string;
 }
+
+/**
+ * Why a Conversation Turn ended, stated once by the code that ended it.
+ *
+ * Success outcomes ride the `done` event and the `chat_turn` row; the failure
+ * outcomes appear only on the row (the wire's `error` event has its own
+ * `code`). Readers switch on this instead of re-deriving the reason from reply
+ * parts, trace steps and error classes.
+ */
+export type TurnOutcome =
+  /** A Flow answered: generatively, verbatim, or with its actions. */
+  | "answered"
+  /** The search asked the Visitor one clarifying question. */
+  | "clarified"
+  /** The search declared it could not find the answer. */
+  | "insufficient"
+  /** The provider refused to answer. */
+  | "refused"
+  /** The answer was cut short by the output-token limit. */
+  | "length_cutoff"
+  /** An action threw and the turn answered with the fallback apology. */
+  | "action_failed"
+  /** A Handover action passed the message on to another Assistant. */
+  | "handed_over"
+  /** A proactive trigger delivered a Notification. */
+  | "notification"
+  /** An FAQ quick reply, answered verbatim with no model call. */
+  | "faq"
+  /** A graded Study Mode answer, no model call. */
+  | "study"
+  /** Pre-engine gates: the fixed reply, no model call. */
+  | "budget_limit"
+  | "usage_limit"
+  | "pending_activation"
+  /** A completed turn re-emitted for the same turn id. */
+  | "replayed"
+  /** A Guardrail blocked the message and sent its configured reply. */
+  | "guardrail"
+  /**
+   * No turn ran: a person is answering this Conversation, or the Visitor is
+   * waiting for one (#1082/#1083).
+   */
+  | "operator"
+  /** Failure outcomes, on the telemetry row only. */
+  | "rate_limited"
+  | "busy"
+  | "throttled"
+  | "aborted"
+  | "failed";
 
 /**
  * One runtime telemetry event: an attributed record of a runtime boundary
@@ -4974,8 +5439,120 @@ export interface RuntimeEventInput {
   pageCount?: number | null;
   errorClass?: string | null;
   errorMessage?: string | null;
+  /** Why a `chat_turn` ended; null for every other kind. */
+  outcome?: TurnOutcome | null;
   traceId?: string | null;
   spanId?: string | null;
+  /**
+   * Where the wall time went (#1112): `TurnTimings` on a `chat_turn`,
+   * `IngestTimings` on an `ingest_job`, null on every other kind.
+   */
+  timings?: TurnTimings | IngestTimings | null;
+}
+
+/** What a Conversation Turn waited on, as the turn clock names it. */
+export type TurnWaitKind =
+  | "queue"
+  | "model"
+  | "embed"
+  | "rerank"
+  | "decide"
+  | "db"
+  /** Vector search (`match_chunks*`, `match_memories`), kept out of `db`. */
+  | "retrieval"
+  /** A tool execution, start to end, whatever it waited on inside. */
+  | "tool"
+  /** Ingestion only: splitting raw text into Concept drafts. */
+  | "parse"
+  /** Ingestion only: chunking Concept bodies for embedding. */
+  | "chunk";
+
+/**
+ * What started a Conversation Turn, so live-chat percentiles can leave out
+ * the turns nobody was watching (#1112). `live` is a person waiting on the
+ * stream (widget, Preview, Teammate chat, Flows Agent); `api` is a machine
+ * caller holding a socket for the whole answer; the rest are unattended.
+ */
+export type TurnTrigger =
+  | "live"
+  | "api"
+  | "proactive"
+  | "routine"
+  | "resume"
+  | "slack"
+  | "channel";
+
+/**
+ * Where a Conversation Turn's wall time went (#1112). Every `*Ms` wait is the
+ * union of that kind's intervals, so overlapping calls count once, and
+ * `waitMs` is the union across all kinds: `durationMs - waitMs` is the time no
+ * external call was in flight. `cpuMs` is process-wide and remains an upper
+ * bound even when no other clocked work overlaps.
+ *
+ * Rows from the clock's first version lack `retrievalMs`, `toolMs`,
+ * `modelMsByStage`, `tools`, `trigger` and `jobsInFlight`, and counted only
+ * turns in `overlap`.
+ */
+export interface TurnTimings {
+  /** Turn start to the first newly generated text or part on the wire; null if none was sent. */
+  firstTokenMs: number | null;
+  /** Waiting for a concurrency slot. */
+  queueMs: number;
+  /** Language-model calls, one per agent-loop step. */
+  modelMs: number;
+  /** `modelMs` split by the `ai_usage` stage each call ran for, each a union. */
+  modelMsByStage: Partial<Record<AiUsageStage, number>>;
+  /** Individual model calls, including overlapping calls, by usage stage. */
+  modelCallTimings: Array<{ stage: AiUsageStage; ms: number }>;
+  embedMs: number;
+  rerankMs: number;
+  /** Jev `decide()` calls. */
+  decideMs: number;
+  /** The turn's own `Db` calls, vector search excluded. */
+  dbMs: number;
+  /** Vector search calls on the turn's `Db` handles. */
+  retrievalMs: number;
+  /** Tool executions, union across every tool. Includes what the tools waited on. */
+  toolMs: number;
+  /** Per tool name: how many calls, and the union of their wall time. */
+  tools: Record<string, { calls: number; ms: number }>;
+  /** Individual tool calls, including overlapping calls. */
+  toolCallTimings: Array<{ tool: string; ms: number }>;
+  /** Union of every wait above. */
+  waitMs: number;
+  modelCalls: number;
+  /** User + system CPU of the process across the turn. */
+  cpuMs: number;
+  /**
+   * The most units of clocked work the process ran at once during this one
+   * (1 = no other clocked work): turns plus job-layer jobs.
+   */
+  overlap: number;
+  /** How many of `overlap` were job-layer jobs, at most, during the turn. */
+  jobsInFlight: number;
+  trigger: TurnTrigger;
+}
+
+/**
+ * Where one `ingest_source` job's wall time went (#1112), the same rules as
+ * `TurnTimings`: each figure a union of its intervals, `cpuMs` process-wide.
+ */
+export interface IngestTimings {
+  /** Raw text into Concept drafts. */
+  parseMs: number;
+  /** Concept bodies into embedding chunks. */
+  chunkMs: number;
+  /** Embedding requests. */
+  embedMs: number;
+  /** The job's own `Db` calls. */
+  dbMs: number;
+  /** Union of every figure above. */
+  waitMs: number;
+  /** Concept drafts the job wrote. */
+  concepts: number;
+  cpuMs: number;
+  overlap: number;
+  jobsInFlight: number;
 }
 
 export interface Flow {
@@ -5119,3 +5696,156 @@ export interface ThreadPreference {
   createdAt: string;
 }
 export type ThreadTarget = { kind: "inbox" | "conversation" | "channel"; id: string };
+
+
+/** Previous FAQ text, retained before each edit; never rewritten by a Member. */
+export interface FaqHistoryEntry {
+  id: string;
+  organizationId: string;
+  sourceId: string;
+  question: string;
+  answer: string;
+  actor: string;
+  createdAt: string;
+}
+
+
+/** Aggregate Library citation/feedback figures; no transcript or Visitor identity. */
+export interface SourceUsageStats {
+  sourceId: string;
+  cited30: number;
+  positive30: number;
+  negative30: number;
+  lastCitedAt: string | null;
+  unused90: boolean;
+  assistants: { id: string; title: string; answers: number }[];
+}
+
+
+export interface FaqDuplicate {
+  documentId: string;
+  sourceId: string;
+  question: string;
+  answerPreview: string;
+  similarity: number;
+}
+
+
+export interface FaqImportDuplicate {
+  row: number;
+  question: string;
+  existing: FaqDuplicate[];
+  rows: number[];
+}
+
+
+export interface FaqImportResult {
+  imported: number;
+  assistantId: string;
+  duplicates: FaqImportDuplicate[];
+  duplicateCheckIncomplete: boolean;
+}
+
+
+/** An immutable configuration operation, with identifiers and actor snapshots only. */
+export interface AuditLogEntry {
+  id: string;
+  organizationId: string;
+  createdAt: string;
+  operation: string;
+  effect: "write" | "consequential";
+  entities: Array<{ kind: string; id?: string; assistantId?: string }>;
+  memberId: string | null;
+  memberName: string | null;
+  memberEmail: string | null;
+  apiKeyId: string | null;
+  teammateId: string | null;
+  agentAuthor: string | null;
+  surface: "console" | "api" | "mcp" | "teammate";
+  outcome: string;
+  /** What the change was about, as the operation described it (a member's email, a key's name). */
+  targetLabel?: string | null;
+  /** A second line under the target, such as "Admin role". */
+  targetDetail?: string | null;
+  /** Each changed field by its label; empty when the operation described none. */
+  changes?: Record<string, AuditFieldChange>;
+}
+/** One field's change inside an audit entry; either side is null when absent. */
+export interface AuditFieldChange {
+  before: unknown;
+  after: unknown;
+}
+/** What an operation may say about its own change, beside its identifiers. */
+export interface AuditDescription {
+  target?: { label: string; detail?: string | null };
+  changes?: Record<string, AuditFieldChange>;
+}
+export interface AuditLogFilter {
+  memberId?: string;
+  domain?: string;
+  /** Any of these operation names (the action filter). */
+  operations?: string[];
+  from?: string;
+  to?: string;
+  limit?: number;
+  /** Newest first by default. The cursor is before/beforeId newest first, after/afterId oldest first. */
+  order?: "newest" | "oldest";
+  before?: string;
+  beforeId?: string;
+  after?: string;
+  afterId?: string;
+}
+
+export type AssistantAccessRole = "denied" | "viewer" | "editor" | "admin";
+
+/** An override row joined with the member's profile (mirrors Member). */
+export interface AssistantAccessEntry {
+  userId: string;
+  email: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  role: AssistantAccessRole;
+  /** The Role given on this Assistant; null for `denied`. */
+  roleId?: string | null;
+  roleName?: string;
+  /** Last time this override was set (stamped server-side). */
+  grantedAt: string;
+  /** Who set it (stamped server-side; null for pre-audit rows). */
+  grantedBy: string | null;
+}
+
+export interface ModerationCounts { visitors: number; answers: number }
+
+/** Portable configuration; source identity, credentials and conversation data do not travel. */
+export const ASSISTANT_BUNDLE_MAX_BYTES = 5 * 1024 * 1024;
+export interface AssistantBundle {
+  bundleVersion: 1;
+  assistant: AssistantPatch & { title: string };
+  flows: Array<FlowInput & { enabled: boolean; builtIn: boolean; isDefault: boolean }>;
+  skills: Array<Omit<SkillSnapshot, "id">>;
+  collections: string[];
+  apiIntegration: Omit<ApiIntegrationInput, "assistantId" | "organizationId" | "encryptedCredential"> | null;
+}
+
+export type ExportScheduleCadence = { kind: "weekly"; weekday: number } | { kind: "monthly"; day: number };
+export interface ExportSchedule {
+  id: string;
+  organizationId: string;
+  name: string;
+  kind: Exclude<ExportJobKind, "audit_log">;
+  format: ExportJobFormat;
+  filters: Record<string, string>;
+  cadence: ExportScheduleCadence;
+  /** UTC hour, displayed in the Member's local time. */
+  hour: number;
+  enabled: boolean;
+  recipientMemberIds: string[];
+  createdBy: string | null;
+  lastSlotAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export type ExportScheduleInput = Pick<ExportSchedule, "organizationId" | "name" | "kind" | "format" | "filters" | "cadence" | "hour" | "recipientMemberIds"> & Partial<Pick<ExportSchedule, "createdBy" | "enabled">>;
+export type ExportSchedulePatch = Partial<Omit<ExportScheduleInput, "organizationId" | "createdBy">>;

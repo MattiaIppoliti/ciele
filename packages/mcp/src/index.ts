@@ -26,6 +26,7 @@ export async function main(): Promise<void> {
   }
   const readOnly = flag(process.env.CIELE_MCP_READ_ONLY);
   const client = new CieleClient({
+    surface: "mcp",
     apiKey,
     baseUrl: process.env.CIELE_BASE_URL,
   });

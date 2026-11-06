@@ -16,6 +16,7 @@ async function applyEffect(
     case "create_improvement":
       await raiseOrAttachImprovement(ctx.db, ctx.organizationId, {
         title: effect.title,
+        source: "flow_action",
         messageId: ctx.messageId,
         conversationId: ctx.conversationId,
       });

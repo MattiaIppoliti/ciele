@@ -20,7 +20,7 @@ export function CatalogOverview({ kind = "component" }: { kind?: ComponentFamily
     <>
       <div className="mb-8 max-w-2xl">
         <p className="mb-2 text-xs text-muted-foreground">Ciele design system</p>
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-display">{title}</h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">{isBlock
           ? "Complete features composed from the same components: tables, conversations, editors, and settings. Try the full interaction before reading the implementation."
           : "One component per page. Explore its states and variants, try the controls, and read the implementation used by Ciele."}</p>

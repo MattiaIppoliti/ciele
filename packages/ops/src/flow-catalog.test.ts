@@ -87,7 +87,7 @@ describe("the served Flow catalogue", () => {
   });
 
   it("is a read a Viewer can make, and mutates nothing", () => {
-    expect(flowCatalogOp.capability).toBe("member");
+    expect(flowCatalogOp.capability).toBe("flows:view");
     expect(flowCatalogOp.entities({}, undefined as never)).toEqual([]);
   });
 });

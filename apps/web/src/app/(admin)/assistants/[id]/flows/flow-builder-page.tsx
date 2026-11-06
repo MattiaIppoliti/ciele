@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { FlowBuilder } from "@/components/assistant/flow-builder";
-import { requirePageMember } from "@/lib/authz";
+import { requirePageMember, requireAssistantPageAccess } from "@/lib/authz";
 import { loadFlowBuilderCatalogue } from "@/lib/flow-builder-catalogue";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
 
 /** Shared deep implementation behind the new-Flow and edit-Flow routes. */
@@ -13,7 +13,8 @@ export async function FlowBuilderPage({
   assistantId: string;
   flowId: string | null;
 }) {
-  const { db, reads, role, session } = await requirePageMember();
+  const { db, reads, session } = await requirePageMember();
+  const { access } = await requireAssistantPageAccess(assistantId);
   const assistant = await getAssistantCached(assistantId);
   if (!assistant) notFound();
 
@@ -48,7 +49,7 @@ export async function FlowBuilderPage({
       assistantId={assistantId}
       flow={flow}
       memberId={session.userId}
-      canEdit={canEdit(role)}
+      canEdit={can(access, "flows:edit")}
       assistants={assistants
         .filter((candidate) => candidate.id !== assistantId)
         .map((candidate) => ({ id: candidate.id, title: candidate.title }))}

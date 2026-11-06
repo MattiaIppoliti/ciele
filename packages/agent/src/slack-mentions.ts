@@ -587,6 +587,8 @@ async function answer(
       },
     ],
     signal: AbortSignal.timeout(TURN_TIMEOUT_MS),
+    // Answered from the job queue, so its latency is not live chat's (#1112).
+    turnTrigger: "slack",
     // No personal subscription or fabricated Ciele Member identity for Slack traffic.
   });
   let view: TurnView = { ...EMPTY_TURN_TRACE, parts: [], streamingText: null };

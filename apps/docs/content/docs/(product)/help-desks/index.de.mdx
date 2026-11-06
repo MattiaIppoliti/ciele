@@ -16,32 +16,220 @@ mehreren Assistenten verbinden.
 | Live chat | Das Widget zeigt den konfigurierten Kontaktpfad für den Live-Chat an. |
 | External link | Das Widget öffnet das konfigurierte Ziel. |
 | API endpoint | Das Widget zeigt das Kanalformular an und sendet es an den konfigurierten Endpoint. |
+| Create a ticket | Das Widget zeigt das Kanalformular an und legt einen Salesforce Case oder einen ServiceNow-Datensatz an. Der Besucher sieht die Ticketnummer. |
+| Live Operator | Der Visitor bleibt im Chat und wartet auf eine Person aus Ihrem Team. |
 
 Konfigurieren Sie einen Kanal erst, nachdem Sie den gesamten Visitor-Pfad
 getestet haben.
 
+## Ticket erstellen
+
+Der Kanal **Create a ticket** legt einen Datensatz in dem System an, das der
+Help Desk als sein Ticketing-Ziel festlegt. Legen Sie das Ziel fest, bevor Sie
+den Kanal hinzufügen.
+
+### Das Ticketing-Ziel festlegen
+
+1. Verbinden Sie Salesforce oder ServiceNow unter **Knowledge → Applications**.
+   Die Verbindung muss zur Organisation gehören. Eine persönliche Verbindung
+   wird nicht angezeigt.
+2. Öffnen Sie den Help Desk.
+3. Wählen Sie in **Ticketing Integration** die Option **Choose a connection**
+   aus.
+4. Wählen Sie die Verbindung aus.
+5. Geben Sie für ServiceNow den **Table** ein. Der Standardwert ist `incident`.
+   Sie können auch ein **Requester email column** eingeben. Es darf nicht
+   `description` oder `short_description` sein, da diese Spalten Ticketinhalte
+   enthalten.
+6. Wählen Sie **Save** aus.
+
+### Feldzuordnung
+
+Das Kanalformular beginnt mit drei Feldern: Email, Subject und Description.
+
+| Formularfeld | Salesforce Case | ServiceNow-Datensatz |
+| --- | --- | --- |
+| E-Mail | Web-E-Mail (`SuppliedEmail`) | Die Spalte „E-Mail-Adresse des Anfragenden“. Wenn Sie keine Spalte festlegen, wird die E-Mail in die Beschreibung eingefügt. |
+| Subject | Subject | `short_description` |
+| Description | Description | `description` |
+
+Andere Felder, die der Besucher ausfüllt, werden als `Label: value` Zeilen in
+die Beschreibung übernommen. Wenn das **Conversation Data** des Kanals den
+vollständigen Chatverlauf enthält, folgt das Transkript auf die Beschreibung.
+Ein Salesforce Case erhält den Ursprung `Web`.
+
+Die maximale Länge für den Betreff beträgt 255 Zeichen. Die Beschreibung ist auf
+32.000 Zeichen begrenzt, einschließlich der Formularwerte, der Zusammenfassung
+und des Transkripts. Ciele bittet Sie, eine zu umfangreiche Anfrage zu kürzen,
+bevor ein Ticket erstellt wird. Es kürzt den Text nicht ab. Das externe System
+kann niedrigere Grenzwerte durchsetzen.
+
+### Berechtigungen
+
+- Salesforce: Der Benutzer, der die Anwendung verbunden hat, muss über die
+  Berechtigung **Create** für Cases verfügen. Die Verbindung benötigt keinen
+  neuen Scope.
+- ServiceNow: Der Benutzer, der die Anwendung verbunden hat, muss in der Lage
+  sein, Datensätze in der Zieltabelle zu erstellen.
+
+### Ergebnisse
+
+- Der Besucher sieht die Bestätigungsmeldung, die Ticketnummer und einen **View
+  ticket**-Link. Das externe System kann eine Anmeldung erfordern.
+- Der Inbox zeigt die Ticketnummer im **Escalation** Panel an, zusammen mit
+  einem Link zum Datensatz. Ein Ticket, das vor der ersten Chat-Nachricht
+  eingereicht wird, erstellt dort ebenfalls eine Conversation.
+- Wenn der Browser dieselbe Übermittlung erneut versucht, legt Ciele keinen
+  zweiten Datensatz an. Eine noch laufende Anfrage bleibt im Formular. Wählen
+  Sie **Submit** erneut aus, um den Status zu prüfen.
+- Wenn Salesforce oder ServiceNow den Datensatz ablehnt oder nicht antwortet,
+  zeigt das Widget die anderen Kanäle des Help Desks an. Die Conversation ist
+  nicht als eskaliert gekennzeichnet. Wenn eine Antwort verloren geht, kann der
+  Datensatz im externen System vorhanden sein. Ciele wiederholt diese
+  Übermittlung nicht. Wenden Sie sich an den Help Desk, bevor Sie eine neue
+  Anfrage einreichen.
+- Nach einem Fehler nennt eine **Integration**-Warnung die Verbindung und den
+  Fehler. Die Warnmeldung wird zurückgesetzt, sobald das nächste Ticket
+  eingereicht wird.
+
+### ServiceNow mit einem Passwort
+
+Früher konnte ein Help Desk ServiceNow mit einem Benutzernamen und einem
+Passwort verbinden. Diese Integration legt keine Tickets mehr an. Ein Help Desk,
+der diese Integration noch hat, zeigt eine Warnmeldung an. Verbinden Sie
+ServiceNow unter **Knowledge → Applications** und wählen Sie diese Verbindung
+als Ticketing-Ziel aus.
+
+## Chat-Zusammenfassung
+
+Die Registerkarte **Conversation Data** eines E-Mail-, API-Endpoint- oder
+„Create a ticket“-Kanals verfügt über die Einstellung **Chat summary**. Wenn
+diese Option aktiviert ist, erstellt Ciele eine kurze Zusammenfassung der
+Conversation, wenn ein Visitor eskaliert. Die Zusammenfassung informiert Ihr
+Team darüber, was der Visitor gefragt hat und was der Assistant bereits
+beantwortet hat.
+
+- Bei einer E-Mail-Eskalation wird die Zusammenfassung über den Formularfeldern
+  angezeigt. Wenn **Full chat history** ebenfalls aktiviert ist, folgt das
+  Transkript nach den Formularfeldern.
+- Bei einer Eskalation über einen API-Endpunkt wird die Zusammenfassung im Feld
+  `summary` der Payload gesendet.
+- Bei einer Eskalation vom Typ „Create a ticket“ wird die Zusammenfassung an die
+  Ticketbeschreibung angehängt, gefolgt vom Transkript, sofern dies gewünscht
+  ist.
+- Die Inbox-Details der Conversation zeigen die Zusammenfassung an.
+
+Ciele verwendet für die Zusammenfassung die Verbindungen zu den KI-Anbietern der
+Organisation und niemals das persönliche Abonnement eines Members. Ciele erfasst
+den Anruf in der AI-Nutzung der Organisation. Wenn der Visitor dieselbe
+Eskalation erneut sendet, verwendet Ciele dieselbe Zusammenfassung und ruft das
+Modell nicht erneut auf.
+
+Wenn Ciele die Zusammenfassung nicht erstellen kann, wird die Eskalation
+trotzdem ausgelöst. Die E-Mail enthält die Zeile „Summary unavailable“. In der
+API-Payload ist `summary` auf `null` und `summaryNote` auf „Summary unavailable“
+gesetzt. Eine Eskalation, die erfolgt, bevor der Visitor eine Nachricht sendet,
+enthält keine Zusammenfassung.
+
+## Live-Operator-Kanal
+
+Ein **Live operator**-Kanal ermöglicht es einem Besucher, nach einer bestimmten
+Person zu fragen, ohne den Chat zu verlassen. Der Kanal hat einen Namen, ein
+optionales Formular, einen Verfügbarkeitsplan und ein Warte-Timeout. Das
+Standard-Warte-Timeout beträgt 5 Minuten.
+
+Wenn ein Besucher den Kanal auswählt:
+
+1. Der Besucher füllt das Formular aus, sofern der Kanal eines hat.
+2. Die Conversation wird in die Liste **Waiting** oben im Inbox aufgenommen. Die
+   längste Wartezeit steht an erster Stelle, und jede Zeile zeigt die Wartezeit
+   sowie den Help Desk an.
+3. Das Navigationselement Inbox zeigt an, wie viele Besucher warten.
+4. Das Chat-Fenster teilt dem Besucher mit, dass eine Person hinzukommen wird.
+   Der Assistant antwortet nicht, während der Visitor wartet, speichert jedoch
+   jede Nachricht.
+5. Ein Member wählt die Conversation aus und wählt **Take over**. Die Wartezeit
+   endet, und das Member antwortet im selben Chat. Siehe
+   [Inbox](/operations/inbox).
+
+Wenn vor Ablauf des Timeouts niemand die Konversation übernimmt, wird der
+Besucher im Chat-Fenster darüber informiert. Der Assistant antwortet erneut, und
+das Chat-Fenster zeigt die anderen Kanäle des Help Desks an.
+
+### Operators und Status
+
+Ein Help Desk mit einem Live-Operator-Kanal verfügt über einen Abschnitt
+**Operators**. Wählen Sie die Members aus, die diesen Kanal bearbeiten. Jeder
+Operator hat eine Kapazität, d. h. die maximale Anzahl von Conversations, die
+der Operator gleichzeitig führen kann. Die Standardkapazität beträgt 3.
+
+Jeder Operator legt **Available** oder **Away** über die Status-Schaltfläche in
+der oberen Leiste fest. Ciele behält den Status bei, wenn Sie die Seite neu
+laden. Wenn Sie sich abmelden, ändert sich Ihr Status zu **Away**.
+
+Ciele zeigt dem Visitor den Live-Operator-Kanal nur dann an, wenn mindestens ein
+Operator des Help Desks **Available** ist. Ein Visitor wartet nicht in einer
+Warteschlange, die niemand überwacht.
+
+### Zuweisung
+
+Wenn ein Visitor beginnt zu warten, weist Ciele die Conversation einem Operator
+des Help Desk zu:
+
+- Der Operator muss **Available** sein und darf seine Kapazität nicht
+  überschreiten.
+- Ciele wählt den Operator mit den wenigsten Conversations aus. Eine
+  Conversation, die der Operator führt oder die auf ihn wartet, wird gezählt.
+- Wenn zwei Operators die gleiche Anzahl haben, wählt Ciele den Operator aus,
+  der zuletzt am längsten keine Zuweisung erhalten hat.
+
+Der zugewiesene Operator erhält in der Konsole eine dauerhafte Member
+Notification. Sie verbleibt in **Notifications**, bis sie gelesen, archiviert
+oder gelöscht wird. Die Waiting list zeigt **Assigned to you** für diese
+Conversation an. Der zugewiesene Operator oder jedes andere Mitglied, das
+Visitors beantworten kann, kann die Conversation übernehmen.
+
+Wenn kein Operator verfügbar ist, verbleibt die Conversation ohne Zuweisung in
+der Waiting list. Ciele weist sie zu, wenn ein Operator eine Conversation
+freigibt oder zu **Available** wechselt.
+
+Ciele protokolliert die Eskalation in der Conversation ebenso wie bei den
+anderen Kanaltypen. Die Inbox-Details zeigen den Kanalnamen und die
+Formularwerte an. Wenn der Help Desk bei einer Eskalation Improvements erstellt,
+tut dieser Kanal dasselbe.
+
 ## Auswahl der Eskalation
 
 Ein Assistant kann eine stets verfügbare **Contact support**-Aktion anzeigen.
-Ciele kann anhand der Beschreibung und des Konversationskontexts einen
+Ciele kann anhand der Beschreibung und des Kontexts der Konversation einen
 verbundenen Help Desk empfehlen.
 
-Der Visitor wählt einen verfügbaren Channel aus. Das Widget zeigt dann das
+Der Besucher wählt einen verfügbaren Kanal aus. Das Widget zeigt dann das
 konfigurierte Formular oder die konfigurierte Kontaktaktion an.
 
-Ein Visitor kann auch **@** in das Nachrichtenfeld schreiben. Das Chat-Fenster
+Ein Besucher kann auch **@** in das Nachrichtenfeld schreiben. Das Chat-Fenster
 zeigt die Help Desks an, die dieser Assistent empfehlen kann. Wenn der Besucher
 einen auswählt, entfernt das Chat-Fenster das **@** und zeigt diesen Help Desk
 an. Der Text wird nicht an den Assistant gesendet.
 
 Ein Help Desk ohne aktiven Kanal wird in dieser Liste nicht angezeigt.
 
-## Einen Helpdesk erstellen
+## Einen Help Desk erstellen
 
 1. Öffnen Sie **Help Desks**.
 2. Erstellen Sie einen Help Desk.
-3. Geben Sie einen Namen und eine Weiterleitungsbeschreibung ein.
+3. Geben Sie einen Namen und eine Routing-Beschreibung ein.
 4. Fügen Sie einen unterstützten Kanal hinzu.
 5. Konfigurieren Sie die Verfügbarkeit und die Formularfelder.
 6. Verbinden Sie den Help Desk mit einem Assistant.
-7. Testen Sie die Eskalation in der Vorschau.
+7. Testen Sie die Eskalation in Preview.
+
+### Anwesenheit in der Konsole
+
+Die Konsole erneuert **Available**, während der angemeldete Operator verbunden
+bleibt. Wenn alle Tabs der Konsole geschlossen werden oder die Sitzung
+unterbrochen wird, wird der Operator innerhalb von zwei Minuten **Away**.
+
+Das erneute Laden einer aktiven Konsole bewahrt den Status. Ein Heartbeat ändert
+niemals einen expliziten **Away** zurück zu **Available**. Wählen Sie
+**Available** aus, um erneut Zuweisungen zu erhalten.

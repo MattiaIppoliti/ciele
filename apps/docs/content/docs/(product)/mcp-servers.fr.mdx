@@ -1,0 +1,100 @@
+---
+title: Serveurs MCP
+description: Connectez des outils externes pour les Teammates et les Assistants publiés.
+---
+
+Un **MCP Server Connection** connecte votre organisation à un serveur externe
+Model Context Protocol. Le serveur fournit des outils. Ciele contrôle quels
+outils peuvent s’exécuter.
+
+## Enregistrer un serveur
+
+Un Owner ou un Admin ouvre **Settings → MCP servers**, sélectionne **Add
+server**, puis saisit un nom et une URL HTTP streamable. Un bearer token est
+facultatif. Ciele scelle le token dans un magasin d’identifiants distinct. Il ne
+renvoie jamais le token dans les paramètres de connexion ni dans un instantané
+de Publication.
+
+Ciele vérifie l’URL et identifie les noms des outils, leurs descriptions et
+leurs schémas d’entrée. Des points de terminaison HTTPS publics sont requis en
+production. Les adresses privées et les redirections sont refusées. Ciele prend
+en charge à la fois les protocoles modernes et les protocoles plus anciens.
+
+Chaque nouvel outil démarre **Off**. L’annotation read-only d’un serveur est une
+indication. Elle n'accorde pas d'autorisation.
+
+## Consulter les politiques des outils
+
+Chaque outil est associé à une seule politique :
+
+| Policy | Comportement |
+| --- | --- |
+| Run freely | Ciele peut appeler l’outil sans l’approbation d’un Member. |
+| Ask first | Un Teammate affiche une carte d’approbation indiquant l’outil et les arguments masqués avant de l’appeler. |
+| Off | Ciele ne propose pas l’outil. |
+
+L’approbation d’un appel exécute l’action enregistrée une seule fois via la
+demande d’approbation d’action. Le refus laisse l’action dans l’état « refusée
+». La modification d’une politique est une opération de configuration ayant des
+conséquences importantes.
+
+**Refresh** découvre les définitions actuelles. Une politique est associée au
+hash de la définition que l’administrateur a examiné. Lorsqu’une description, un
+schéma ou un autre champ de définition est modifié, l’outil affiche **Changed**
+et est suspendu. Vérifiez la définition actuelle et redéfinissez sa politique.
+Les outils supprimés restent visibles pour examen et ne peuvent pas être
+exécutés.
+
+## Activer les serveurs pour un Teammate
+
+Dans les paramètres d’exécution du Teammate, un Owner ou un Admin choisit les
+serveurs MCP enregistrés. Le harness natif de Ciele propose les outils activés
+sous un préfixe de serveur, de sorte que les noms des outils de serveur ne
+peuvent pas entrer en conflit. Un Teammate ne peut pas enregistrer son propre
+serveur ni modifier une politique.
+
+L’option « Ask first » attend l’intervention du Member qui a effectué
+l’invocation, d’un Owner ou d’un Admin. L’appel utilise les arguments
+enregistrés après approbation. Sa politique et l’accès du Teammate sont vérifiés
+à nouveau avant son exécution.
+
+## Activer des outils pour un Assistant
+
+Ouvrez le **Tools & Skills → MCP servers** de l'Assistant. Choisissez ses outils
+Run freely et publiez. Les outils « Ask first » ne peuvent pas s’exécuter pour
+les Visiteurs. L’action Publish refuse une sélection qui nécessite une
+approbation, qui est désactivée ou qui présente un hash de définition obsolète.
+
+Une Publication ne stocke que les identifiants de serveur, les noms d’outils et
+les hachages de définition. Ciele lit l’identifiant sur le serveur lorsqu’un
+appel s’exécute. Au moment du tour, un outil doit toujours disposer de la
+politique Run freely et conserver le même hash de définition. Sinon, Ciele
+l’omet et déclenche une alerte vous invitant à le vérifier et à le republier.
+Preview applique les mêmes règles.
+
+Un tour de Visitor effectue au maximum cinq appels MCP. Les résultats des outils
+sont des données externes. Ils ne sont pas des Sources de connaissances et ne
+sont jamais ajoutés en tant que citations.
+
+## Inspecter les appels et les échecs
+
+Les sections Turn Trace et Inbox affichent le serveur, l’outil, les arguments
+expurgés, le statut et le résumé des résultats. Les résultats distants passent
+par le filtre de contenu non approuvé de Ciele. Les résultats volumineux restent
+dans un espace de stockage limité pour le tour. Le modèle lit des fenêtres
+supplémentaires à l’aide d’un descripteur de résultat et reçoit la longueur
+totale.
+
+Un résultat Ask first approuvé est enregistré avec sa Conversation ou son
+Channel. Le tour suivant reçoit une première fenêtre protégée et peut lire le
+reste par handle sans répéter l’appel externe. Les autres Conversations ne
+peuvent pas lire ce résultat.
+
+Chaque tentative de connexion et chaque appel d’outil sont soumis à un délai
+total de 30 secondes. Les réponses sont limitées à un mébioctet. Un échec de
+connexion déclenche une alerte. La prochaine connexion réussie la fait
+disparaître.
+
+Supprimez un serveur pour cesser de proposer ses outils. Les sélections
+d’Assistants existantes doivent ensuite être vérifiées avant d’être publiées à
+nouveau.

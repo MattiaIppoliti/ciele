@@ -8,33 +8,123 @@ Eine Organisation ist die Tenant-Grenze für Ciele-Daten und -Berechtigungen.
 Verwenden Sie **Settings** für diese aktuellen Bereiche:
 
 - **General** für Informationen zur Organisation.
-- **Members** für Mitgliedschaften, Einladungen und Rollen.
+- **Business hours** für gemeinsam genutzte Zeitpläne, Feiertage und die
+  Standardzeitzone.
+- **Members** für Mitgliedschaften, Einladungen und Roles.
 - **AI Provider** für Provider-Verbindungen.
-- **Crawling** für den Website-Crawler der Organisation, beispielsweise deren
+- **Crawling** für den Website-Crawler der Organisation, beispielsweise ihr
   eigenes Apify-Konto.
 - **API Keys** für programmgesteuerte Anmeldeinformationen.
-- **Usage** für die jüngste Ressourcennutzung und die geltenden Limits.
-- **Billing** für den Managed Plan und das Abrechnungskonto.
+- **Usage** für die jüngste Ressourcennutzung und -limits.
+- **Billing** für den Managed Plan und das Billing Account.
 
 Die Self-Hosted Edition zeigt keinen Katalog für verwaltete Abonnements an.
 
-Member Roles und API-key Roles verwenden dieselbe Berechtungshierarchie. Ein
-API-Schlüssel kann keine Role erhalten, die über der seines Erstellers liegt.
+Eine Role ist eine Menge von Capabilities. Members, Invitations und API Keys
+verwenden dieselben Roles. Ein API-Schlüssel kann keine Berechtigung haben, die
+sein Ersteller nicht besitzt.
 
 Der Bereich **AI Provider** steuert auch den
-[Langzeitspeicher](/data/long-term-memory). Es enthält Tools, um die
+[long-term memory](/data/long-term-memory). Es enthält Tools, um die
 gespeicherten Erinnerungen eines Visitors zu löschen.
 
-Die Registerkarte **General** verfügt über zwei Aufbewahrungseinstellungen: eine
-für Reasoning Traces und eine für ganze Conversations. Siehe
-[Data retention](/organization/data-retention).
+Auf der Registerkarte **Data retention** legen Sie fest, wie lange
+Konversationen, Nachrichten, Verbesserungen und Audit-Protokolle aufbewahrt
+werden. Die Registerkarte **General** zeigt das Fenster für Reasoning Traces an.
+Siehe [Data retention](/organization/data-retention).
 
 ## Persönliches Erscheinungsbild
 
 Klappen Sie in der Seitenleiste **Settings** aus und wählen Sie **Personal
 settings** und anschließend **Theme** aus. Wenn **Settings** nicht angezeigt
 wird, öffnen Sie das Account-Menü und wählen Sie **Profile** und anschließend
-**Theme** aus. Wählen Sie **Light**, **Dark** oder **System** und anschließend
-die Palette **Midnight** oder **Mist Blue**. Diese Einstellungen wirken sich auf
+**Theme** aus. Wählen Sie **Light**, **Dark** oder **System** und wählen Sie die
+Palette **Midnight** oder **Mist Blue** aus. Diese Einstellungen wirken sich auf
 Ihre Konsole aus und werden in diesem Browser gespeichert. Das veröffentlichte
 Widget behält seinen Assistant-Stil bei.
+
+
+## Geschäftszeiten und Feiertage
+
+Ein Mitglied mit der Berechtigung **edit** kann **Settings → Business hours**
+öffnen. Erstellen Sie einen benannten Zeitplan, wählen Sie seine IANA-Zeitzone
+aus und legen Sie die wöchentlichen Öffnungsfenster fest. Ein Tag kann mehrere
+Zeitfenster haben. Eine Schließzeit, die vor der Öffnungszeit liegt, erstreckt
+sich auf den folgenden Tag. Ein Zeitplan ist der Standardzeitplan der
+Organisation. Sie können die Standardeinstellung ändern, wenn Sie einen Zeitplan
+bearbeiten.
+
+Fügen Sie benannte Feiertage als einzelnes Datum oder als inklusiven
+Datumsbereich hinzu. Wählen Sie **Repeat yearly** für eine jährliche Schließung
+aus. Ein Feiertag schließt den gesamten lokalen Tag, einschließlich der Stunden,
+die von der vorherigen Nacht fortgesetzt werden. Channels und Flow-Bedingungen
+lesen diese Einstellungen in Echtzeit aus. Eine Änderung der Feiertage wird
+wirksam, ohne dass ein Assistant erneut veröffentlicht werden muss.
+
+Die Standardzeitzone der Organisation ist der Ausgangswert für neue Zeitpläne
+sowie für die Bedingungen Channel Availability und Flow Schedule. Bestehende
+Zeitzonen und Insights-Berichte bleiben unverändert. Das Löschen wird abgelehnt,
+solange ein Channel, ein Editor-Flow oder ein Flow in der aktuellsten
+Veröffentlichung den Zeitplan verwendet. Bei der Ablehnung werden diese Channels
+und Flows namentlich genannt.
+
+Das Developer Panel auf dieser Seite zeigt das **Business hours API** an.
+Verwenden Sie `/api/v1/business-hours`, `ciele business-hours` oder
+`manage_configuration` im MCP, um dieselben Einstellungen zu verwalten. Legen
+Sie die Standardzeitzone mit `PATCH /api/v1/business-hours/timezone` oder
+`ciele business-hours timezone Europe/Rome --yes` fest.
+
+
+## Audit-Protokoll
+
+Eigentümer und Administratoren öffnen **Settings → Audit log**, um
+Konfigurationsänderungen anzuzeigen. Jede Zeile zeigt **When**, **Action**,
+**Actor** und **Target** an. Die Zeiten sind in UTC angegeben.
+
+- Wählen Sie **Filter by action** aus, um eine oder mehrere Aktionen anzuzeigen.
+- Wählen Sie **Filter by actor** aus, um die Änderungen eines Mitglieds oder von
+  **System** anzuzeigen.
+- Wählen Sie das Datumssteuerelement aus, um einen Zeitraum anzuzeigen.
+- Wählen Sie **When** aus, um die ältesten Einträge zuerst anzuzeigen.
+
+Der Actor ist das Mitglied, das die Änderung vorgenommen hat. Wenn ein
+API-Schlüssel oder ein Teammate die Änderung vorgenommen hat, ist der Actor der
+Schlüssel bzw. der Teammate. Das Mitglied, für das es handelt, wird darunter
+angezeigt. Änderungen, die keine Person vorgenommen hat, werden als **System**
+angezeigt.
+
+Wählen Sie das Augensymbol in einer Zeile aus, um **Entry details** zu öffnen.
+Der Bereich zeigt den Actor, das Target, die Surface, das Outcome und die
+betroffenen Entities an. Links öffnen die Entitäten, die noch existieren. Einige
+Änderungen zeigen auch **Changes** an: roles, invitations, API keys, assistant
+access und die Organization settings. Jedes Feld zeigt seinen Wert vor und nach
+der Änderung an.
+
+Das Protokoll erfasst Schreibvorgänge und nachfolgende Operationen,
+einschließlich fehlgeschlagener Ausführungen. Eine zusammengesetzte Operation
+erstellt einen Eintrag für ihren äußeren Aufruf. Es werden keine
+Operationseingaben, Anmeldeinformationen, Visitor-Texte oder Leseoperationen
+aufgezeichnet. Ein Fehler bei der Protokollierung führt nicht zum Abbruch des
+Vorgangs. Die Diagnose meldet den Fehler.
+
+Wählen Sie **Export CSV** aus, um die aktuellen Filter in die Warteschlange der
+vorhandenen Exportjobs aufzunehmen. Der Export wird in **Insights → Exports**
+angezeigt, sobald er bereit ist. Audit-Exporte bleiben weiterhin ausschließlich
+Owners und Admins vorbehalten. Members können Audit-Einträge weder überschreiben
+noch löschen. Der Retention Sweep löscht Einträge, die älter sind als der im
+Zeitraum **Audit records** festgelegte Wert, auf der Registerkarte **Data
+retention**. Der Standardwert beträgt 180 Tage. Wenn Sie eine Organisation
+löschen, werden auch deren Audit-Einträge entfernt.
+
+Das Audit-Protokoll ist außerdem über die API, die CLI und den MCP-Server
+verfügbar. Jedes ist schreibgeschützt und erfordert einen Schlüssel, der
+Mitglieder verwalten kann.
+
+```bash
+ciele audit-log list --actor system --from 2026-11-01
+curl "https://ciele.app/api/v1/audit-log?action=apiKeys.create" \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Verwenden Sie auf dem MCP-Server die Aktion `audit_log_list` von
+`manage_organization`.

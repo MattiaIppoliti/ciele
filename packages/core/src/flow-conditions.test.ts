@@ -6,7 +6,7 @@ import {
   flowConditionsAllowRouting,
   isObjectiveFlowCondition,
 } from "./flow-conditions";
-import type { Flow, FlowCondition } from "./types";
+import type { AbsoluteScheduleCondition, Flow, FlowCondition } from "./types";
 
 /**
  * Objective Flow Conditions (spec #550). Pure throughout, the clock and the
@@ -41,7 +41,7 @@ function url(
 }
 
 function schedule(
-  overrides: Partial<Extract<FlowCondition, { kind: "schedule" }>> = {}
+  overrides: Partial<AbsoluteScheduleCondition> = {}
 ): FlowCondition {
   return {
     id: "c-schedule",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   TEMPLATE_VARIABLES,
   buildTemplateContext,
+  resolveQuickText,
   resolveTemplate,
 } from "./template";
 
@@ -140,5 +141,24 @@ describe("TEMPLATE_VARIABLES catalog", () => {
     for (const { description } of TEMPLATE_VARIABLES) {
       expect(description).not.toMatch(/student|university|campus|course/i);
     }
+  });
+});
+
+describe("resolveQuickText (#1085)", () => {
+  const conversation = {
+    id: "c-1",
+    subjectId: "visitor-9",
+    metadata: { userName: "Dana Reyes", city: "Lisbon" },
+  };
+
+  it("fills a Quick Text from the Conversation being answered", () => {
+    expect(
+      resolveQuickText("Hi {{user.name}}, how is {{conversation.metadata.city}}?", conversation, "https://ciele.app")
+    ).toBe("Hi Dana Reyes, how is Lisbon?");
+  });
+
+  it("turns a variable with no value into empty text, never the raw token", () => {
+    expect(resolveQuickText("Mail: {{user.email}}.", conversation, "https://ciele.app")).toBe("Mail: .");
+    expect(resolveQuickText("Ref {{order.number}} ok", conversation, "https://ciele.app")).toBe("Ref  ok");
   });
 });

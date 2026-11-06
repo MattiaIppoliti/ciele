@@ -1,4 +1,4 @@
-import type { ImprovementListItem, ImprovementStatus } from "@agent-hub/core";
+import type { ImprovementListItem, ImprovementStatus, ImprovementQuery } from "@agent-hub/core";
 import { listAllImprovementsAction } from "@/app/actions";
 import {
   improvementKey,
@@ -23,6 +23,8 @@ export function toImprovementExportRow(
   return {
     key: improvementKey(row.seq),
     title: row.title,
+    description: row.description,
+    projectId: row.projectId ?? "",
     status: row.status,
     priority: row.priority,
     tags: row.tags.join("; "),
@@ -38,10 +40,11 @@ export async function exportImprovements(options: {
   status?: ImprovementStatus;
   /** The board's filters, applied to the rows the export reads from the server. */
   filters: ImprovementFilters;
+  query?: ImprovementQuery;
   format: "csv" | "json";
   emailOf: (userId: string | null) => string | null;
 }): Promise<number> {
-  const rows = (await listAllImprovementsAction(options.status)).filter((row) =>
+  const rows = (await listAllImprovementsAction(options.status, options.query)).filter((row) =>
     matchesImprovementFilters(row, options.filters),
   );
   const name = options.status

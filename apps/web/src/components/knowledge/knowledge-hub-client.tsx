@@ -143,6 +143,7 @@ function LinkedAssistantChips({
 export function KnowledgeHubClient({
   tab,
   filters,
+  qualityAvailable = false,
   items,
   total,
   pageSize,
@@ -157,6 +158,7 @@ export function KnowledgeHubClient({
 }: {
   tab: KnowledgeTabSlug;
   filters: HubSearchParams;
+  qualityAvailable?: boolean;
   items: OrgKnowledgeSourceListItem[];
   total: number;
   pageSize: number;
@@ -260,6 +262,7 @@ export function KnowledgeHubClient({
       ? [{ key: "access", width: 170 } as TableColumnLayout]
       : []),
     { key: "status", width: 130 },
+    { key: "cited30", width: 140 },
     { key: "updated", width: 190 },
     ...(tab === "websites" ? [{ key: "lastCrawled", width: 190 }] : []),
     { key: "actions", width: 150, fixed: true },
@@ -276,6 +279,7 @@ export function KnowledgeHubClient({
   const apply = (patch: Partial<HubSearchParams>) => {
     const next = { ...filters, q: query, ...patch };
     const params = new URLSearchParams();
+    if (next.unused) params.set("unused", "1");
     if (next.q) params.set("q", next.q);
     if (next.status) params.set("status", next.status);
     if (next.assistant) params.set("assistant", next.assistant);
@@ -384,6 +388,7 @@ export function KnowledgeHubClient({
             filters={<>
               <TableFilter label="Status" value={filters.status} anyLabel="All statuses" options={SOURCE_STATUS_OPTIONS}
                 onChange={(value) => apply({ status: value as "" | SourceStatus, page: 1 })} />
+              {qualityAvailable && <TableFilter label="Usage" value={filters.unused ? "unused" : ""} anyLabel="All Sources" options={[{ value: "unused", label: "Unused in 90 days" }]} onChange={value => apply({ unused: value === "unused", page: 1 })} />}
               <TableFilter label="Assistant" value={filters.assistant} anyLabel="All assistants"
                 options={assistants.map((assistant) => ({ value: assistant.id, label: assistant.title }))}
                 onChange={(value) => apply({ assistant: value, page: 1 })} />
@@ -451,7 +456,7 @@ export function KnowledgeHubClient({
                       restore: {
                         key: "name",
                         value: filters.sort ? { key: filters.sort, ascending: filters.ascending } : null,
-                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
+                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" || sort?.key === "cited30" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
                       },
                       ascLabel: "A to Z",
                       descLabel: "Z to A",
@@ -513,7 +518,7 @@ export function KnowledgeHubClient({
                       restore: {
                         key: "status",
                         value: filters.sort ? { key: filters.sort, ascending: filters.ascending } : null,
-                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
+                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" || sort?.key === "cited30" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
                       },
                       ascLabel: "Errors first",
                       descLabel: "Ready first",
@@ -530,6 +535,7 @@ export function KnowledgeHubClient({
                         apply({ status: value as "" | SourceStatus, page: 1 }),
                     }}
                   />
+                  <TableColumnHeader label="Cited (30 days)" resize={columns.handleFor("cited30")} sort={qualityAvailable ? { direction: filters.sort === "cited30" ? direction : null, ascLabel: "Fewest first", descLabel: "Most first", onSort: next => apply({ sort: "cited30", ascending: next === "asc", page: 1 }), onClear: () => apply({ sort: "", page: 1 }) } : undefined} />
                   <TableColumnHeader
                     label="Last updated at"
                     resize={columns.handleFor("updated")}
@@ -538,7 +544,7 @@ export function KnowledgeHubClient({
                       restore: {
                         key: "updatedAt",
                         value: filters.sort ? { key: filters.sort, ascending: filters.ascending } : null,
-                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
+                        onChange: (sort) => apply({ sort: sort?.key === "name" || sort?.key === "status" || sort?.key === "updatedAt" || sort?.key === "cited30" ? sort.key : "", ascending: sort?.ascending ?? true, page: 1 }),
                       },
                       ascLabel: "Oldest first",
                       descLabel: "Newest first",
@@ -744,6 +750,7 @@ export function KnowledgeHubClient({
                     <TableCell>
                       <SourceStatusBadge status={item.status} error={item.error} />
                     </TableCell>
+                    <TableCell>{item.usage ? <RollingNumber value={item.usage.cited30} /> : "—"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                       <RollInText text={formatWhen(item.updatedAt)} />
                     </TableCell>

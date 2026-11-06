@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { requireMember } from "@/lib/authz";
+import { orgMutation } from "@/lib/org-mutation";
 import { drainDueExportJobs } from "@/lib/exports/drain";
 import { z } from "zod";
 import { insightsFilterFromSearchParams } from "@/lib/insights/report";
@@ -34,14 +34,9 @@ export async function requestInsightsExportAction(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid export" };
   }
-  const { db, organizationId } = await requireMember();
   const { name, kind, format, filters } = parsed.data;
   const snapshot = insightsFilterFromSearchParams(new URLSearchParams(filters));
-  await db.createExportJob(organizationId, {
-    kind,
-    format,
-    params: { ...snapshot, name },
-  });
+  await orgMutation({ operation: { name: "insights.exports.request", effect: "write" }, capability: "member", entities: [] }, ({ db,organizationId }) => db.createExportJob(organizationId, { kind,format,params: { ...snapshot,name } }));
   after(() => drainDueExportJobs().catch(() => {}));
   revalidatePath(EXPORTS_PATH);
   return { ok: true };
@@ -49,12 +44,11 @@ export async function requestInsightsExportAction(
 
 /** Re-queues a failed export for another run. */
 export async function retryExportJobAction(id: string): Promise<void> {
-  const { db, organizationId } = await requireMember();
-  const job = await db.getExportJob(id);
-  if (!job || job.organizationId !== organizationId) {
-    throw new Error("Export not found");
-  }
-  await db.requeueExportJob(id);
+  await orgMutation({ operation: { name: "insights.exports.retry", effect: "write" }, capability: "member", entities: [] }, async ({ db,organizationId }) => {
+    const job = await db.getExportJob(id);
+    if (!job || job.organizationId !== organizationId) throw new Error("Export not found");
+    await db.requeueExportJob(id);
+  });
   after(() => drainDueExportJobs().catch(() => {}));
   revalidatePath(EXPORTS_PATH);
 }

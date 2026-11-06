@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Experimental_EvaluationMockModelV4 } from "ai/test";
+import { z } from "zod";
+import { DEMO_ORG, getMockDb } from "@agent-hub/db";
+import type { TeammateActionTool } from "./types";
 import { APPROVAL_GATE_THRESHOLDS } from "@agent-hub/core";
 import {
+  gateTeammateActions,
   approvalCardPart,
   confirmationGateResult,
   runApprovalGate,
@@ -223,4 +227,17 @@ describe("the gate's own switch", () => {
     // already take: proceed as before.
     expect(result.backend).toBeNull();
   });
+});
+
+it("honors reviewed remote MCP policies independently of model judgement", async () => {
+  const db = getMockDb();
+  const teammate = await db.table("teammates").insert({ organizationId: DEMO_ORG.id, ownerId: "policy-member", name: "Policy reader", roleDescription: "Read tools", title: "", collectionIds: [] });
+  const conversation = await db.createConversation({ teammateId: teammate.id, subjectType: "member", subjectId: "policy-member", title: "MCP policy" });
+  const action: TeammateActionTool = { operation: "mcp.policy-fixture", domain: "mcp", label: "Reviewed remote call", description: "A reviewed external action", inputSchema: z.object({}), alwaysConfirm: () => false, run: async () => ({ entities: [], result: {} }) };
+  const options = { db, organizationId: DEMO_ORG.id, teammate, target: { conversationId: conversation.id }, requestedBy: "policy-member", resolved: answering("irreversible", 0.99) };
+  const [freely] = gateTeammateActions({ ...options, actions: [action] });
+  expect(await freely.guard?.({})).toBeNull();
+  const [ask] = gateTeammateActions({ ...options, resolved: null, actions: [{ ...action, alwaysConfirm: () => true }] });
+  expect(await ask.guard?.({})).toMatchObject({ type: "action_approval", label: action.label });
+  expect(await db.table("actionApprovals").list({ conversationId: conversation.id })).toHaveLength(1);
 });

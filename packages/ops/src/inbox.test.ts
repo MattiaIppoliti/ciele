@@ -178,7 +178,7 @@ describe("legal hold (#801, CYB-12)", () => {
   it("is an administrative act, not a member one", () => {
     // Suspending a deletion the Organization committed to is the same rung as
     // setting the retention window itself.
-    expect(setConversationLegalHoldOp.capability).toBe("manageMembers");
+    expect(setConversationLegalHoldOp.capability).toBe("inbox:legalHold");
   });
 
   it("refuses a conversation outside the caller's Organization", async () => {

@@ -98,7 +98,7 @@ export async function removeFileObjects(ctx: OperationContext, paths: string[]):
 
 export const listProjectFilesOp = defineOperation({
   name: "files.list",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ projectId: id, taskId: id.optional() }),
   entities: () => [],
@@ -116,7 +116,7 @@ export const listProjectFilesOp = defineOperation({
 /** One file, for its download: readable wherever its Project is. */
 export const getProjectFileOp = defineOperation({
   name: "files.get",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ id }),
   entities: () => [],
@@ -134,7 +134,7 @@ export const getProjectFileOp = defineOperation({
  */
 export const prepareProjectFileOp = defineOperation({
   name: "files.prepare",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "read",
   input: z.object({ projectId: id, taskId: id.optional(), name, sizeBytes: z.number().int().min(0) }),
   entities: () => [],
@@ -161,7 +161,7 @@ export const prepareProjectFileOp = defineOperation({
 /** Step two: records the stored file. The key must be the one step one chose. */
 export const createProjectFileOp = defineOperation({
   name: "files.create",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({
     id: z.string().uuid(),
@@ -211,7 +211,7 @@ export const createProjectFileOp = defineOperation({
  */
 export const discardProjectFileUploadOp = defineOperation({
   name: "files.discard",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id: z.string().uuid(), projectId: id, name }),
   entities: () => [],
@@ -227,7 +227,7 @@ export const discardProjectFileUploadOp = defineOperation({
 
 export const renameProjectFileOp = defineOperation({
   name: "files.rename",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id, name }),
   entities: (_input, result: ProjectFile) => fileEntities(result.projectId, result.taskId),
@@ -240,7 +240,7 @@ export const renameProjectFileOp = defineOperation({
 
 export const deleteProjectFileOp = defineOperation({
   name: "files.delete",
-  capability: "edit",
+  capability: "projects:edit",
   // The bytes go too, and there is no undo.
   effect: "consequential",
   input: z.object({ id }),

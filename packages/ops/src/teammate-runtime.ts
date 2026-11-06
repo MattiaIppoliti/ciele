@@ -15,6 +15,7 @@ export const teammateRuntimeSchema = z
         .strict(),
     ]),
     internet: z.boolean(),
+    mcpServerIds: z.array(z.string().min(1).max(200)).max(20).optional(),
     computer: z
       .object({
         browser: z.boolean(),
@@ -36,7 +37,7 @@ export const teammateRuntimeSchema = z
 
 export const configureTeammateRuntimeOp = defineOperation({
   name: "teammates.runtime.configure",
-  capability: "manageMembers",
+  capability: "teammates:grants",
   effect: "consequential",
   input: z
     .object({ id: z.string().min(1), config: teammateRuntimeSchema })
@@ -44,6 +45,10 @@ export const configureTeammateRuntimeOp = defineOperation({
   entities: ({ id }) => [{ kind: "teammate" as const, id }],
   run: async (ctx, { id, config }) => {
     await requireReadableTeammate(ctx, id);
+    for (const serverId of config.mcpServerIds ?? []) {
+      const server = await ctx.db.table("mcpServerConnections").get(serverId);
+      if (!server || server.organizationId !== ctx.organizationId) throw new Error("MCP server does not belong to this Organization");
+    }
     return ctx.db.table("teammates").update(id, { runtimeConfig: config });
   },
 });

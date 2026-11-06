@@ -1,0 +1,1567 @@
+{
+  "config: published, allowed origin": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "https://www.school.edu",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "public, max-age=300, must-revalidate",
+      "vary": "Origin",
+      "content-type": "application/json"
+    },
+    "body": {
+      "version": 1,
+      "nickname": "Campus bot",
+      "avatarUrl": null,
+      "welcomeMessage": "Hi! Ask me anything.",
+      "aiDisclaimer": "Answers can be wrong.",
+      "suggestedQuestions": [
+        "Where is the library?"
+      ],
+      "quickReplies": [
+        {
+          "id": "qr-1",
+          "text": "When is the library open?",
+          "type": "send_text",
+          "label": "Library hours"
+        }
+      ],
+      "chatLauncherEnabled": true,
+      "style": {
+        "position": "bottom-right",
+        "brandColor": "#1f6feb"
+      },
+      "collections": [
+        {
+          "id": "kc-1",
+          "name": "Handbook"
+        }
+      ],
+      "proactiveTriggers": [
+        "time_on_page",
+        "chat_open"
+      ],
+      "proactiveDwellSeconds": [
+        30,
+        90
+      ],
+      "models": [
+        {
+          "selector": "google:gemini-3.5-flash",
+          "provider": "google",
+          "modelId": "gemini-3.5-flash",
+          "label": "Gemini 3.5 Flash",
+          "providerName": "Google"
+        },
+        {
+          "selector": "anthropic:claude-sonnet-5",
+          "provider": "anthropic",
+          "modelId": "claude-sonnet-5",
+          "label": "Claude Sonnet 5",
+          "providerName": "Anthropic"
+        },
+        {
+          "selector": "openai:gpt-5.1",
+          "provider": "openai",
+          "modelId": "gpt-5.1",
+          "label": "GPT-5.1",
+          "providerName": "OpenAI"
+        },
+        {
+          "selector": "google:gemini-9-pro",
+          "provider": "google",
+          "modelId": "gemini-9-pro",
+          "label": "Gemini 9 Pro",
+          "providerName": "Google"
+        },
+        {
+          "selector": "anthropic:claude-opus-4-8#api_key",
+          "provider": "anthropic",
+          "modelId": "claude-opus-4-8",
+          "label": "Claude Opus 4.8",
+          "providerName": "Anthropic",
+          "source": "api_key",
+          "sourceName": "API key"
+        }
+      ]
+    }
+  },
+  "config: published, foreign origin": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "public, max-age=300, must-revalidate",
+      "vary": "Origin",
+      "content-type": "application/json"
+    },
+    "body": {
+      "version": 1,
+      "nickname": "Campus bot",
+      "avatarUrl": null,
+      "welcomeMessage": "Hi! Ask me anything.",
+      "aiDisclaimer": "Answers can be wrong.",
+      "suggestedQuestions": [
+        "Where is the library?"
+      ],
+      "quickReplies": [
+        {
+          "id": "qr-1",
+          "text": "When is the library open?",
+          "type": "send_text",
+          "label": "Library hours"
+        }
+      ],
+      "chatLauncherEnabled": true,
+      "style": {
+        "position": "bottom-right",
+        "brandColor": "#1f6feb"
+      },
+      "collections": [
+        {
+          "id": "kc-1",
+          "name": "Handbook"
+        }
+      ],
+      "proactiveTriggers": [
+        "time_on_page",
+        "chat_open"
+      ],
+      "proactiveDwellSeconds": [
+        30,
+        90
+      ],
+      "models": [
+        {
+          "selector": "google:gemini-3.5-flash",
+          "provider": "google",
+          "modelId": "gemini-3.5-flash",
+          "label": "Gemini 3.5 Flash",
+          "providerName": "Google"
+        },
+        {
+          "selector": "anthropic:claude-sonnet-5",
+          "provider": "anthropic",
+          "modelId": "claude-sonnet-5",
+          "label": "Claude Sonnet 5",
+          "providerName": "Anthropic"
+        },
+        {
+          "selector": "openai:gpt-5.1",
+          "provider": "openai",
+          "modelId": "gpt-5.1",
+          "label": "GPT-5.1",
+          "providerName": "OpenAI"
+        },
+        {
+          "selector": "google:gemini-9-pro",
+          "provider": "google",
+          "modelId": "gemini-9-pro",
+          "label": "Gemini 9 Pro",
+          "providerName": "Google"
+        },
+        {
+          "selector": "anthropic:claude-opus-4-8#api_key",
+          "provider": "anthropic",
+          "modelId": "claude-opus-4-8",
+          "label": "Claude Opus 4.8",
+          "providerName": "Anthropic",
+          "source": "api_key",
+          "sourceName": "API key"
+        }
+      ]
+    }
+  },
+  "config: published, no origin": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "public, max-age=300, must-revalidate",
+      "vary": "Origin",
+      "content-type": "application/json"
+    },
+    "body": {
+      "version": 1,
+      "nickname": "Campus bot",
+      "avatarUrl": null,
+      "welcomeMessage": "Hi! Ask me anything.",
+      "aiDisclaimer": "Answers can be wrong.",
+      "suggestedQuestions": [
+        "Where is the library?"
+      ],
+      "quickReplies": [
+        {
+          "id": "qr-1",
+          "text": "When is the library open?",
+          "type": "send_text",
+          "label": "Library hours"
+        }
+      ],
+      "chatLauncherEnabled": true,
+      "style": {
+        "position": "bottom-right",
+        "brandColor": "#1f6feb"
+      },
+      "collections": [
+        {
+          "id": "kc-1",
+          "name": "Handbook"
+        }
+      ],
+      "proactiveTriggers": [
+        "time_on_page",
+        "chat_open"
+      ],
+      "proactiveDwellSeconds": [
+        30,
+        90
+      ],
+      "models": [
+        {
+          "selector": "google:gemini-3.5-flash",
+          "provider": "google",
+          "modelId": "gemini-3.5-flash",
+          "label": "Gemini 3.5 Flash",
+          "providerName": "Google"
+        },
+        {
+          "selector": "anthropic:claude-sonnet-5",
+          "provider": "anthropic",
+          "modelId": "claude-sonnet-5",
+          "label": "Claude Sonnet 5",
+          "providerName": "Anthropic"
+        },
+        {
+          "selector": "openai:gpt-5.1",
+          "provider": "openai",
+          "modelId": "gpt-5.1",
+          "label": "GPT-5.1",
+          "providerName": "OpenAI"
+        },
+        {
+          "selector": "google:gemini-9-pro",
+          "provider": "google",
+          "modelId": "gemini-9-pro",
+          "label": "Gemini 9 Pro",
+          "providerName": "Google"
+        },
+        {
+          "selector": "anthropic:claude-opus-4-8#api_key",
+          "provider": "anthropic",
+          "modelId": "claude-opus-4-8",
+          "label": "Claude Opus 4.8",
+          "providerName": "Anthropic",
+          "source": "api_key",
+          "sourceName": "API key"
+        }
+      ]
+    }
+  },
+  "config: gated": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "https://any.example",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "public, max-age=300, must-revalidate",
+      "vary": "Origin",
+      "content-type": "application/json"
+    },
+    "body": {
+      "version": 1,
+      "nickname": "Staff only",
+      "avatarUrl": null,
+      "welcomeMessage": "Hi! Ask me anything.",
+      "aiDisclaimer": "Answers can be wrong.",
+      "suggestedQuestions": [
+        "Where is the library?"
+      ],
+      "quickReplies": [],
+      "chatLauncherEnabled": true,
+      "style": {
+        "position": "bottom-right",
+        "brandColor": "#1f6feb"
+      },
+      "collections": [],
+      "proactiveTriggers": [],
+      "proactiveDwellSeconds": [],
+      "models": []
+    }
+  },
+  "config: unpublished": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "https://www.school.edu",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "not_published"
+    }
+  },
+  "config: unknown": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "not_published"
+    }
+  },
+  "config: preflight": {
+    "status": 204,
+    "headers": {
+      "access-control-allow-origin": "https://evil.example",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type"
+    },
+    "body": ""
+  },
+  "config: republished": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "public, max-age=300, must-revalidate",
+      "vary": "Origin",
+      "content-type": "application/json"
+    },
+    "body": {
+      "version": 2,
+      "nickname": "Campus help v2",
+      "avatarUrl": null,
+      "welcomeMessage": "New welcome",
+      "aiDisclaimer": "Answers can be wrong.",
+      "suggestedQuestions": [
+        "Where is the library?"
+      ],
+      "quickReplies": [],
+      "chatLauncherEnabled": true,
+      "style": {
+        "position": "bottom-right",
+        "brandColor": "#1f6feb"
+      },
+      "collections": [],
+      "proactiveTriggers": [],
+      "proactiveDwellSeconds": [],
+      "models": []
+    }
+  },
+  "session: open": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "https://school.edu",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "requireSignIn": false,
+      "authenticated": true,
+      "provider": null,
+      "memories": false
+    }
+  },
+  "session: gated, anonymous": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "requireSignIn": true,
+      "authenticated": false,
+      "provider": "entra",
+      "memories": false
+    }
+  },
+  "session: gated, signed in": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "requireSignIn": true,
+      "authenticated": true,
+      "provider": "entra",
+      "memories": true
+    }
+  },
+  "session: gated, another Organization's gate": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "requireSignIn": true,
+      "authenticated": false,
+      "provider": "entra",
+      "memories": false
+    }
+  },
+  "session: gated, expired gate": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "requireSignIn": true,
+      "authenticated": false,
+      "provider": "entra",
+      "memories": false
+    }
+  },
+  "session: another Organization's Assistant, this one's gate": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "requireSignIn": true,
+      "authenticated": false,
+      "provider": null,
+      "memories": false
+    }
+  },
+  "session: unpublished": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "not_published"
+    }
+  },
+  "feedback: own answer, reaction": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  "feedback: own answer, legacy score": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  "feedback: own answer, reaction cleared": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  "feedback: no message": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "feedback: unknown reaction": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "feedback: score out of range": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "feedback: score as text": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "feedback: no visitor": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "feedback: another Visitor": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "feedback: another Assistant": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "feedback: another Organization": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "feedback: an SSO subject's, claimed by its id": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "feedback: a missing message": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "feedback: SSO subject's own answer": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  "feedback: SSO answer, another Organization's gate": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "feedback: unpublished": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "not_published"
+    }
+  },
+  "conversation feedback: own": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  "conversation feedback: long": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  "conversation feedback: no conversation": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "conversation feedback: no visitor": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "conversation feedback: blank text": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "conversation feedback: another Visitor": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversation feedback: another Assistant": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversation feedback: another Organization": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversation feedback: missing": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversations: v-1": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "conversations": [
+        {
+          "id": "cv-v1",
+          "title": "Library",
+          "updatedAt": "2026-10-20T12:00:00.000Z"
+        },
+        {
+          "id": "cv-v1-old",
+          "title": "Parking",
+          "updatedAt": "2026-10-19T11:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "conversations: unknown visitor": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "conversations": []
+    }
+  },
+  "conversations: no visitor": {
+    "status": 400,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Bad request"
+  },
+  "conversations: SSO gate": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "conversations": [
+        {
+          "id": "cv-sso",
+          "title": "Payroll",
+          "updatedAt": "2026-10-20T14:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "conversations: SSO id claimed anonymously": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "conversations": []
+    }
+  },
+  "conversations: own transcript": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "messages": [
+        {
+          "id": "m-user",
+          "requestId": null,
+          "conversationId": "cv-v1",
+          "role": "user",
+          "content": [
+            {
+              "text": "When is the library open?",
+              "type": "text"
+            }
+          ],
+          "flowId": null,
+          "flowName": null,
+          "feedback": 0,
+          "feedbackReaction": null,
+          "trace": null,
+          "createdAt": "2026-10-20T11:00:00.000Z"
+        },
+        {
+          "id": "m-bot-ts",
+          "requestId": null,
+          "conversationId": "cv-v1",
+          "role": "assistant",
+          "content": [
+            {
+              "text": "From 8 to 20.",
+              "type": "text"
+            }
+          ],
+          "flowId": "fl-msg",
+          "flowName": "Courses",
+          "feedback": 0,
+          "feedbackReaction": null,
+          "trace": null,
+          "createdAt": "2026-10-20T11:00:01.000Z"
+        },
+        {
+          "id": "m-bot-rs",
+          "requestId": null,
+          "conversationId": "cv-v1",
+          "role": "assistant",
+          "content": [
+            {
+              "text": "From 8 to 20.",
+              "type": "text"
+            }
+          ],
+          "flowId": "fl-msg",
+          "flowName": "Courses",
+          "feedback": 0,
+          "feedbackReaction": null,
+          "trace": null,
+          "createdAt": "2026-10-20T11:00:02.000Z"
+        }
+      ],
+      "live": {
+        "state": "ai",
+        "operatorName": null,
+        "waitExpiresAt": null,
+        "waitTimedOut": false,
+        "helpDeskId": null
+      }
+    }
+  },
+  "conversations: another Visitor's transcript": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversations: another Assistant's transcript": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversations: another Organization's transcript": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversations: an SSO transcript by its id": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "conversations: SSO transcript with the gate": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "messages": [
+        {
+          "id": "m-sso-ts",
+          "requestId": null,
+          "conversationId": "cv-sso",
+          "role": "assistant",
+          "content": [],
+          "flowId": null,
+          "flowName": null,
+          "feedback": 0,
+          "feedbackReaction": "neutral",
+          "trace": null,
+          "createdAt": "2026-10-20T11:00:00.000Z"
+        },
+        {
+          "id": "m-sso-rs",
+          "requestId": null,
+          "conversationId": "cv-sso",
+          "role": "assistant",
+          "content": [],
+          "flowId": null,
+          "flowName": null,
+          "feedback": 0,
+          "feedbackReaction": "neutral",
+          "trace": null,
+          "createdAt": "2026-10-20T11:00:01.000Z"
+        }
+      ],
+      "live": {
+        "state": "ai",
+        "operatorName": null,
+        "waitExpiresAt": null,
+        "waitTimedOut": false,
+        "helpDeskId": null
+      }
+    }
+  },
+  "help desks: published": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "https://school.edu",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "helpDesks": [
+        {
+          "id": "hd-2",
+          "name": "Admissions",
+          "channels": [
+            {
+              "id": "ch-link",
+              "kind": "external_link",
+              "name": "Portal",
+              "availability": {
+                "mode": "always",
+                "timezone": "UTC",
+                "hours": {
+                  "monday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "tuesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "wednesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "thursday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "friday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "saturday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "sunday": {
+                    "enabled": false,
+                    "ranges": []
+                  }
+                }
+              },
+              "target": "https://apply.school.edu",
+              "form": null
+            }
+          ]
+        },
+        {
+          "id": "hd-1",
+          "name": "IT support",
+          "channels": [
+            {
+              "id": "ch-phone",
+              "kind": "phone",
+              "name": "Call",
+              "availability": {
+                "mode": "limited",
+                "timezone": "Europe/Rome",
+                "hours": {
+                  "monday": {
+                    "enabled": true,
+                    "ranges": [
+                      {
+                        "id": "r0",
+                        "opensHour": 9,
+                        "opensMinute": 0,
+                        "closesHour": 17,
+                        "closesMinute": 0
+                      }
+                    ]
+                  },
+                  "tuesday": {
+                    "enabled": true,
+                    "ranges": [
+                      {
+                        "id": "r0",
+                        "opensHour": 8,
+                        "opensMinute": 0,
+                        "closesHour": 12,
+                        "closesMinute": 0
+                      }
+                    ]
+                  },
+                  "wednesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "thursday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "friday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "saturday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "sunday": {
+                    "enabled": false,
+                    "ranges": []
+                  }
+                }
+              },
+              "target": "tel:+39061234567",
+              "form": null
+            },
+            {
+              "id": "ch-email",
+              "kind": "email",
+              "name": "Email us",
+              "availability": {
+                "mode": "always",
+                "timezone": "UTC",
+                "hours": {
+                  "monday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "tuesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "wednesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "thursday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "friday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "saturday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "sunday": {
+                    "enabled": false,
+                    "ranges": []
+                  }
+                }
+              },
+              "target": null,
+              "form": {
+                "title": "Helpdesk form",
+                "fields": [
+                  {
+                    "id": "f-email",
+                    "type": "user_email",
+                    "label": "Email",
+                    "required": true
+                  },
+                  {
+                    "id": "f-subject",
+                    "type": "short_text",
+                    "label": "Subject",
+                    "placeholder": "What is it about?"
+                  }
+                ],
+                "confirmationMessage": ""
+              }
+            },
+            {
+              "id": "ch-email-empty",
+              "kind": "email",
+              "name": "Email, no form",
+              "availability": {
+                "mode": "always",
+                "timezone": "UTC",
+                "hours": {
+                  "monday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "tuesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "wednesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "thursday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "friday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "saturday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "sunday": {
+                    "enabled": false,
+                    "ranges": []
+                  }
+                }
+              },
+              "target": "mailto:desk@school.edu",
+              "form": null
+            },
+            {
+              "id": "ch-api",
+              "kind": "api_endpoint",
+              "name": "Ticket",
+              "availability": {
+                "mode": "always",
+                "timezone": "UTC",
+                "hours": {
+                  "monday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "tuesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "wednesday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "thursday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "friday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "saturday": {
+                    "enabled": false,
+                    "ranges": []
+                  },
+                  "sunday": {
+                    "enabled": false,
+                    "ranges": []
+                  }
+                }
+              },
+              "target": null,
+              "form": {
+                "title": "Open a ticket",
+                "fields": [
+                  {
+                    "id": "f-desc",
+                    "type": "long_text",
+                    "label": "Description"
+                  }
+                ],
+                "confirmationMessage": ""
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "help desks: none selected": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "helpDesks": []
+    }
+  },
+  "help desks: unpublished": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "not_published"
+    }
+  },
+  "memories: SSO subject": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "memories": [
+        {
+          "id": "mem-2",
+          "text": "Works in payroll",
+          "createdAt": "2026-10-20T11:00:00.000Z"
+        },
+        {
+          "id": "mem-1",
+          "text": "Prefers email",
+          "createdAt": "2026-10-20T10:00:00.000Z"
+        },
+        {
+          "id": "mem-tie-b",
+          "text": "Tied B",
+          "createdAt": "2026-10-20T09:00:00.000Z"
+        },
+        {
+          "id": "mem-tie-a",
+          "text": "Tied A",
+          "createdAt": "2026-10-20T09:00:00.000Z"
+        },
+        {
+          "id": "mem-ts",
+          "text": "Delete me (TS)",
+          "createdAt": "2026-10-19T10:00:00.000Z"
+        },
+        {
+          "id": "mem-rs",
+          "text": "Delete me (Rust)",
+          "createdAt": "2026-10-19T10:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "memories: another Organization's Assistant": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    },
+    "body": {
+      "memories": [
+        {
+          "id": "mem-foreign",
+          "text": "Another Organization",
+          "createdAt": "2026-10-20T10:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "memories: anonymous": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: another Organization's gate": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: expired gate": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: unpublished": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "not_published"
+    }
+  },
+  "memories: memory off": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: delete own": {
+    "status": 200,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  "memories: delete another subject's": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: delete another Organization's": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: delete missing": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: delete no id": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "memories: delete anonymously": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: served": {
+    "status": 200,
+    "headers": {
+      "content-disposition": "attachment; filename=\"Handbook 2026.pdf\"",
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "private, no-store",
+      "content-type": "application/pdf"
+    },
+    "body": "%PDF-1.4 parity original"
+  },
+  "download: SSO subject": {
+    "status": 200,
+    "headers": {
+      "content-disposition": "attachment; filename=\"Handbook 2026.pdf\"",
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "private, no-store",
+      "content-type": "application/pdf"
+    },
+    "body": "%PDF-1.4 parity original"
+  },
+  "download: anonymous": {
+    "status": 200,
+    "headers": {
+      "content-disposition": "attachment; filename=\"Handbook 2026.pdf\"",
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "cache-control": "private, no-store",
+      "content-type": "application/pdf"
+    },
+    "body": "%PDF-1.4 parity original"
+  },
+  "download: refused src-closed": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: refused src-unlinked": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: refused src-url": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: refused src-no-original": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: refused src-foreign": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: refused src-missing": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: storage has no object": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Not found"
+  },
+  "download: over budget": {
+    "status": 429,
+    "headers": {
+      "access-control-allow-origin": "null",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "body": "Too many requests"
+  },
+  "download: unpublished": {
+    "status": 404,
+    "headers": {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+      "content-type": "application/json"
+    },
+    "body": {
+      "error": "not_published"
+    }
+  }
+}

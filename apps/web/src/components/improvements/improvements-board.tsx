@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type {
   Improvement,
@@ -10,6 +10,7 @@ import type {
   ImprovementPriority,
   ImprovementStatus,
 } from "@agent-hub/core";
+import { IMPROVEMENT_WORKFLOW } from "@agent-hub/core";
 import { Columns3, Download, GalleryVerticalEnd, Search } from "lucide-react";
 import { ChevronDown, ListFilter } from "lucide-react";
 import { Button } from "@agent-hub/ui";
@@ -39,6 +40,7 @@ import {
   IMPROVEMENT_STATUSES,
   type ImprovementsUrlState,
   emptyLaneRecord,
+  improvementQueryFromUrl,
   keepsLinkNavigation,
   laneCountsWithOverrides,
   matchesImprovementFilters,
@@ -130,6 +132,9 @@ export function ImprovementsBoard({
   counts,
   members,
   canEdit,
+  projects,
+  assistants,
+  currentMemberId,
   initialUrlState = DEFAULT_IMPROVEMENTS_URL_STATE,
 }: {
   /** The search, filters and layout the URL asked for. */
@@ -140,13 +145,26 @@ export function ImprovementsBoard({
   counts: Record<ImprovementStatus, number>;
   members: MemberOption[];
   canEdit: boolean;
+  /** Filter options; the server applies the filters before paging. */
+  projects: { id: string; name: string }[];
+  assistants: { id: string; title: string }[];
+  currentMemberId: string;
 }) {
-  const [additional, setAdditional] = useState(() =>
-    emptyLaneRecord<ImprovementListItem[]>(() => []),
-  );
-  const [cursors, setCursors] = useState(() =>
-    emptyLaneRecord<string | null | undefined>(() => undefined),
-  );
+  const router = useRouter();
+  // The URL's filters are the scope every loaded page belongs to. When the
+  // server renders a new scope, pages loaded under the old one are dropped,
+  // and a "Load more" that answers late for the old scope is ignored.
+  const scope = JSON.stringify(improvementQueryFromUrl(initialUrlState));
+  const [loaded, setLoaded] = useState(() => ({
+    scope,
+    rows: emptyLaneRecord<ImprovementListItem[]>(() => []),
+    cursors: emptyLaneRecord<string | null | undefined>(() => undefined),
+  }));
+  const scopeChanged = loaded.scope !== scope;
+  const { rows: additional, cursors } = loaded;
+  function setAdditional(update: (rows: typeof additional) => typeof additional) {
+    setLoaded((current) => ({ ...current, rows: update(current.rows) }));
+  }
   const [loadingLane, setLoadingLane] = useState<ImprovementStatus | null>(
     null,
   );
@@ -168,9 +186,19 @@ export function ImprovementsBoard({
     source: initialLanes,
     retained: emptyLaneRecord<ImprovementListItem[]>(() => []),
   }));
+  if (scopeChanged) {
+    setLoaded({
+      scope,
+      rows: emptyLaneRecord(() => []),
+      cursors: emptyLaneRecord(() => undefined),
+    });
+    setUpdates({});
+  }
   if (snapshot.source !== initialLanes) {
     const retained = emptyLaneRecord<ImprovementListItem[]>(() => []);
     for (const lane of IMPROVEMENT_STATUSES) {
+      // A new scope keeps nothing: those rows may not match its filters.
+      if (scopeChanged) continue;
       retained[lane.value] = retainPushedOffRows(
         [
           ...snapshot.retained[lane.value],
@@ -229,23 +257,24 @@ export function ImprovementsBoard({
     initialUrlState.priority,
   );
   const [assignee, setAssignee] = useState(initialUrlState.assignee);
+  const [project, setProject] = useState(initialUrlState.project);
+  const [assistant, setAssistant] = useState(initialUrlState.assistant);
   const reduceMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState<Set<ImprovementStatus>>(new Set());
   const [view, setView] = useState<ViewMode>(initialUrlState.view);
   // A reload or a copied link keeps the same search, filters and layout.
   // Debounced: typing a search would otherwise call replaceState on every
   // keystroke, and Safari throws once a page passes ~100 calls in 30s.
+  // A changed filter also asks the server for the new scope, so counts,
+  // lanes and paging all come from the same storage query.
   useEffect(() => {
-    const timer = window.setTimeout(
-      () =>
-        replaceFilterParams(
-          { q: search, priority, assignee, view },
-          DEFAULT_IMPROVEMENTS_URL_STATE,
-        ),
-      300,
-    );
+    const timer = window.setTimeout(() => {
+      const requested = { q: search, priority, assignee, view, project, assistant };
+      replaceFilterParams(requested, DEFAULT_IMPROVEMENTS_URL_STATE);
+      if (JSON.stringify(improvementQueryFromUrl(requested)) !== scope) router.refresh();
+    }, 300);
     return () => window.clearTimeout(timer);
-  }, [search, priority, assignee, view]);
+  }, [search, priority, assignee, view, project, assistant, scope, router]);
   // The open drawer rides in `?open=` so a reload or a shared link lands on
   // the same item. Read through useSearchParams rather than the page's typed
   // URL state: the route is dynamic, so the server sees it too and the first
@@ -310,16 +339,19 @@ export function ImprovementsBoard({
   const emailOf = (userId: string | null) =>
     userId ? (members.find((m) => m.userId === userId)?.email ?? null) : null;
 
-  const filterActive = Boolean(search.trim() || priority || assignee);
-  // Filters run over the rows the board holds, so a lane's filtered count is
-  // "matches among loaded rows"; the export applies the same predicate to the
-  // whole lane read from the server.
+  const filterActive = Boolean(
+    search.trim() || priority || assignee || project || assistant,
+  );
+  // The server applies these filters before paging and counting. The same
+  // predicate runs here only while a changed control waits for its refreshed
+  // server page; the Assistant filter has no client half (it follows linked
+  // evidence the board does not hold).
   const filtered = useMemo(
     () =>
       improvements.filter((row) =>
-        matchesImprovementFilters(row, { search, priority, assignee }),
+        matchesImprovementFilters(row, { search, priority, assignee, project }),
       ),
-    [improvements, search, priority, assignee],
+    [improvements, search, priority, assignee, project],
   );
 
   const byStatus = useMemo(() => {
@@ -348,15 +380,24 @@ export function ImprovementsBoard({
   function loadMore(status: ImprovementStatus) {
     const cursor = cursorOf(status);
     if (!cursor || loadingLane) return;
+    const requestedScope = scope;
     setLoadingLane(status);
     startLoadingMore(async () => {
       try {
-        const page = await listImprovementsPageAction({ cursor, status });
-        setAdditional((current) => ({
-          ...current,
-          [status]: [...current[status], ...page.items],
-        }));
-        setCursors((current) => ({ ...current, [status]: page.nextCursor }));
+        const page = await listImprovementsPageAction({
+          ...improvementQueryFromUrl(initialUrlState),
+          cursor,
+          status,
+        });
+        setLoaded((current) =>
+          current.scope !== requestedScope
+            ? current
+            : {
+                ...current,
+                rows: { ...current.rows, [status]: [...current.rows[status], ...page.items] },
+                cursors: { ...current.cursors, [status]: page.nextCursor },
+              },
+        );
       } catch {
         toast.error("Could not load more improvements");
       } finally {
@@ -384,7 +425,8 @@ export function ImprovementsBoard({
         const { exportImprovements } = await import("./improvements-export");
         const exported = await exportImprovements({
           ...options,
-          filters: { search, priority, assignee },
+          filters: { search, priority, assignee, project },
+          query: improvementQueryFromUrl({ q: search, priority, assignee, view, project, assistant }),
           emailOf,
         });
         toast.success(
@@ -487,19 +529,81 @@ export function ImprovementsBoard({
                 <SelectTrigger aria-label="Assignee">
                   <SelectValue>
                     {(v: string) =>
-                      v ? memberDisplayName(emailOf(v)) : "Anyone"
+                      v === "unassigned"
+                        ? "Unassigned"
+                        : v === currentMemberId
+                          ? "Assigned to me"
+                          : v
+                            ? memberDisplayName(emailOf(v))
+                            : "Anyone"
                     }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Anyone</SelectItem>
-                  {members.map((m) => (
+                  <SelectItem value={currentMemberId}>Assigned to me</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {members
+                    .filter((m) => m.userId !== currentMemberId)
+                    .map((m) => (
                     <SelectItem key={m.userId} value={m.userId}>
                       {memberDisplayName(m.email)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="mt-3 mb-1.5 block text-sm font-medium" aria-hidden>
+                Assistant
+              </p>
+              <Select
+                value={assistant}
+                onValueChange={(v) => setAssistant((v as string) ?? "")}
+              >
+                <SelectTrigger aria-label="Assistant">
+                  <SelectValue>
+                    {(v: string) =>
+                      assistants.find((a) => a.id === v)?.title ?? "All Assistants"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Assistants</SelectItem>
+                  {assistants.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-3 mb-1.5 block text-sm font-medium" aria-hidden>
+                Project
+              </p>
+              <Select
+                value={project}
+                onValueChange={(v) => setProject((v as string) ?? "")}
+              >
+                <SelectTrigger aria-label="Project">
+                  <SelectValue>
+                    {(v: string) =>
+                      projects.find((p) => p.id === v)?.name ?? "All Projects"
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Projects</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {filterActive && (
+                <p className="text-muted-foreground mt-3 text-xs">
+                  Filters apply to every improvement, so counts and exports
+                  include older matches.
+                </p>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -575,7 +679,11 @@ export function ImprovementsBoard({
         >
           <div
             className={
-              view === "kanban" ? "" : "mx-auto h-full min-h-0 max-w-6xl"
+              // Docked beside a detail, the list fills its pane so the two
+              // share one divider; the reading-width cap applies alone.
+              view === "kanban"
+                ? ""
+                : `mx-auto h-full min-h-0 ${openId ? "" : "max-w-6xl"}`
             }
           >
             {view === "kanban" && totalCount > 0 && (
@@ -588,11 +696,7 @@ export function ImprovementsBoard({
                 onOpen={setOpenId}
                 onTagRemembered={rememberTag}
                 onUpdated={recordUpdate}
-                laneCount={(status) =>
-                  filterActive
-                    ? (byStatus.get(status)?.length ?? 0)
-                    : totals[status]
-                }
+                laneCount={(status) => totals[status]}
                 laneFooter={(status) => (
                   <LaneFooter paging={pagingOf(status)} />
                 )}
@@ -632,7 +736,7 @@ export function ImprovementsBoard({
                               {lane.label}
                             </span>
                             <RollingNumber
-                              value={filterActive ? items.length : paging.total}
+                              value={paging.total}
                               className="bg-foreground/5 text-muted-foreground flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs"
                             />
                             <motion.span
@@ -681,6 +785,9 @@ export function ImprovementsBoard({
                           style={{ clipPath: "inset(0 -100vw)" }}
                         >
                           <div className="py-1">
+                            <p className="text-muted-foreground px-4 pt-1 pb-2 text-xs">
+                              {IMPROVEMENT_WORKFLOW[lane.value].guidance}
+                            </p>
                             {items.length === 0 && (
                               <EmptyState size="sm"
                                 title={lanes.draggingId ? "Drop an improvement here" : filterActive ? "No matching improvements" : "No improvements in this lane"}
@@ -746,8 +853,12 @@ export function ImprovementsBoard({
 
             {totalCount === 0 && improvements.length === 0 && (
               <EmptyState
-                title="No improvements yet"
-                description="Flag an AI answer in the Inbox with Improve Answer."
+                title={filterActive ? "No matching improvements" : "No improvements yet"}
+                description={
+                  filterActive
+                    ? "No improvement matches these filters."
+                    : "Flag an AI answer in the Inbox with Improve Answer. Its conversation becomes the evidence for the fix."
+                }
               />
             )}
           </div>

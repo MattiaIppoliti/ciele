@@ -55,6 +55,7 @@ import {
   sweepExpiredObjectAccess,
   sweepExpiredTraces,
   sweepExpiredTranscripts,
+  sweepDataRetention,
   MEMBER_NOTIFICATION_RETENTION_DAYS,
   DELETED_COMMENT_GRACE_DAYS,
   OBJECT_ACCESS_RETENTION_DAYS,
@@ -772,5 +773,63 @@ describe("drainRetentionBatches", () => {
     );
     expect(calls).toBe(4);
     expect(total).toBe(8);
+  });
+});
+
+describe("sweepDataRetention", () => {
+  it("runs each window from its own policy list and records the tick", async () => {
+    const now = new Date("2026-11-04T02:00:00.000Z");
+    const deleteExpiredMessages = vi.fn().mockResolvedValue(3);
+    const deleteExpiredImprovements = vi.fn().mockResolvedValue(1);
+    const recordRetentionSweep = vi.fn().mockResolvedValue(undefined);
+    const db = stubDb({
+      listRetentionPolicies: async (kind: "messages" | "improvements") =>
+        kind === "messages"
+          ? [{ organizationId: "org-msg", retentionDays: 30 }]
+          : [{ organizationId: "org-imp", retentionDays: 365 }],
+      deleteExpiredMessages,
+      deleteExpiredImprovements,
+      recordRetentionSweep,
+    });
+
+    const report = await sweepDataRetention({ db }, { now });
+
+    expect(deleteExpiredMessages).toHaveBeenCalledWith(
+      "org-msg",
+      "2026-10-05T02:00:00.000Z",
+      RETENTION_SWEEP_BATCH
+    );
+    expect(deleteExpiredImprovements).toHaveBeenCalledWith(
+      "org-imp",
+      "2025-11-04T02:00:00.000Z",
+      RETENTION_SWEEP_BATCH
+    );
+    expect(report.messages.deleted).toBe(3);
+    expect(report.improvements.deleted).toBe(1);
+    expect(recordRetentionSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: "org-msg", policy: "messages", deleted: 3 })
+    );
+    expect(recordRetentionSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: "org-imp", policy: "improvements", deleted: 1 })
+    );
+  });
+
+  it("records a failed organization and still sweeps the other window", async () => {
+    const recordRetentionSweep = vi.fn().mockResolvedValue(undefined);
+    const db = stubDb({
+      listRetentionPolicies: async (kind: "messages" | "improvements") =>
+        kind === "messages"
+          ? [{ organizationId: "org-msg", retentionDays: 30 }]
+          : [{ organizationId: "org-imp", retentionDays: 30 }],
+      deleteExpiredMessages: vi.fn().mockRejectedValue(new Error("db offline")),
+      deleteExpiredImprovements: vi.fn().mockResolvedValue(2),
+      recordRetentionSweep,
+    });
+    const report = await sweepDataRetention({ db });
+    expect(report.messages.results[0]).toMatchObject({ organizationId: "org-msg", error: "db offline" });
+    expect(report.improvements.deleted).toBe(2);
+    expect(recordRetentionSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: "org-msg", policy: "messages", error: "db offline" })
+    );
   });
 });

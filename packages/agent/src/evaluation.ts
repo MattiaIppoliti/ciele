@@ -1,3 +1,4 @@
+import { liveBusinessHours } from "./live-business-hours";
 import { createGateway, rerank } from "ai";
 import {
   estimateCostEur,
@@ -75,10 +76,10 @@ export async function evaluateCase(input: {
   });
   const question = example.inputs.question;
   const signal = AbortSignal.timeout(20_000);
-  const routing = { url: example.inputs.launch_url, now: new Date() };
 
   try {
     if (admission.blocked) throw new Error(admission.blocked.detail);
+    const routing = { url: example.inputs.launch_url, now: new Date(), businessHours: await liveBusinessHours(db, assistant.organizationId, flows) };
     if (stage === "classifier") {
       if (candidate.provider === "typesafe" || candidate.provider === "voyage")
         throw new Error("The classifier requires a chat model.");

@@ -149,7 +149,7 @@ An Organization admin controls execution in **Configure → Execution**. New Tea
 - **Public internet.** Read public pages to research current information.
 - **Browser.** Browse with the Teammate's persistent browser profile. This requires internet access and a configured computer service.
 - **Workspace files.** Keep files in the Teammate's own workspace across computer restarts.
-- **Terminal.** Run commands inside its computer. This requires internet, workspace files and an edit capability ceiling.
+- **Terminal.** Run commands inside its computer. This requires internet, workspace files and an edit action ceiling.
 
 Computer actions run autonomously with these permissions. Ciele operations keep their existing action approvals.
 All members who can use a Teammate share its workspace and browser profile.
@@ -206,6 +206,10 @@ A new Teammate can only talk. It answers questions and it changes nothing.
 
 To let it act, an **admin** grants it one or more domains. A grant is a row. No row means no
 permission, and the Teammate does not even see the tool.
+
+A member can grant only a domain that their own Role can use at the Teammate's ceiling. For
+example, a Knowledge grant at the `edit` ceiling needs **Add and edit knowledge**. An Owner can
+grant every domain.
 
 | Domain | What the grant permits |
 | --- | --- |

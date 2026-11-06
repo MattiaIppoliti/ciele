@@ -1,3 +1,7 @@
+import { answerModerationRules } from "./answer-moderation";
+import { liveBusinessHours } from "./live-business-hours";
+import { approvedMcpResults } from "./remote-mcp-results";
+import { remoteMcpActions } from "./remote-mcp-tools";
 import { componentPartText } from "./component-text";
 import { admitFlowContinuations } from "./flow-continuation";
 import { gradeStudyAnswer, studySubmissionSchema } from "./study-exercise";
@@ -14,9 +18,11 @@ import type {
   ReviewRequest,
   SkillSnapshot,
   StoredMessage,
+  Conversation,
   StoredTurnTrace,
   Teammate,
   TrustTier,
+  TurnTrigger,
   FlowAction,
   UsageOperation,
   UsageOperationStatus,
@@ -36,6 +42,8 @@ import {
   reviewTemplateVariables,
   standingContextSections,
   streamGuardrails,
+  suppressesTurn,
+  effectiveOperatorState,
   teammateRuntimeAssistant,
   type GuardrailTraceEntry,
 } from "@agent-hub/core";
@@ -51,6 +59,7 @@ import type {
   ReferralCandidate,
   RuntimeEvent,
   TeammateActionTool,
+  TurnOutcome,
   UsageEvent,
 } from "./types";
 import {
@@ -63,6 +72,13 @@ import { contactLabel, faqAnswerParts } from "./actions";
 import type { UntrustedEnvelope } from "./untrusted-content";
 import { summarizeTurnUsage, turnUsageAttribution } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
+import {
+  fitHistory,
+  historySummarySection,
+  HISTORY_BUDGET_CHARS,
+  readHistorySummary,
+  TEAMMATE_HISTORY_FETCH_LIMIT,
+} from "./conversation-history";
 import { embedText } from "./embeddings";
 import { buildKnowledgeSearcher } from "./retrieval";
 import { runAssistantChat, runProactiveFlows } from "./engine";
@@ -71,7 +87,12 @@ import { buildTemplateContext, platformAppOrigin } from "./template";
 import { dbReviewRuntime, reviewPart } from "./review-runtime";
 import { dbWebhookRuntime, webhookResumeVariables } from "./webhook-runtime";
 import { createTurnSession } from "./session";
-import { enqueueAgentMemoryJob, enqueueMemoryPromotionJob } from "./jobs";
+import {
+  enqueueAgentMemoryJob,
+  enqueueAnswerModerationJob,
+  enqueueConversationSummaryJob,
+  enqueueMemoryPromotionJob,
+} from "./jobs";
 import { MEMORY_RECALL_LIMIT } from "./memories";
 import { prepareTraceForStorage } from "./trace";
 import { createTurnObserver } from "./turn-observer";
@@ -113,6 +134,7 @@ import {
 import { dbConnectorRuntime } from "./connector-request";
 import type { EscalationDeskCandidate } from "./help-desk-recommend";
 import { getRuntimeHost } from "./host";
+import { TurnClock, activeTurnClock, timedDb, timedWait, withTurnClock } from "./turn-clock";
 
 /**
  * Conversation Turn (see context.md): one user message and everything the
@@ -260,6 +282,12 @@ interface ConversationTurnBaseInput {
    * twice. Only one of the two is ever set.
    */
   resumeWebhook?: WebhookSubscription;
+  /**
+   * What started this turn, for its timings (#1112), when the turn cannot tell
+   * for itself: a Slack mention or an API caller holding the socket. A resumed
+   * gate, a Routine and a proactive trigger are derived; absent is `live`.
+   */
+  turnTrigger?: TurnTrigger;
 }
 
 /** A turn answered by an Assistant: a Publication snapshot or live rows. */
@@ -308,6 +336,12 @@ export const NDJSON_HEADERS = {
 } as const;
 
 export const RECENT_HISTORY_LIMIT = 12;
+
+/** A long thread's rolling summary as standing context, when it has one. */
+function historySummaryOf(sessionState: Record<string, unknown>): string[] {
+  const summary = readHistorySummary(sessionState);
+  return summary ? [historySummarySection(summary.text)] : [];
+}
 
 /**
  * Live turn-time trust read for a routed flow (flow trust ledger). Trust is
@@ -374,6 +408,43 @@ function silentTurn(): ReadableStream<Uint8Array> {
   });
 }
 
+/**
+ * A Visitor message on a Conversation a person is answering, or waiting for
+ * (#1082, #1083): saved for the Inbox, and nothing else. The stream tells the
+ * client who it is talking to, so the Widget can say so and start listening
+ * for the person's reply. Idempotent on the request id like a normal turn.
+ */
+async function operatorHeldTurn(
+  db: Db,
+  conversation: Conversation,
+  requestId: string,
+  message: string
+): Promise<ReadableStream<Uint8Array>> {
+  const saved = await db.appendMessage({
+    conversationId: conversation.id,
+    requestId,
+    role: "user",
+    content: [{ type: "text", text: message }],
+  });
+  const state = effectiveOperatorState(conversation.operator, new Date());
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      const emit = (event: RuntimeEvent) =>
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      emit({ type: "turn", conversationId: conversation.id });
+      emit({
+        type: "operator",
+        state: state === "held" ? "held" : "waiting",
+        operatorName: state === "held" ? conversation.operator?.memberName ?? null : null,
+        userMessageId: saved.id,
+      });
+      emit({ type: "done", conversationId: conversation.id, messageId: null, outcome: "operator" });
+      controller.close();
+    },
+  });
+}
+
 function replayConversationTurn(
   conversationId: string,
   message: StoredMessage | null,
@@ -402,7 +473,7 @@ function replayConversationTurn(
         for (const part of message.content as ChatReplyPart[]) {
           if (part.type !== "tool_calls") emit({ type: "part", part });
         }
-        emit({ type: "done", conversationId, messageId: message.id });
+        emit({ type: "done", conversationId, messageId: message.id, outcome: "replayed" });
       }
       controller.close();
     },
@@ -491,6 +562,11 @@ async function streamProactiveTurn(
       conversation.assistantId !== assistant.id)
   ) {
     conversation = null;
+  }
+  // A person is answering, or the Visitor is waiting for one (#1082, #1083):
+  // a proactive nudge from the AI would talk over them.
+  if (conversation && suppressesTurn(conversation.operator, new Date())) {
+    return silentTurn();
   }
 
   // The "once per Visitor" rule spans Conversations, so it needs the Visitor's
@@ -624,7 +700,8 @@ async function streamProactiveTurn(
             messageId: saved.id,
           });
         }
-        emit({ type: "done", conversationId, messageId: saved.id });
+        emit({ type: "done", conversationId, messageId: saved.id, outcome: "notification" });
+
         await recordRuntimeEvent(db, {
           organizationId: input.organizationId,
           assistantId: assistant.id,
@@ -632,6 +709,7 @@ async function streamProactiveTurn(
           messageId: saved.id,
           kind: "chat_turn",
           status: "succeeded",
+          outcome: "notification",
           surface,
           flowId: result.flowId,
           flowName: result.flowName,
@@ -648,6 +726,7 @@ async function streamProactiveTurn(
           conversationId,
           kind: "chat_turn",
           status: "failed",
+          outcome: signal.aborted ? "aborted" : "failed",
           surface,
           durationMs: Date.now() - turnStart,
           errorClass: errorClassOf(error),
@@ -817,7 +896,60 @@ export function replayableTrailingParts(stored: readonly StoredMessage[]): ChatR
   return parts;
 }
 
+/**
+ * Every Conversation Turn runs under a turn clock (#1112, `turn-clock.ts`):
+ * its `Db` handles are timed, every model call reports to it, and the
+ * `chat_turn` event carries the summary. The clock stays live for the process
+ * `overlap` count until the returned stream ends, because a turn's work
+ * outlives the call that hands its stream back.
+ */
 export async function streamConversationTurn(
+  input: ConversationTurnInput
+): Promise<ReadableStream<Uint8Array>> {
+  const clock = new TurnClock();
+  clock.trigger = turnTriggerOf(input);
+  let settle: () => void = () => {};
+  const settled = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+  // A Visitor who closes the tab ends the turn through its signal. A stream
+  // nobody reads and nobody aborts settles at `MAX_LIVE_MS` instead.
+  input.signal.addEventListener("abort", () => settle(), { once: true });
+  const timedInput: ConversationTurnInput = {
+    ...input,
+    db: timedDb(input.db),
+    ...(input.systemDb ? { systemDb: timedDb(input.systemDb) } : {}),
+  };
+  try {
+    const stream = await withTurnClock(
+      clock,
+      () => streamClockedTurn(timedInput),
+      { settled }
+    );
+    return stream.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        flush: settle,
+        cancel: settle,
+      } as Transformer<Uint8Array, Uint8Array>)
+    );
+  } catch (error) {
+    settle();
+    throw error;
+  }
+}
+
+/**
+ * What started this turn, for the `trigger` its timings carry (#1112). The
+ * unattended kinds the turn can see for itself win over what the caller says.
+ */
+function turnTriggerOf(input: ConversationTurnInput): TurnTrigger {
+  if (input.resumeReview || input.resumeWebhook) return "resume";
+  if (input.usageAttribution?.surface === "routine") return "routine";
+  if (input.trigger && input.trigger !== "message") return "proactive";
+  return input.turnTrigger ?? "live";
+}
+
+async function streamClockedTurn(
   input: ConversationTurnInput
 ): Promise<ReadableStream<Uint8Array>> {
   const { db, message, subjectType, subjectId, signal } = input;
@@ -956,6 +1088,20 @@ export async function streamConversationTurn(
     throw new Error("Stable turn id collided with an inaccessible conversation");
   }
 
+  // A Member holds this Conversation, or the Visitor is waiting for one
+  // (#1082, #1083): the Visitor's words are saved for the person to read and
+  // nothing else runs, no Flow routing, no model call. Checked before the
+  // turn claim, so a turn already streaming when the takeover landed is not
+  // affected and finishes normally. A resumed gate is the AI finishing work
+  // it already started, so it is not held back.
+  if (
+    !input.resumeReview &&
+    !input.resumeWebhook &&
+    suppressesTurn(conversation.operator, new Date())
+  ) {
+    return operatorHeldTurn(db, conversation, requestId, message);
+  }
+
   const claimNow = new Date();
   const turnClaim = await systemDb.claimConversationTurn({
     conversationId: conversation.id,
@@ -991,9 +1137,11 @@ export async function streamConversationTurn(
         usage: { spenders: usageSpenders, surface: usageSurface },
       });
 
+  // A Teammate thread runs for weeks: it reads further back, and the budget
+  // (not the count) decides what the turn carries (conversation-history.ts).
   const stored = await db.listRecentMessages(
     conversation.id,
-    RECENT_HISTORY_LIMIT
+    teammate ? TEAMMATE_HISTORY_FETCH_LIMIT : RECENT_HISTORY_LIMIT
   );
   // PII masking (#1078): active for every model call below, the first-turn
   // memory recall and everything inside the stream. Seeded from what the
@@ -1062,7 +1210,9 @@ export async function streamConversationTurn(
           return [] as string[];
         }),
         conversation.metadata
-      ).concat(input.standingContext ?? [])
+      )
+        .concat(historySummaryOf(conversation.sessionState))
+        .concat(input.standingContext ?? [])
     : input.standingContext;
 
   // Attached files ride the same channel, ahead of whatever the surface
@@ -1087,17 +1237,30 @@ export async function streamConversationTurn(
   // assistant turn and hide from the courtesy detector that a question was
   // asked (#566). Recovered here rather than by widening `messageText`, whose
   // "text parts only" contract every other consumer relies on.
-  const history: HistoryMessage[] = stored.map((m) => {
+  // An operator's reply is part of what the Visitor was told, so the model
+  // sees it as an earlier answer, labelled as a person's; a system line
+  // ("Dana joined") is about the Conversation, not part of it (#1082).
+  const fullHistory: HistoryMessage[] = stored.flatMap((m): HistoryMessage[] => {
+    if (m.role === "system") return [];
+    if (m.role === "operator") {
+      return [{ id: m.id, role: "assistant", text: `[${m.authorName ?? "Support"}, a person on the support team]: ${messageText(m.content)}` }];
+    }
+    return [historyEntry(m as StoredMessage & { role: "user" | "assistant" })];
+  });
+  function historyEntry(m: StoredMessage & { role: "user" | "assistant" }): HistoryMessage {
     const exercises = (m.content as ChatReplyPart[]).flatMap(part =>
       part.type === "component" && part.name === "study_exercise" ? [componentPartText(part)] : []
     );
     const text = [messageText(m.content), ...exercises].filter(Boolean).join("\n\n");
-    if (text || m.role !== "assistant") return { id: m.id, role: m.role, text };
+    if (text || m.role !== "assistant") return { id: m.id, role: m.role, text, ...(m.role === "assistant" ? { mcpResults: approvedMcpResults(m.content) } : {}) };
     const question = clarifyQuestion(m.content);
     return question === null
       ? { id: m.id, role: m.role, text }
       : { id: m.id, role: m.role, text: question, askedQuestion: true };
-  });
+  }
+  // Newest first until the character budget is spent, so one pasted document
+  // cannot push the rest of the thread out (conversation-history.ts).
+  const history = fitHistory(fullHistory, HISTORY_BUDGET_CHARS).kept;
   // The anti-loop guarantee (#558): a clarify part is persisted in a prior
   // assistant message's content parts, so no schema is needed to know this
   // conversation already asked the Visitor to rephrase. Asking twice is a loop
@@ -1149,7 +1312,13 @@ export async function streamConversationTurn(
   // on inherits the masking scope.
   return withPiiMasking(piiMasker, () => new ReadableStream({
     async start(controller) {
+      // Set while trailing parts from an earlier turn are replayed below:
+      // they are already written, so they are not this turn's first token.
+      let replaying = false;
       const forward = (event: RuntimeEvent) => {
+        if (!replaying && (event.type === "text-delta" || event.type === "part")) {
+          activeTurnClock()?.markFirstToken();
+        }
         controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       };
       const observer = createTurnObserver(forward);
@@ -1164,7 +1333,12 @@ export async function streamConversationTurn(
       // turn's stream, emitted only, never persisted twice; the Visitor's new
       // message is what makes them no longer trailing next time.
       if (!input.resumeReview && !input.resumeWebhook) {
-        for (const part of replayableTrailingParts(stored)) emit({ type: "part", part });
+        replaying = true;
+        try {
+          for (const part of replayableTrailingParts(stored)) emit({ type: "part", part });
+        } finally {
+          replaying = false;
+        }
       }
       /**
        * The one terminal-turn ritual, persist the assistant message, run any
@@ -1180,6 +1354,8 @@ export async function streamConversationTurn(
         parts: ChatReplyPart[];
         flowId: string | null;
         flowName: string;
+        /** Why the turn ended; on the `done` event and the telemetry row. */
+        outcome: TurnOutcome;
         effects?: ActionEffect[];
         /** The shadow pre-flight's record (#952), when one ran this turn. */
         preflight?: PreflightTraceRecord;
@@ -1277,7 +1453,12 @@ export async function streamConversationTurn(
         if (!saved) {
           throw new Error("Conversation turn lease was superseded before commit");
         }
-        emit({ type: "done", conversationId, messageId: saved.id });
+        emit({ type: "done", conversationId, messageId: saved.id, outcome: turn.outcome });
+        const moderationRules = answerModerationRules(input.assistant?.guardrails);
+        const generated = parts.some(part => (part.type === "text" && part.generated === true) || part.type === "clarify");
+        if (!input.teammate && moderationRules.length && generated) {
+          await enqueueAnswerModerationJob(input.organizationId, saved.id, moderationRules, { db: systemDb }).catch(error => reportError("moderation.enqueue", error, { conversationId, assistantId: attributedAssistantId ?? undefined }));
+        }
         await turn.afterPersist?.(saved.id);
         if (turnLeaseToken) {
           await drainTurnEffects(systemDb, { messageId: saved.id }).catch((error) =>
@@ -1301,6 +1482,7 @@ export async function streamConversationTurn(
             messageId: saved.id,
             kind: "chat_turn",
             status: "succeeded",
+            outcome: turn.outcome,
             surface,
             flowName: turn.flowName,
             durationMs: Date.now() - turnStart,
@@ -1313,7 +1495,11 @@ export async function streamConversationTurn(
        * neutral copy plus the escalation offer, and persist the exchange like
        * any turn, a Visitor is never silently dropped.
        */
-      const gatedReply = async (flowName: string, text: string) => {
+      const gatedReply = async (
+        flowName: string,
+        text: string,
+        outcome: TurnOutcome
+      ) => {
         emit({ type: "flow", flowId: null, flowName, isDefault: false });
         const textPart: ChatReplyPart = { type: "text", action: "fallback", text };
         const helpPart: ChatReplyPart = {
@@ -1323,7 +1509,7 @@ export async function streamConversationTurn(
         };
         emit({ type: "part", part: textPart });
         emit({ type: "part", part: helpPart });
-        await finishTurn({ parts: [textPart, helpPart], flowId: null, flowName });
+        await finishTurn({ parts: [textPart, helpPart], flowId: null, flowName, outcome });
       };
       let teammateFailureRecorded = false;
       let releaseConcurrency: (() => Promise<void>) | null = null;
@@ -1349,6 +1535,8 @@ export async function streamConversationTurn(
         credentialKind: u.credentialKind,
         inputTokens: u.inputTokens,
         outputTokens: u.outputTokens,
+        cacheReadTokens: u.cacheReadTokens,
+        cacheWriteTokens: u.cacheWriteTokens,
         spenders,
         surface: usageSurface,
       });
@@ -1358,14 +1546,15 @@ export async function streamConversationTurn(
           if (!subject.offersStudyMode) throw new Error("Study mode is disabled.");
           const exercise = gradeStudyAnswer(session, input.studyAnswer, await db.listMessages(conversationId));
           emit({ type: "part", part: exercise });
-          await finishTurn({ parts: [exercise], flowId: null, flowName: "Study Mode" });
+          await finishTurn({ parts: [exercise], flowId: null, flowName: "Study Mode", outcome: "study" });
           return;
         }
         if (spendAdmission.blocked?.reason === "budget") {
           // Hard daily-budget ceiling.
           await gatedReply(
             "Budget limit",
-            "The assistant has reached its daily usage limit and will be back soon. For anything urgent, please contact support."
+            "The assistant has reached its daily usage limit and will be back soon. For anything urgent, please contact support.",
+            "budget_limit"
           );
           return;
         }
@@ -1373,14 +1562,14 @@ export async function streamConversationTurn(
           // No model call, no credential handed out, the organization is not
           // active yet. Everything they configured is untouched; activating
           // them makes the same assistant answer.
-          await gatedReply("Pending activation", spendAdmission.blocked.detail);
+          await gatedReply("Pending activation", spendAdmission.blocked.detail, "pending_activation");
           return;
         }
         if (spendAdmission.blocked?.reason === "usage") {
           // Plan cap reached (#442): platform-funded traffic pauses with a
           // graceful reply; the enterprise capability wrote the admin-facing
           // upgrade prompt as an Alert.
-          await gatedReply("Usage limit", spendAdmission.blocked.detail);
+          await gatedReply("Usage limit", spendAdmission.blocked.detail, "usage_limit");
           return;
         }
         // FAQ quick reply: answer with the curated FAQ body verbatim, no
@@ -1404,6 +1593,7 @@ export async function streamConversationTurn(
               parts: [textPart, sourcesPart],
               flowId: null,
               flowName: "FAQ",
+              outcome: "faq",
             });
             return;
           }
@@ -1427,7 +1617,7 @@ export async function streamConversationTurn(
             signal,
             recordUsage: (event) => spentGateUsage.push(event),
           });
-          guardrailTrace = guarded.checks.filter((check) => check.outcome !== "pass");
+          guardrailTrace = guarded.checks.filter((check) => check.type === "moderation" || check.outcome !== "pass");
           if (guarded.blocked) {
             const flowName = `Guardrail: ${guarded.blocked.name}`;
             emit({ type: "flow", flowId: null, flowName, isDefault: false });
@@ -1441,6 +1631,7 @@ export async function streamConversationTurn(
               parts: [textPart],
               flowId: null,
               flowName,
+              outcome: "guardrail",
               afterPersist: async (messageId) => {
                 // A topic check is spend of the turn that ran it, blocked or not.
                 usageSettled = true;
@@ -1459,7 +1650,7 @@ export async function streamConversationTurn(
         // fails the turn claim, so the same turn id can be retried.
         if (turnModel) {
           const limits = turnConcurrencyLimits();
-          const slot = await admitTurnConcurrency({
+          const slot = await timedWait("queue", () => admitTurnConcurrency({
             db: systemDb,
             scopes: turnConcurrencyScopes(
               { organizationId: input.organizationId, ...turnModel },
@@ -1467,7 +1658,7 @@ export async function streamConversationTurn(
             ),
             maxWaitMs: limits.queueWaitMs,
             signal,
-          });
+          }));
           if (slot.status === "busy") throw new TurnBusyError(slot.retryAfterMs);
           releaseConcurrency = slot.release;
         }
@@ -1511,6 +1702,9 @@ export async function streamConversationTurn(
         // the bypass skips a colleague's approval, never the safety check,
         // which is what "chooses a path and never destroys information" means
         // for an actor that can act.
+        const assistantMcpActions = teammate ? [] : await remoteMcpActions({
+          db: systemDb, organizationId: input.organizationId, selections: assistant.tools.remoteMcp ?? [], assistantId: assistant.id,
+        });
         const gatedTeammateActions = gateTeammateActions({
           db: systemDb, organizationId: input.organizationId,
           actions: input.teammateActions ?? [], teammate,
@@ -1525,6 +1719,7 @@ export async function streamConversationTurn(
         const resumeFrom = resumeCursor(input, input.flows ?? []);
         seedOutbound(resumeFrom?.templatePatch, "tool");
         const admittedContinuation = "continuation" in input ? input.continuation : undefined;
+        const businessHours = await liveBusinessHours(systemDb, input.organizationId, input.flows ?? []);
         const answerTurn = {
           effectKeyPrefix: turnOperationKey,
           platformPrompt,
@@ -1549,6 +1744,7 @@ export async function streamConversationTurn(
           routing: {
             url: conversation.metadata.launchUrl,
             now: new Date(),
+            businessHours,
           },
           // The browser locale captured at launch: the fallback for the
           // pre-flight's fixed Thinking line when the message's own language
@@ -1570,7 +1766,7 @@ export async function streamConversationTurn(
           },
           readKnowledgeDocument,
           apiIntegration,
-          teammateActions: gatedTeammateActions,
+          teammateActions: [...gatedTeammateActions, ...assistantMcpActions],
           memoryDocuments: standing,
           hasAttachments: attachmentSection !== null,
           untrustedContext: input.untrustedContext,
@@ -1756,6 +1952,9 @@ export async function streamConversationTurn(
           parts: teammateExecution?.parts ?? result.parts,
           flowId: result.flowId,
           flowName: result.flowName,
+          outcome:
+            result.outcome ??
+            (handoverTarget(result, assistant.id) ? "handed_over" : "answered"),
           effects: result.effects,
           preflight: result.preflight,
           observation: teammateExecution
@@ -1859,6 +2058,22 @@ export async function streamConversationTurn(
               } catch (error) {
                 console.error("[runtime] agent-memory enqueue failed:", error);
               }
+              // The thread has outgrown what a turn shows, by count or by
+              // budget: fold what left it into the rolling summary. The
+              // handler no-ops until enough is new.
+              if (
+                stored.length >= TEAMMATE_HISTORY_FETCH_LIMIT ||
+                history.length < fullHistory.length
+              ) {
+                try {
+                  await enqueueConversationSummaryJob(
+                    { organizationId: input.organizationId, conversationId },
+                    { db: systemDb }
+                  );
+                } catch (error) {
+                  console.error("[runtime] history-summary enqueue failed:", error);
+                }
+              }
             }
           },
         });
@@ -1891,6 +2106,9 @@ export async function streamConversationTurn(
             conversationId,
             kind: "chat_turn",
             status: "failed",
+            outcome: signal.aborted
+              ? "aborted"
+              : (turnOverloadOf(error, capacityRefusalOf)?.code ?? "failed"),
             surface,
             durationMs: Date.now() - turnStart,
             toolCalls: observer.toolCalls,

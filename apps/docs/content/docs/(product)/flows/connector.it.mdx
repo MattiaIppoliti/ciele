@@ -5,136 +5,168 @@ description: Esegui un'azione in ServiceNow, Salesforce, Slack, OneDrive o Googl
 
 ## Cosa fa un Connector
 
-Una **Connector** è un'azione di risposta. Esegue un'azione in un sistema che la
+Un **Connector** è un'azione di risposta. Esegue un'azione in un sistema che la
 tua organizzazione ha già collegato in **Knowledge → Applications**. Il Flow
-memorizza la connessione e l'azione. Non memorizza mai una credenziale.
+memorizza la connessione e l'azione. Non memorizza mai alcuna credenziale.
 
 Azioni disponibili:
 
-| Provider | Azioni |
+| Provider | Actions |
 | --- | --- |
-| ServiceNow | Crea record, Aggiorna record, Elenca record, Elimina record |
-| Salesforce | Ottieni record Contatto, Ottieni record Caso, Ottieni record Utente, Ottieni record Prodotto |
-| Slack | Pubblica messaggio, Crea canale, Unisciti a canale pubblico, Elenca canali pubblici |
-| OneDrive | Crea file, Copia file, Trova file nella cartella, Ottieni contenuto file, Ottieni metadati file, Crea link di condivisione, Elimina file |
-| Google Drive | Crea file, Copia file, Trova file nella cartella, Ottieni contenuto file, Ottieni metadati file, Crea link di condivisione, Elimina file |
+| ServiceNow | Create record, Update record, List records, Delete record |
+| Salesforce | Get Contact records, Get Case records, Get User records, Get Product records, Create case, Update case |
+| Slack | Post message, Create channel, Join public channel, List public channels |
+| OneDrive | Create file, Copy file, Find files in folder, Get file content, Get file metadata, Create share link, Delete file |
+| Google Drive | Create file, Copy file, Find files in folder, Get file content, Get file metadata, Create share link, Delete file |
 
-Ogni azione è una **lettura** o una **scrittura**. Una scrittura modifica il
-sistema esterno.
+Ogni azione è una **read** o una **write**. Un'operazione di scrittura modifica
+il sistema esterno.
 
 ## OneDrive e Google Drive
 
-Una connessione OneDrive o Google Drive appartiene a un singolo membro. Il
-connettore viene eseguito con l'account di quel Membro. Per questo motivo:
+Una connessione a OneDrive o a Google Drive appartiene a un singolo Member. Il
+connettore viene eseguito con l'account di quel Member. Per questo motivo:
 
-- L'azione viene eseguita in **Preview** e in **Teammate chat**. Non viene
+- L'azione viene eseguita nel **Preview** e nel **Teammate chat**. Non viene
   eseguita in un widget pubblicato.
 - **Publish** rifiuta un Flow che contiene un connettore Drive. Il motivo indica
-  il nome del Flow.
-- Le azioni di scrittura richiedono un ambito aggiuntivo. OneDrive ha bisogno di
-  `Files.ReadWrite`. Google Drive ha bisogno di `drive.file`. Seleziona **Grant
+  il Flow.
+- Le azioni di scrittura richiedono uno scope aggiuntivo. OneDrive richiede
+  `Files.ReadWrite`. Google Drive richiede `drive.file`. Seleziona **Grant
   access** per aggiungerlo.
 - Con `drive.file`, Google Drive consente al connettore di modificare solo i
-  file creati dal connettore o aperti da una persona tramite il connettore. Le
-  operazioni di copia, condivisione ed eliminazione potrebbero non riuscire su
-  altri file.
+  file creati dal connettore o aperti da una persona tramite esso. Le operazioni
+  di copia, condivisione ed eliminazione possono non riuscire su altri file.
 - **Get file content** restituisce solo testo, fino a una dimensione limitata. I
-  file binari e i documenti di Google Documenti non vengono convertiti.
+  file binari e i Google Docs non vengono convertiti.
 
-## Aggiungi un connettore
+## Aggiungi un Connector
 
 1. Apri un Flow.
-2. Nel **Canvas**, seleziona un provider sotto **Connector** nella tavolozza.
-   Nel **Form**, seleziona **Connector** sotto **Add an action** e poi seleziona
+2. In **Canvas**, seleziona un provider sotto **Connector** nella palette. In
+   **Form**, seleziona **Connector** sotto **Add an action** e quindi seleziona
    il provider.
 3. Seleziona un **Connection**. L'elenco mostra le connessioni
-   dell'Organizzazione per quel provider.
+   dell'organizzazione per quel provider.
 4. Seleziona un **Action**.
-5. Compila i campi. Le variabili del modello come `{{user.name}}` e
-   `{{workflow.message}}` sono consentite dove il campo lo indica.
+5. Compila i campi. Le variabili di template come `{{user.name}}` e
+   `{{workflow.message}}` sono consentite laddove il campo lo indichi.
 
-Se il provider non ha alcuna connessione, collegalo prima in **Knowledge →
+Se il provider non ha alcuna connessione, connettilo prima in **Knowledge →
 Applications**. Per Slack, il pannello può aprire direttamente la finestra di
 accesso.
+
+## Case di Salesforce
+
+**Create case** apre un Case nell'organizzazione Salesforce connessa. **Update
+case** modifica un Case esistente.
+
+- I campi sono **Subject**, **Description**, **Priority**, **Status**,
+  **Origin**, **Requester email** e **Requester name**. Ogni campo accetta
+  variabili di template.
+- **Create case** imposta **Origin** su `Web` per impostazione predefinita. Un
+  campo vuoto mantiene il valore predefinito di Salesforce.
+- **Requester email** e **Requester name** vengono inseriti nei campi web email
+  e web name del Case. Un Visitor che non è un Salesforce Contact può aprire un
+  Case.
+- **Update case** necessita di un **Case id**. Di solito si tratta di
+  `{{connector.case_id}}` da un precedente **Create case**. Cambiano solo i
+  campi che compili.
+- L'utente Salesforce che ha connesso l'applicazione deve disporre
+  dell'autorizzazione **Create** su Cases per **Create case** e
+  dell'autorizzazione **Edit** per **Update case**. La connessione non richiede
+  alcun nuovo ambito.
+
+Se Salesforce rifiuta il Case, ad esempio perché un campo obbligatorio è vuoto o
+una regola di convalida non viene soddisfatta, l'azione non va a buon fine. Il
+messaggio di Salesforce viene visualizzato in **Run node** e nel trace della
+conversazione. Il Flow prosegue con la sua consueta regola in caso di errore.
+
+Dopo una scrittura, Ciele legge il numero del Case. Se quella lettura fallisce,
+la scrittura riesce comunque e conserva il Case id e il link. Il numero è vuoto.
+Usa **Get Case records** con quell'ID e il campo `CaseNumber` per leggerlo in
+seguito.
 
 ## Campi caricati dal sistema
 
 Alcuni campi caricano i loro valori dal sistema connesso: tabelle e colonne di
-ServiceNow, campi di Salesforce, canali di Slack. Seleziona **Load options** per
+ServiceNow, campi di Salesforce, elenchi di selezione dei Case di Salesforce
+(Priority, Status, Origin), canali di Slack. Seleziona **Load options** per
 recuperarli. Puoi comunque digitare un valore.
 
-## Richiede configurazione
+## Richiede la configurazione
 
 Un nodo Connector mostra **Needs setup** quando:
 
-- L'azione o la connessione non è selezionata.
+- Non hai selezionato l'azione o la connessione.
 - Un campo obbligatorio è vuoto.
-- La connessione non ha un ambito necessario per l'azione. Seleziona **Grant
-  access** per eseguire nuovamente l'accesso al provider con l'aggiunta degli
-  ambiti mancanti.
-- La connessione deve essere ristabilita.
+- Alla connessione manca uno scope di cui l'azione ha bisogno. Seleziona **Grant
+  access** per eseguire nuovamente l'accesso al provider con gli ambiti mancanti
+  aggiunti.
+- È necessario riconnettere la connessione.
 
 ## Output
 
-Un'azione scrive i suoi risultati nelle variabili del modello per le azioni
+Un'azione scrive i propri risultati nelle variabili del template per azioni
 successive nello stesso Flow. I nomi iniziano con `connector.`:
 
-| Azione | Variabili |
+| Action | Variables |
 | --- | --- |
-| ServiceNow Crea o aggiorna record | `{{connector.sys_id}}`, `{{connector.number}}` |
-| ServiceNow Elenca record | `{{connector.count}}`, `{{connector.first_sys_id}}`, `{{connector.records}}` |
-| Salesforce Ottieni record | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.records}}`, `{{connector.api_usage}}` |
-| Slack Pubblica messaggio | `{{connector.ts}}`, `{{connector.channel}}` |
-| Slack Crea o unisciti a un canale | `{{connector.id}}`, `{{connector.name}}` |
+| ServiceNow Create or Update record | `{{connector.sys_id}}`, `{{connector.number}}`, `{{connector.url}}` (un collegamento al record) |
+| ServiceNow List records | `{{connector.count}}`, `{{connector.first_sys_id}}`, `{{connector.records}}` |
+| Salesforce Get records | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.records}}`, `{{connector.api_usage}}` |
+| Salesforce Crea o aggiorna un caso | `{{connector.case_id}}`, `{{connector.case_number}}`, `{{connector.case_url}}` (un link al Case in Salesforce) |
+| Slack Post message | `{{connector.ts}}`, `{{connector.channel}}` |
+| Slack Create or Join channel | `{{connector.id}}`, `{{connector.name}}` |
 | Drive Crea o Ottieni metadati, Google Drive Copia | `{{connector.id}}`, `{{connector.name}}`, `{{connector.web_url}}` |
-| OneDrive Copia | `{{connector.status}}`, `{{connector.monitor_url}}` (la copia viene eseguita in background) |
+| OneDrive Copy | `{{connector.status}}`, `{{connector.monitor_url}}` (la copia viene eseguita in background) |
 | Drive Trova file | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.items}}` |
-| Drive Ottieni contenuto | `{{connector.content}}` |
+| Drive Get content | `{{connector.content}}` |
 | Drive Crea link di condivisione | `{{connector.url}}` |
 
 `{{connector.ok}}` è `true` o `false` dopo ogni azione. Un'azione **Message**
-dopo il Connettore può mostrare questi valori.
+dopo il Connector può mostrare questi valori.
 
-## Cosa vede il Visitatore
+## Cosa vede il Visitor
 
-- Una **scrittura** riuscita mostra il **Success message**. L'impostazione
-  predefinita è una breve conferma.
-- Una **lettura** andata a buon fine non mostra nulla. Usa un'azione Message per
+- Un'operazione **write** riuscita mostra il **Success message**. Per
+  impostazione predefinita viene mostrata una breve conferma.
+- Un'operazione **read** riuscita non mostra nulla. Usa un'azione Message per
   mostrare i risultati.
-- In caso di errore, viene visualizzato il messaggio **Failure message**.
-  L'errore del provider non viene mai mostrato al Visitatore. L'Editor lo vede
-  in **Run node** e, per una connessione scaduta, in **Alerts**.
+- Qualsiasi errore mostra il **Failure message**. L'errore del provider non
+  viene mai mostrato al Visitor. L'Editor lo vede in **Run node** e, nel caso di
+  una connessione scaduta, in **Alerts**.
 
-## Esegui nodo
+## Esegui il nodo
 
-Seleziona il nodo, quindi **Run node**. La console effettua la chiamata vera e
-propria con valori di esempio.
+Seleziona il nodo, quindi **Run node**. La console effettua la chiamata
+effettiva utilizzando valori di esempio.
 
-- Una **lettura** viene eseguita immediatamente.
-- Una **scrittura** richiede prima una conferma, perché modifica il sistema
-  esterno.
+- Un'operazione **read** viene eseguita immediatamente.
+- Un'operazione di **write** richiede prima una conferma, perché modifica il
+  sistema esterno.
 
 **Test connection** verifica che il token della connessione funzioni ancora.
 
 ## Pubblica
 
-Publish rifiuta un Flow il cui Connector:
+La pubblicazione rifiuta un Flow il cui Connector:
 
 - indica una connessione che non esiste più,
 - indica una connessione personale (gli account OneDrive o Google Drive
-  appartengono a un singolo membro),
-- indica una connessione priva degli ambiti dell'azione o che deve essere
-  riconnessa.
+  appartengono a un singolo Member),
+- indica una connessione che non dispone degli ambiti dell'azione o che deve
+  essere riconnessa.
 
-Il motivo indica il Flow. Correggi la connessione o il Flow, quindi pubblica di
-nuovo.
+Il motivo assegna il nome al Flow. Correggi la connessione o il Flow, quindi
+pubblica di nuovo.
 
 ## Connessioni scadute
 
 Quando una chiamata fallisce perché il provider ha rifiutato il token, la
 connessione viene contrassegnata come **Reauthorization required** e viene
-generato un avviso **Integration**. Ricollega l'applicazione in **Knowledge →
-Applications**. L'avviso scompare quando ti riconnetti.
+generato un avviso **Integration**. Riconnetti l'applicazione sotto **Knowledge
+→ Applications**. L'alert viene cancellato al momento della riconnessione.
 
 ## API, CLI e MCP
 

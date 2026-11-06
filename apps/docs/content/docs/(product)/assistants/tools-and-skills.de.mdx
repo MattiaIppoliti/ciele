@@ -1,10 +1,10 @@
 ---
 title: Tools und Skills
-description: Steuern Sie Runtime-Tools und verknüpfen Sie wiederverwendbare Anweisungen mit einem Assistenten.
+description: Steuern Sie Runtime-Tools und verknüpfen Sie wiederverwendbare Anweisungen mit einem Assistant.
 ---
 
 Öffnen Sie einen Assistant und wählen Sie **Tools & Skills**. In diesem
-Abschnitt werden die Laufzeitfunktionen und wiederverwendbaren Anweisungen
+Abschnitt werden die Runtime-Funktionen und wiederverwendbaren Anweisungen
 gesteuert.
 
 ## Integrierte Tools
@@ -14,14 +14,14 @@ gesteuert.
 | Search knowledge | On | Durchsucht das verbundene Knowledge und gibt zitierte Antworten zurück. |
 | Session memory | On | Verwendet Informationen aus der aktuellen Konversationssitzung. |
 | Fetch URL | Off | Liest eine URL, wenn die Runtime das Tool auswählt. |
-| Interactive tables | Off | Zeigt Fakten als einfache Tabelle, als CRM-Datensraster oder als Aufgabentabelle mit Statusfiltern an. |
+| Interactive tables | Off | Zeigt Fakten als einfache Tabelle, als CRM-Datensatzraster oder als Aufgabentabelle mit Statusfiltern an. |
 
 Search Knowledge ist stets verfügbar. Sie können die anderen integrierten Tools
 aktivieren oder deaktivieren.
 
-**Interactive tables** ordnet Fakten an, die der Assistant in dieser Antwort
-gefunden hat. Die Runtime wählt die Tabelle basierend auf Ihrer Anfrage und den
-verfügbaren Daten aus.
+**Interactive tables** ordnet Fakten, die der Assistant in dieser Antwort
+gefunden hat, an. Die Runtime wählt die Tabelle basierend auf Ihrer Anfrage und
+den verfügbaren Daten aus.
 
 - Eine einfache Tabelle vergleicht Fakten und kann Folgefragen zu einzelnen
   Zeilen enthalten.
@@ -53,12 +53,12 @@ an, aber ein Member kann sie nicht auswählen.
 
 ## Study Mode aktivieren
 
-**Study Mode** ist standardmäßig deaktiviert. Aktivieren Sie es, damit Besucher
-das Wissen des Assistenten mit interaktiven Übungen üben können.
+**Study Mode** ist standardmäßig deaktiviert. Aktivieren Sie diese Option, damit
+Besucher das Wissen des Assistenten mithilfe interaktiver Übungen üben können.
 
 1. Öffnen Sie **Tools & Skills** und aktivieren Sie **Study Mode**.
 2. Aktivieren Sie mindestens ein Frageformat.
-3. Fügen Sie **Custom instructions** hinzu, um den Teaching Style festzulegen.
+3. Fügen Sie **Custom instructions** hinzu, um den Lehrstil festzulegen.
 4. Testen Sie eine Übung in der Vorschau.
 5. Veröffentlichen Sie den Assistant, um das Widget zu aktualisieren.
 
@@ -66,7 +66,7 @@ Der Chat-Editor zeigt eine Schaltfläche **Study exercises** an. Wählen Sie ein
 Format aus, fügen Sie ein Thema hinzu und senden Sie dann die Anfrage.
 
 Wenn aktiviert, wird **Study Mode** auch in **Flows** angezeigt. Die
-Schaltfläche Settings öffnet diesen Abschnitt. Deaktivieren Sie den Study Mode
+Schaltfläche „Settings“ öffnet diesen Abschnitt. Deaktivieren Sie den Study Mode
 in **Tools & Skills**. Der Flow hat keinen separaten Schalter. Anfragen aus dem
 Menü „Study exercises“ gehen direkt an diesen Flow. In Thinking wird ein Symbol
 mit einer Doktorhut-Kappe angezeigt.
@@ -77,7 +77,7 @@ unterstützten Thema oder nach Lernmaterial.
 
 | Format | Wie der Visitor antwortet |
 | --- | --- |
-| Multiple Choice | Wählen Sie eine Option aus. Es ist keine Freitextantwort verfügbar. |
+| Multiple Choice | Wählen Sie eine Option aus. Es steht keine Freitextantwort zur Verfügung. |
 | Drag the words | Ziehen Sie ein Wort per Drag-and-drop oder wählen Sie es aus, um pro Frage eine Lücke zu füllen. |
 | True / False | Wählen Sie eine von zwei Optionen aus. |
 | Flashcards | Geben Sie das fehlende Wort oder eine kurze Formulierung ein. |
@@ -87,12 +87,12 @@ fünf verschiedene Fragen, die auf dem abgerufenen Knowledge basieren.
 
 Wählen Sie **Check** aus, um eine Antwort zu speichern. Ciele zeigt an, ob die
 Antwort richtig ist, gibt die richtige Antwort an und liefert eine Erklärung.
-Eine einmal übermittelte Antwort kann nicht mehr geändert werden. Flashcards
-akzeptieren die bei der Erstellung der Übung definierten Schreibvarianten.
+Eine bereits übermittelte Antwort kann nicht mehr geändert werden. Flashcards
+akzeptieren die Schreibvarianten, die beim Erstellen der Übung definiert wurden.
 
 Die Inbox zeigt die Fragen, die eingereichten Antworten, die richtigen Antworten
-und die Punktzahl an. Unvollendete Übungen zeigen an, wie viele Fragen noch
-unbeantwortet sind. Die Übungen werden innerhalb des Chats ausgeführt. Sie
+und die Punktzahl an. Bei unvollendeten Übungen wird angezeigt, wie viele Fragen
+noch unbeantwortet sind. Die Übungen werden innerhalb des Chats ausgeführt. Sie
 benötigen keinen externen H5P-Player.
 
 ## Eine API-Integration konfigurieren
@@ -102,8 +102,8 @@ enthält eine Basis-URL, geschützte Anmeldeinformationen und beschriebene
 Endpunkte.
 
 Definieren Sie für jeden Endpoint die Methode, den Pfad, den Zweck, die
-Parameter und das Response-Format. Die Runtime überprüft jeden angeforderten
-Pfad anhand dieses Katalogs.
+Parameter und das Antwortformat. Die Runtime überprüft jeden angeforderten Pfad
+anhand dieses Katalogs.
 
 Der Agent kann die Details des Endpunkts prüfen, bevor er eine Anfrage sendet.
 Große Antworten bleiben über windowed reads verfügbar.
@@ -116,10 +116,10 @@ Add only the endpoints that the Assistant must use. The runtime cannot call an u
 
 Eine Anfrage kann nach einem Timeout oder einem Fehler erneut gesendet werden.
 Wenn der Endpoint Daten schreibt, kann die zweite Anfrage einen zweiten
-Datensatz anlegen.
+Datensatz erstellen.
 
 Um dies zu verhindern, weisen Sie dem Endpoint einen Idempotenzschlüssel zu.
-Geben Sie im Formular des Endpunkts an, wo Ihre API den Schlüssel liest:
+Geben Sie im Endpoint-Formular an, wo Ihre API den Schlüssel liest:
 
 - `header:Idempotency-Key` sendet den Schlüssel in einem Request-Header.
 - `body:request_id` sendet den Schlüssel im JSON-Body.
@@ -145,7 +145,7 @@ Eine Skill ist eine wiederverwendbare Anweisungsvorlage. Eine Organisation kann
 dieselbe Skill mehreren Assistenten zuordnen.
 
 1. Öffnen Sie **Tools & Skills**.
-2. Suchen Sie die gewünschte Organization Skill.
+2. Suchen Sie die benötigte Organization Skill.
 3. Fügen Sie die Skill dem Assistant hinzu.
 4. Testen Sie das Ergebnis in Preview.
 5. Veröffentlichen Sie den Assistant, wenn das Ergebnis korrekt ist.
@@ -156,25 +156,28 @@ verwendet den letzten Publication-Snapshot.
 ### Ermöglichen Sie es Nutzern, eine Skill aus dem Chat-Fenster heraus zu starten
 
 Eine Skill kann ein **Opening line** haben. Schreiben Sie es aus der Perspektive
-der Person, die die Frage stellt, nicht aus der des Assistenten.
+der Person, die die Frage stellt, nicht aus der Perspektive des Assistenten.
 
-Das Chat-Fenster zeigt ein **/**-Menü mit jeder Skill, die eine Eröffnungszeile
+Das Chat-Fenster zeigt ein **/**-Menü mit jeder Skill, die eine Opening Line
 hat. Wenn der Benutzer eine Skill auswählt, schreibt das Chat-Fenster die
 Opening Line in das Nachrichtenfeld. Sie können den Text bearbeiten, bevor Sie
 ihn senden.
 
 Wenn die Opening Line leer ist, wird die Skill nicht im **/**-Menü angezeigt.
-Der Skill-Prompt gilt weiterhin für jede Antwort.
+Bei kurzen Skill-Sets (insgesamt bis zu 4.000 Zeichen) geben Sie die Anweisungen
+für jede Antwort ein. Bei längeren Sets sieht das Modell die Namen und
+Beschreibungen und lädt bei Bedarf die passenden Playbooks. Geben Sie jeder
+Skill eine klare Beschreibung, wann sie anwendbar ist.
 
 Veröffentlichen Sie den Assistant, nachdem Sie eine Eröffnungszeile verfasst
-haben. Das Widget verwendet den letzten Snapshot der Publication.
+haben. Das Widget verwendet den letzten Publication-Snapshot.
 
-## Attachments und Knowledge sind nicht dasselbe
+## Anhänge und Knowledge sind nicht dasselbe
 
 Sowohl ein Anhang als auch eine Knowledge Source werden zu Text, und Ciele liest
 beide mit demselben Extractor. Was danach geschieht, ist anders.
 
-Eine Knowledge Source ist permanent. Ciele speichert den Text, indiziert ihn,
+Eine Knowledge Source ist dauerhaft. Ciele speichert den Text, indiziert ihn,
 und der Assistant kann ihn in jeder späteren Konversation zitieren.
 
 Ein Anhang gehört zu seiner Konversation. Ciele liest es einmal, verwirft die

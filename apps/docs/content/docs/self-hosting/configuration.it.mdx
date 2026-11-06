@@ -1,12 +1,12 @@
 ---
 title: Configurazione
-description: Configura origini, segreti, account, modelli, email e worker opzionali.
+description: Configura origini, segreti, account, modelli, email e servizi opzionali.
 ---
 
 Lo script di bootstrap scrive `deploy/.env`. Usa `deploy/.env.example` come
 riferimento alla variabile corrente.
 
-## Origin pubbliche
+## Origini pubbliche
 
 Imposta `PUBLIC_URL` sull'origine pubblica dell'applicazione. Imposta
 `SUPABASE_PUBLIC_URL` sull'origine del gateway del database accessibile dal
@@ -25,7 +25,7 @@ Lo stack richiede Postgres, JSON Web Token, service Role, la crittografia
 dell'applicazione e i segreti cron. Lascia che lo script di bootstrap li generi.
 
 Non modificare `JWT_SECRET`, `ANON_KEY` o `SERVICE_ROLE_KEY` in modo
-indipendente. Costituiscono un'unica configurazione di firma.
+indipendente. Formano un'unica configurazione di firma.
 
 ## Account e e-mail
 
@@ -35,50 +35,152 @@ Il primo account diventa il proprietario dell'organizzazione. Imposta
 Senza la configurazione SMTP, `MAILER_AUTOCONFIRM=true` conferma automaticamente
 i nuovi account.
 
-Le azioni di posta elettronica in fase di runtime utilizzano `RESEND_API_KEY` e
+Le azioni di posta elettronica in runtime utilizzano `RESEND_API_KEY` e
 `EMAIL_FROM`. Segnalano un risultato non configurato quando uno dei due valori è
 assente.
 
 ## Endpoint dei modelli
 
 Configura le chiavi dei provider Anthropic, OpenAI o Google. Puoi anche
-configurare un endpoint per chat ed embedding compatibile con OpenAI. Imposta
+configurare un endpoint di chat e di embedding compatibile con OpenAI. Imposta
 `OPENAI_COMPATIBLE_CONTEXT_WINDOW` sulla dimensione del contesto configurata per
 il server di chat, pari ad almeno 8192 token. Ciele verifica l'intera richiesta
 prima di chiamare il modello. Se il contenuto richiesto supera questa finestra,
 utilizza un modello più grande oppure riduci la richiesta.
 
-La ricerca nella knowledge base utilizza il matching lessicale quando non è
+La ricerca nella Knowledge Base utilizza il matching lessicale quando non è
 disponibile alcun modello di embedding.
 
 ## Capacità della chat
 
-Ogni turno di chat che richiama un modello occupa uno slot prima del suo primo
-richiamo al modello. Gli slot si trovano nel database, quindi tutte le istanze
+Ogni turno di chat che richiama un modello occupa uno slot prima della sua prima
+chiamata al modello. Gli slot si trovano nel database, quindi tutte le istanze
 dell'applicazione condividono un unico contatore.
 
-| Variable | Default | Effect |
+| Variabile | Valore predefinito | Effetto |
 |---|---|---|
 | `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | Numero massimo di turni che possono essere eseguiti contemporaneamente per una singola Organization. |
-| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Numero massimo di turni che possono essere eseguiti contemporaneamente su una singola chiave del provider della piattaforma. |
-| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Per quanto tempo un turno attende uno slot libero, in millisecondi. Il valore massimo è `60000`. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | Il numero massimo di turni che possono essere eseguiti contemporaneamente su una singola chiave del provider della piattaforma. |
+| `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Per quanto tempo un turno attende uno slot libero, espresso in millisecondi. Il valore massimo è `60000`. |
 
-Imposta un limite su `0` o `off` per rimuoverlo. Lascia la variabile vuota per
+Imposta un limite a `0` o `off` per rimuoverlo. Lascia la variabile vuota per
 utilizzare il valore predefinito.
 
-Un turno che non ottiene uno slot durante il tempo di attesa non viene eseguito.
-Il widget comunica al Visitor di riprovare tra pochi secondi.
+Un turno che non ottiene alcuno slot durante il tempo di attesa non viene
+eseguito. Il widget comunica al Visitor di riprovare tra pochi secondi.
 
 Quando un provider rifiuta una richiesta a causa del suo limite di frequenza,
-l'applicazione riprova a inviare la richiesta dopo un intervallo casuale. Il
+l'applicazione tenta nuovamente la richiesta dopo un intervallo casuale. Il
 widget mostra lo stesso messaggio se tutti i tentativi falliscono.
 
 Il widget limita inoltre ogni Visitor a 12 messaggi al minuto. Un singolo
 indirizzo di rete può inviare 300 messaggi al minuto a un unico Assistente.
-Molti Visitor possono condividere un unico indirizzo, ad esempio su una rete
+Molti Visitatori possono condividere un unico indirizzo, ad esempio su una rete
 aziendale.
 
-I turni su un abbonamento personale non occupano uno slot.
+L'applicazione legge l'indirizzo di rete dall'header `X-Forwarded-For`. Per
+impostazione predefinita, utilizza il primo indirizzo nell'header. Questo
+comportamento è corretto in assenza di proxy e con l'overlay TLS incluso, poiché
+Caddy rimuove il valore inviato dal client.
+
+Alcuni proxy aggiungono il proprio caller alla fine dell'header e mantengono il
+valore proveniente dal client. Esempi sono nginx con
+`$proxy_add_x_forwarded_for` e la maggior parte dei load balancer cloud. Quando
+ti trovi dietro proxy di questo tipo, imposta `CIELE_TRUSTED_PROXY_HOPS` sul
+numero di questi proxy. Quindi l'applicazione utilizza l'indirizzo aggiunto dal
+proxy più esterno e un client non può modificarlo.
+
+Quando attivi un abbonamento personale, questo non occupa uno slot.
+
+## Endpoint MCP ospitato
+
+Imposta `CIELE_MCP_READ_ONLY=1` in `deploy/.env` per fare in modo che l'endpoint
+MCP ospitato, `/api/mcp`, rifiuti ogni azione di mutazione. L'impostazione si
+applica a ogni API key. Si applica quando l'applicazione risponde all'endpoint e
+quando il servizio Rust vi risponde.
+
+## Servizio API Rust
+
+Il servizio Rust opzionale esegue alcune operazioni al posto dell'applicazione.
+Risponde inoltre direttamente ad alcuni endpoint `/api/v1`. Per impostazione
+predefinita è disattivato. Lo stack legge il suo file Compose,
+`deploy/docker-compose.rust.yml`, solo quando `COMPOSE_FILE` lo elenca.
+
+Esegui lo script di bootstrap con l'opzione `--rust`:
+
+```bash
+./deploy/bootstrap.sh --rust
+```
+
+Lo script aggiunge il file a `COMPOSE_FILE` in `deploy/.env` e genera il segreto
+condiviso. Il servizio viene compilato dal codice sorgente, anche in modalità
+immagine.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `CIELE_RUST_API_SECRET` | Generated | Il segreto condiviso tra l'applicazione e il servizio. |
+| `CIELE_RUST_OPERATIONS` | All ported operations | Le operazioni eseguite nel servizio, separate da virgole. |
+| `CIELE_RUST_DATABASE_URL` | The bundled Postgres | La connessione al database per il servizio. Impostalo quando utilizzi un database esterno. |
+| `CIELE_RUST_LOG` | `info` | Il livello di log del servizio. |
+| `CIELE_RUST_MCP` | `1` | Imposta `0` per mantenere l'endpoint MCP ospitato nell'applicazione. |
+| `CIELE_RUST_WIDGET_ROUTES` | Empty | Gli endpoint dei widget a cui il servizio risponde, separati da virgole. Un valore vuoto non invia alcun endpoint widget al servizio. |
+
+Il servizio risponde a questi endpoint quando la loro operazione è in
+`CIELE_RUST_OPERATIONS`:
+
+- `GET /api/v1/alerts` e `POST /api/v1/alerts/{id}/resolve`
+- `GET /api/v1/improvements`
+- `GET /api/v1/task-labels` e `POST /api/v1/task-labels`
+- `PATCH /api/v1/task-labels/{id}` e `DELETE /api/v1/task-labels/{id}`
+
+Il servizio verifica autonomamente la chiave API. Le risposte sono identiche
+alle risposte dell'applicazione. Tutti gli altri endpoint vengono indirizzati
+all'applicazione.
+
+Il servizio risponde anche all'endpoint MCP ospitato, `/api/mcp`, con gli stessi
+strumenti. Nel servizio è in esecuzione uno strumento per uno degli endpoint
+sopra indicati. Altri strumenti chiamano l'applicazione con la chiave API del
+chiamante.
+
+Una modifica apportata tramite il servizio non aggiorna la console. Le pagine
+Alerts, Projects e Tasks possono mostrare dati obsoleti finché non le ricarichi.
+La search palette può mostrare il nome precedente di una Label per un massimo di
+30 secondi.
+
+Se il servizio si interrompe, l'applicazione non risponde a questi endpoint per
+suo conto. Le richieste falliscono finché il servizio non viene riavviato. Per
+ripristinare immediatamente, rimuovi `docker-compose.rust.yml` da `COMPOSE_FILE`
+e riavvia lo stack.
+
+### Endpoint dei widget
+
+Il servizio può anche rispondere ad alcuni endpoint pubblici dei widget. Per
+impostazione predefinita, questa opzione è disattivata. Per attivarlo, imposta
+`CIELE_RUST_WIDGET_ROUTES` in `deploy/.env`, quindi riavvia lo stack. Ad
+esempio:
+
+```bash
+CIELE_RUST_WIDGET_ROUTES=config,session
+```
+
+Il servizio può rispondere a questi endpoint dei widget: `config`, `session`,
+`feedback`, `conversation-feedback`, `conversations`, `help-desks`, `memories` e
+`sources`. L'endpoint `sources` corrisponde al download di un file Source. Tutti
+gli altri endpoint dei widget vengono indirizzati all'applicazione.
+
+Lo stack fornisce al servizio la chiave di crittografia, le chiavi del modello e
+lo spazio di archiviazione dei file dell'applicazione. Per questo motivo, un
+Visitor che effettua l'accesso rimane connesso e l'elenco dei modelli nel widget
+rimane lo stesso.
+
+Se il servizio si interrompe, un endpoint del widget elencato va in errore. Il
+widget mostra un errore fino a quando il servizio non viene riavviato. Per
+ripristinare immediatamente, imposta `CIELE_RUST_WIDGET_ROUTES` su un valore
+vuoto e riavvia lo stack.
+
+Per interrompere il servizio, rimuovi `docker-compose.rust.yml` da
+`COMPOSE_FILE`. Quindi riavvia lo stack. A quel punto tutte le operazioni
+vengono nuovamente eseguite nell'applicazione.
 
 ## TLS
 

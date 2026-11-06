@@ -11,8 +11,8 @@ Para encontrar la operación que hay detrás de un control de la consola, abre e
 [Developer Panel](/developers/developer-panel) en esa página.
 
 Para explorar la interfaz, abre la
-[component library](https://ciele.app/components) pública. Cada página trata de
-un componente y de sus estados o variantes. La
+[biblioteca de componentes](https://ciele.app/components) pública. Cada página
+trata de un componente y de sus estados o variantes. La
 [Blocks section](https://ciele.app/components/blocks) contiene funcionalidades
 completas, como tablas, conversaciones y editores. Ambas secciones incluyen las
 pestañas **Preview**, **Usage** y **Code**. Puedes buscar en cada sección y
@@ -29,7 +29,7 @@ pestaña **Code** muestra los archivos fuente de la compilación actual.
 
 ## Modelo de conexión común
 
-Las tres interfaces requieren una clave API de la organización. El Role asignado
+Las tres interfaces requieren una clave de API de organización. El Role asignado
 controla las operaciones que la clave puede utilizar.
 
 <Mermaid
@@ -54,7 +54,7 @@ El servicio alojado utiliza `https://ciele.app` de forma predeterminada. Una
 instalación autoalojada utiliza su propio origen público.
 
 <Callout title="Use the minimum Role">
-Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation).
+Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation). For a key that only reads, create a custom Role in **Settings > Roles** without the **Triage conversations** and **Delete conversations** capabilities, and give that Role to the key.
 </Callout>
 
 ## Dominios disponibles

@@ -94,6 +94,7 @@ export const POST = withRequestDiagnostics("/api/teammates/[teammateId]/chat", "
       organizationId: session.organization.id,
       userId: session.userId,
       role: session.role,
+      capabilities: session.capabilities,
       actorEmail: session.email,
     }),
     // Who this Teammate could refer to (#773). Read here, and resolved against

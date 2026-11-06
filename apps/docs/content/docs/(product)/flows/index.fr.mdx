@@ -4,19 +4,19 @@ description: Acheminez les messages et les événements proactifs vers des actio
 ---
 
 Un Flow contient un déclencheur, des conditions disponibles et des actions
-ordonnées. Le routeur traite les Flows activés dans l'ordre configuré.
+ordonnées. Le routeur traite les Flows activés dans l’ordre configuré.
 
 ## Flux de messages
 
 Le déclencheur **User sends a message** utilise la classification des intentions
 (Intent Classification). Un classificateur de modèle sélectionne le meilleur
-Flow éligible lorsqu'un modèle est disponible.
+Flow éligible lorsqu’un modèle est disponible.
 
-Le routeur de mots-clés fournit un mécanisme de repli en cas de déconnexion ou
-d'erreur. Les deux routeurs utilisent le même filtre de candidats.
+Le routeur de mots-clés fournit un mécanisme de secours en cas de déconnexion ou
+d’erreur. Les deux routeurs utilisent le même filtre de candidats.
 
 Le Flow verrouillé **Default behavior** reste en dernière position. Il traite un
-message éligible lorsqu'aucun Flow antérieur n'est retenu.
+message éligible lorsqu’aucun Flow antérieur n’est retenu.
 
 ## Flux proactifs
 
@@ -26,18 +26,39 @@ Ces déclencheurs ne classent pas un message :
 - **Time on page**
 - **Chat opens**
 
-Un Flow proactif n'a pas de conditions et contient une seule action
+Un Flow proactif n’a pas de conditions et contient une seule action
 Notification. Voir [Notifications](/flows/notifications).
 
 ## Ordre des flux
 
-Placez les Flows de messages spécifiques avant les Flows de messages généraux.
-L'ordre contrôle également le raccourci intégré Basic Interaction.
+Placez les flux de messages spécifiques avant les flux de messages généraux.
+L’ordre détermine également le comportement du raccourci intégré Basic
+Interaction.
 
-Un Flow personnalisé correspondant, placé plus haut dans l'ordre, peut prendre
-en charge un message de courtoisie avant le Flow Basic Interaction intégré.
+Un Flow personnalisé correspondant, placé plus haut dans l’ordre, peut prendre
+en charge un message de courtoisie avant le Flow intégré Basic Interaction.
 
 Lorsque le [Study Mode](/assistants/tools-and-skills#enable-study-mode) est
-activé, une demande d'exercice d'étude est directement dirigée vers le Study
+activé, une demande d’exercice d’étude est directement dirigée vers le Study
 Mode Flow. La classification des intentions n'est pas exécutée pour cette
 requête.
+
+
+## Planification avec les heures d’ouverture
+
+La condition **Schedule** propose un **Absolute window** ou un **Business
+hours**. Pour les heures d’ouverture, sélectionnez un planning d’organisation
+nommé et choisissez **During business hours** ou **Outside business hours**. Les
+deux options incluent les jours fériés et le fuseau horaire du planning. Pour
+une fenêtre absolue, définissez le début, la fin (facultative) et le fuseau
+horaire. Une nouvelle condition commence avec le fuseau horaire par défaut de
+l’organisation.
+
+Le calendrier constitue un point de contrôle strict avant la classification des
+intentions. Il n’entre pas dans le prompt du classificateur. Un Flow publié lit
+les heures d’ouverture en temps réel ; ainsi, un jour férié modifié s’applique
+sans nécessiter de nouvelle publication. L’éditeur signale un planning manquant.
+Au moment de l’exécution, un calendrier manquant est non évaluable, selon les
+règles Any/All existantes. Un calendrier utilisé par un Flow d’édition ou par la
+dernière Publication ne peut pas être supprimé. Le refus désigne le Flow. Les
+Flows à déclenchement proactif n’ont toujours pas de conditions.

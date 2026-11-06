@@ -19,6 +19,20 @@ describe("raiseImprovement", () => {
     expect(improvement!.status).toBe("to_do");
   });
 
+  it("preserves the expected answer when capturing an improvement", async () => {
+    const improvement = await raiseImprovement(db, DEMO_ORG.id, {
+      title: "Correct the deadline",
+      description: "  Answer with the deadline and cite the admissions Source.  ",
+    });
+    expect(improvement?.description).toBe("Answer with the deadline and cite the admissions Source.");
+  });
+
+  it("rejects oversized expected answers before creating work", async () => {
+    await expect(raiseImprovement(db, DEMO_ORG.id, {
+      title: "Gap", description: "x".repeat(10001),
+    })).rejects.toThrow("Description must be at most 10000 characters");
+  });
+
   it(`clamps titles at ${IMPROVEMENT_TITLE_MAX} characters`, async () => {
     const improvement = await raiseImprovement(db, DEMO_ORG.id, {
       title: "x".repeat(500),

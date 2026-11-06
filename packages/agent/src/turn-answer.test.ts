@@ -43,7 +43,7 @@ describe("answerConversationTurn", () => {
       { type: "text-delta", delta: "poi Applications." },
       { type: "text-end" },
       { type: "part", part: { type: "sources", action: "search_knowledge", sources: [source] } },
-      { type: "done", conversationId: "conv-1", messageId: "msg-1" },
+      { type: "done", conversationId: "conv-1", messageId: "msg-1", outcome: "answered" },
     ];
     const answer = await answerConversationTurn({} as never);
     expect(answer).toMatchObject({

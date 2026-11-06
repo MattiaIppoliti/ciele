@@ -38,6 +38,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CHANNEL_KINDS,
+  channelKindUnavailable,
   CHANNEL_KIND_ORDER,
   CONVERSATION_DATA_ITEMS,
   FIELD_TYPES,
@@ -47,7 +48,8 @@ import {
   newFormField,
 } from "@/lib/support-channels";
 import { COUNTRIES, findCountry } from "@/lib/countries";
-import { TIMEZONES } from "@/lib/timezones";
+import { useBusinessHours } from "@/lib/hooks/use-business-hours";
+import { timezoneOptions } from "@/lib/flow-conditions";
 import { AvailabilityScheduler } from "./availability-scheduler";
 import {
   isRedirectError,
@@ -332,6 +334,33 @@ function ConfigFields({
           spellCheck={false}
           className="mt-2 h-11"
         />
+        {errorText}
+      </div>
+    );
+  }
+  if (kind === "live_operator") {
+    return (
+      <div className="space-y-2">
+        <p className="font-semibold">Wait timeout (minutes)</p>
+        <Input
+          {...primary}
+          value={String(config.waitTimeoutMinutes ?? 5)}
+          onChange={(e) => {
+            const minutes = Number.parseInt(e.target.value, 10);
+            onChange({ waitTimeoutMinutes: Number.isNaN(minutes) ? undefined : minutes });
+          }}
+          aria-label="Wait timeout in minutes"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={60}
+          className="mt-2 h-11 w-32"
+        />
+        <p className="text-muted-foreground text-sm">
+          The Visitor waits in the chat for someone to take the conversation over in the Inbox.
+          If nobody does in time, the assistant answers again and the Visitor sees this desk&apos;s
+          other channels.
+        </p>
         {errorText}
       </div>
     );
@@ -712,6 +741,8 @@ function AvailabilityTab({
   availability: ChannelAvailability;
   onChange: (patch: Partial<ChannelAvailability>) => void;
 }) {
+  const calendars = useBusinessHours();
+  const zones = useMemo(() => timezoneOptions(), []);
   return (
     <div className="mt-8 space-y-5">
       <div>
@@ -728,6 +759,7 @@ function AvailabilityTab({
           [
             { value: "always", label: "Always available" },
             { value: "limited", label: "Limited availability" },
+            { value: "business_hours", label: "Business hours" },
           ] as const
         ).map((option) => {
           const selected = availability.mode === option.value;
@@ -738,7 +770,7 @@ function AvailabilityTab({
               role="radio"
               aria-checked={selected}
               tabIndex={selected ? 0 : -1}
-              onClick={() => onChange({ mode: option.value })}
+              onClick={() => onChange({ mode: option.value, ...(option.value === "business_hours" && !availability.businessHoursId ? { businessHoursId: calendars.items.find(item => item.isDefault)?.id ?? calendars.items[0]?.id } : {}) })}
               onKeyDown={onRadioKeyDown}
               className={`flex w-full items-center gap-3 rounded-xl border-2 px-4 py-4 text-left font-semibold transition-colors ${
                 selected
@@ -760,6 +792,16 @@ function AvailabilityTab({
         })}
       </div>
 
+      {calendars.error && <p role="alert" className="text-destructive text-sm">{calendars.error}</p>}
+      {availability.mode === "business_hours" && <div className="space-y-2">
+        <Label>Business hours schedule</Label>
+        <Select value={availability.businessHoursId ?? ""} onValueChange={value => { if (value) onChange({ businessHoursId: value }); }} disabled={calendars.loading || !calendars.available}>
+          <SelectTrigger aria-label="Business hours schedule"><RollInText text={calendars.items.find(item => item.id === availability.businessHoursId)?.name ?? "Select a schedule"} /></SelectTrigger>
+          <SelectContent>{calendars.items.map(item => <SelectItem key={item.id} value={item.id}><RollInText text={item.name} /></SelectItem>)}</SelectContent>
+        </Select>
+        {!calendars.loading && !calendars.items.some(item => item.id === availability.businessHoursId) && <p className="text-destructive text-sm">Select an existing schedule in Settings → Business hours.</p>}
+        <p className="text-muted-foreground text-sm">Weekly hours and holidays apply to every channel using this schedule.</p>
+      </div>}
       {availability.mode === "limited" && (
         <>
           <div>
@@ -770,11 +812,11 @@ function AvailabilityTab({
             >
               <SelectTrigger className="mt-2" aria-label="Timezone">
                 <SelectValue>
-                  {(v: string) => TIMEZONES.find((tz) => tz.value === v)?.label}
+                  {(v: string) => zones.find((tz) => tz.value === v)?.label ?? v}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {TIMEZONES.map((tz) => (
+                {zones.map((tz) => (
                   <SelectItem key={tz.value} value={tz.value}>
                     {tz.label}
                   </SelectItem>
@@ -798,10 +840,13 @@ export function ChannelPanel({
   helpDeskId,
   initial,
   canEdit = true,
+  ticketingReady = false,
   onClose,
 }: {
   helpDeskId: string;
   initial: ChannelPanelState;
+  /** The desk has a ticketing target, so "Create a ticket" may be added. */
+  ticketingReady?: boolean;
   /** False for a Viewer: the edit step renders read-only and offers no save. */
   canEdit?: boolean;
   onClose: () => void;
@@ -943,10 +988,9 @@ export function ChannelPanel({
 
   function pickKind(kind: ChannelKind) {
     const meta = CHANNEL_KINDS[kind];
-    if (meta.requiresTicketing) {
-      toast.info(
-        `${meta.label} requires the ticketing integration, coming in a later iteration.`,
-      );
+    const unavailable = channelKindUnavailable(kind, { ticketingReady });
+    if (unavailable) {
+      toast.info(unavailable);
       return;
     }
     setName(meta.defaultName);

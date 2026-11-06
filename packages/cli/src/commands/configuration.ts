@@ -1,4 +1,5 @@
 import type { GoalExpectations, GoalStatus, SkillInput, SkillPatch } from "@agent-hub/core";
+import type { QuickTextInput } from "@ciele/client";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
 import { jsonFile, usage, type CommandContext, confirmed } from "./shared.ts";
@@ -37,6 +38,44 @@ export async function skills(verb: string | undefined, ctx: CommandContext) {
       return EXIT.ok;
     default:
       return usage(deps, "skills <list|create|update|delete>");
+  }
+}
+
+/** Quick Texts (#1085): the Inbox's saved replies. */
+export async function quickTexts(verb: string | undefined, ctx: CommandContext) {
+  const { client, rest, flags, emit, deps } = ctx;
+  switch (verb) {
+    case "list": {
+      const result = await client.quickTexts.list();
+      emit(table(result.data, [
+        { key: "id", header: "ID" },
+        { key: "title", header: "Title" },
+        { key: "folder", header: "Folder" },
+      ]), result);
+      return EXIT.ok;
+    }
+    case "create": {
+      const input = jsonFile<QuickTextInput>(ctx, "quick-texts create --file <quick-text.json>");
+      if (input === undefined) return EXIT.usage;
+      const quickText = await client.quickTexts.create(input);
+      emit(`Created ${quickText.id}`, quickText);
+      return EXIT.ok;
+    }
+    case "update": {
+      if (!rest[0]) return usage(deps, "quick-texts update <id> --file <patch.json>");
+      const patch = jsonFile<Partial<QuickTextInput>>(ctx, "quick-texts update <id> --file <patch.json>");
+      if (patch === undefined) return EXIT.usage;
+      const quickText = await client.quickTexts.update(rest[0], patch);
+      emit(`Updated ${quickText.id}`, quickText);
+      return EXIT.ok;
+    }
+    case "delete":
+      if (!rest[0] || !confirmed(flags)) return usage(deps, "quick-texts delete <id> --yes");
+      await client.quickTexts.delete(rest[0]);
+      emit(`Deleted ${rest[0]}`, { deleted: rest[0] });
+      return EXIT.ok;
+    default:
+      return usage(deps, "quick-texts <list|create|update|delete>");
   }
 }
 

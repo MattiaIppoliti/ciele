@@ -1,4 +1,10 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { capabilitiesForLadderRole } from "@agent-hub/core";
+import { GET as getInboxConversations } from "@/app/api/v1/conversations/route";
+import { PUT as setAccess, DELETE as clearAccess } from "@/app/api/v1/assistants/[id]/access/[userId]/route";
+import { GET as listAccess } from "@/app/api/v1/assistants/[id]/access/route";
+import { GET as getSource } from "@/app/api/v1/sources/[id]/route";
+import { POST as checkFaqDuplicates } from "@/app/api/v1/knowledge/faqs/check/route";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   apiKeySecretHint,
   generateApiKeySecret,
@@ -30,6 +36,7 @@ async function mintKey(role: "owner" | "admin" | "editor" | "viewer") {
   const key = await getMockDb().createApiKey(DEMO_ORG.id, {
     name: `test ${role} key`,
     role,
+    roleId: `builtin:${role}`,
     secretHash: hashApiKeySecret(secret),
     secretHint: apiKeySecretHint(secret),
     createdBy: DEMO_MEMBER.userId,
@@ -94,15 +101,15 @@ describe("API key authentication", () => {
     const { secret } = await mintKey("admin");
     const db = getMockDb();
     try {
-      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, "viewer");
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, "builtin:viewer");
       const ctx = await resolveApiKeyContext(request(LIST_URL, secret));
       if (ctx instanceof Response) throw new Error("expected a context");
       // The stored role is the ceiling the key was minted with; the
       // membership row is the floor it lives under now.
       expect(ctx.role).toBe("viewer");
-      expect(requireApiCapability(ctx, "edit")?.status).toBe(403);
+      expect(requireApiCapability(ctx, "flows:edit")?.status).toBe(403);
     } finally {
-      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, DEMO_MEMBER.role);
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, `builtin:${DEMO_MEMBER.role}`);
     }
   });
 
@@ -121,31 +128,53 @@ describe("API key authentication", () => {
     if (ctx instanceof Response) throw new Error("expected a context");
 
     expect(requireApiCapability(ctx, "member")).toBeNull();
-    const denied = requireApiCapability(ctx, "edit");
+    const denied = requireApiCapability(ctx, "flows:edit");
     expect(denied?.status).toBe(403);
     const body = await denied!.json();
     expect(body.error.code).toBe("forbidden");
   });
 
-  it("pins the whole capability × key Role table", () => {
+  it("pins a representative Capability × key Role table", () => {
     const roles = ["owner", "admin", "editor", "viewer"] as const;
     const allowed = {
       member: ["owner", "admin", "editor", "viewer"],
-      edit: ["owner", "admin", "editor"],
-      publish: ["owner", "admin"],
-      manageMembers: ["owner", "admin"],
-      manageApiKeys: ["owner", "admin"],
-      changeRoles: ["owner"],
+      "flows:edit": ["owner", "admin", "editor"],
+      "assistants:publish": ["owner", "admin"],
+      "members:manage": ["owner", "admin"],
+      "apiKeys:manage": ["owner", "admin"],
+      "personalSubscriptions:manage": ["owner"],
     } as const;
     for (const [capability, expected] of Object.entries(allowed)) {
       const actual = roles.filter(
         (role) =>
           requireApiCapability(
-            { role } as Parameters<typeof requireApiCapability>[0],
+            { role, capabilities: capabilitiesForLadderRole(role) } as Parameters<typeof requireApiCapability>[0],
             capability as keyof typeof allowed
           ) === null
       );
       expect([capability, actual]).toEqual([capability, expected]);
+    }
+  });
+
+  it("acts at most as the creator may, Capability by Capability", async () => {
+    const db = getMockDb();
+    const narrow = await db.createOrgRole(DEMO_ORG.id, {
+      name: "API test reporting",
+      description: "",
+      capabilities: ["assistants:view", "insights:view"],
+      organizationLevel: true,
+      assistantLevel: false,
+    });
+    const { secret } = await mintKey("editor");
+    try {
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, narrow.id);
+      const ctx = await resolveApiKeyContext(request(LIST_URL, secret));
+      if (ctx instanceof Response) throw new Error("expected a context");
+      expect(ctx.capabilities).toEqual(["assistants:view", "insights:view"]);
+      expect(requireApiCapability(ctx, "assistants:view")).toBeNull();
+      expect(requireApiCapability(ctx, "flows:view")?.status).toBe(403);
+    } finally {
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, `builtin:${DEMO_MEMBER.role}`);
     }
   });
 });
@@ -419,5 +448,104 @@ describe("Idempotency-Key", () => {
     );
     expect(conflict.status).toBe(409);
     expect((await conflict.json()).error.code).toBe("idempotency_conflict");
+  });
+});
+
+describe("Assistant override and Audit log API boundary", () => {
+  it("applies Denied to a key's creator for detail, lists and child resources", async () => {
+    const db = getMockDb();
+    const assistant = await db.createAssistant(DEMO_ORG.id,{ title:"Denied creator fixture" });
+    const { secret } = await mintKey("editor");
+    try {
+      await db.updateMemberRole(DEMO_ORG.id,DEMO_MEMBER.userId,"editor");
+      await db.setAssistantAccess(assistant.id,DEMO_MEMBER.userId,"denied");
+      const collection=await db.createCollection(assistant.id,{ name:"Denied source scope" });
+      const source=await db.createSource({ collectionId:collection.id,name:"Reset hidden password",kind:"faq" });
+      await db.setSourceAssistantLinks(source.id,[assistant.id]);
+      const concept=await db.createConcept({ collectionId:collection.id,sourceId:source.id,path:"faq/denied.md",frontmatter:{ type:"FAQ",title:"Reset hidden password" },body:"Hidden answer" });
+      await db.saveChunks([{ collectionId:collection.id,conceptId:concept.id,sourceId:source.id,content:"Reset hidden password",embedding:null }]);
+      expect((await getSource(request(`http://test.local/api/v1/sources/${source.id}`,secret),{ params:Promise.resolve({ id:source.id }) })).status).toBe(404);
+      for (const key of ["OPENAI_API_KEY","GOOGLE_GENERATIVE_AI_API_KEY","OPENAI_COMPATIBLE_BASE_URL"]) vi.stubEnv(key,undefined);
+      const duplicateResponse=await checkFaqDuplicates(new Request("http://test.local/api/v1/knowledge/faqs/check",{ method:"POST",headers:{ authorization:`Bearer ${secret}`,"content-type":"application/json" },body:JSON.stringify({ collectionId:collection.id,question:"Reset hidden password" }) }));
+      expect(duplicateResponse.status).toBe(200);
+      expect((await duplicateResponse.json()).data).toEqual([]);
+      const contextBeforeOwner = await resolveApiKeyContext(request(LIST_URL, secret));
+      if (contextBeforeOwner instanceof Response) throw new Error("Expected key context");
+      const library = await contextBeforeOwner.db.listOrgKnowledgeSources(DEMO_ORG.id, { kinds: ["faq"] });
+      expect(library.items.map(row => row.id)).not.toContain(source.id);
+      await expect(contextBeforeOwner.db.listSourceDocuments(source.id)).rejects.toThrow();
+      expect((await contextBeforeOwner.db.listSources(collection.id)).map(row => row.id)).not.toContain(source.id);
+      expect((await contextBeforeOwner.db.listConcepts(collection.id)).map(row => row.id)).not.toContain(concept.id);
+      const conversation = await db.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: "denied-visitor", title: "Hidden Inbox", metadata: { city: "Hidden test city" } });
+      await db.appendMessage({ conversationId: conversation.id, role: "user", content: [{ type: "text", text: "Secret body" }] });
+      const inbox = await getInboxConversations(request(`http://test.local/api/v1/conversations?assistantId=${assistant.id}`, secret));
+      // Denied on this Assistant: the same answer as an Assistant that does not exist.
+      expect(inbox.status).toBe(404);
+      expect((await contextBeforeOwner.db.getInboxFacets(DEMO_ORG.id)).cities).not.toContain("Hidden test city");
+      const params = { params:Promise.resolve({ id:assistant.id }) };
+      const res = await getAssistant(request(`${LIST_URL}/${assistant.id}`,secret),params);
+      expect(res.status).toBe(404);
+      const list = await getAssistants(request(LIST_URL,secret));
+      expect((await list.json()).data.map((row: { id:string }) => row.id)).not.toContain(assistant.id);
+      const context = await resolveApiKeyContext(request(LIST_URL,secret));
+      if (context instanceof Response) throw new Error("Expected key context");
+      await expect(context.db.listFlows(assistant.id)).rejects.toThrow();
+      // Owners retain access even when an old Denied row remains.
+      await db.updateMemberRole(DEMO_ORG.id,DEMO_MEMBER.userId,"owner");
+      expect((await getAssistant(request(`${LIST_URL}/${assistant.id}`,secret),params)).status).toBe(200);
+    } finally {
+      vi.unstubAllEnvs();
+      await db.clearAssistantAccess(assistant.id,DEMO_MEMBER.userId);
+      await db.updateMemberRole(DEMO_ORG.id,DEMO_MEMBER.userId,DEMO_MEMBER.role);
+    }
+  });
+  it("keeps hidden shared links while allowing an editable unlink and refuses shared content writes", async () => {
+    const db = getMockDb();
+    const editable = await db.createAssistant(DEMO_ORG.id, { title: "Editable shared knowledge" });
+    const hidden = await db.createAssistant(DEMO_ORG.id, { title: "Hidden shared knowledge" });
+    const collection = await db.createCollection(editable.id, { name: "Shared" });
+    const source = await db.createSource({ collectionId: collection.id, name: "Shared Source", kind: "faq" });
+    await db.setSourceAssistantLinks(source.id, [editable.id, hidden.id]);
+    const { secret } = await mintKey("editor");
+    try {
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, "editor");
+      await db.setAssistantAccess(hidden.id, DEMO_MEMBER.userId, "denied");
+      const ctx = await resolveApiKeyContext(request(LIST_URL, secret));
+      if (ctx instanceof Response) throw new Error("Expected key context");
+      const page = await ctx.db.listOrgKnowledgeSources(DEMO_ORG.id, { kinds: ["faq"] });
+      expect(page.items.find(row => row.id === source.id)?.linkedAssistants.map(row => row.assistantId)).toEqual([editable.id]);
+      await expect(ctx.db.deleteSource(source.id)).rejects.toThrow();
+      await ctx.db.setSourceAssistantLinks(source.id, []);
+      expect((await db.listSourceAssistantLinks(source.id)).map(row => row.assistantId)).toEqual([hidden.id]);
+      await db.setAssistantAccess(editable.id, DEMO_MEMBER.userId, "viewer");
+      await expect(ctx.db.updateAssistant(editable.id, { title: "Forbidden" })).rejects.toThrow();
+    } finally {
+      await db.clearAssistantAccess(hidden.id, DEMO_MEMBER.userId);
+      await db.clearAssistantAccess(editable.id, DEMO_MEMBER.userId);
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, `builtin:${DEMO_MEMBER.role}`);
+    }
+  });
+  it("sets, lists and clears access through the public API and records consequential outcomes", async () => {
+    const db = getMockDb();
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "Manage access API" });
+    const { secret } = await mintKey("admin");
+    const params = { params: Promise.resolve({ id: assistant.id, userId: DEMO_MEMBER.userId }) };
+    const response = await setAccess(new Request(`${LIST_URL}/${assistant.id}/access/${DEMO_MEMBER.userId}`, { method: "PUT", headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" }, body: JSON.stringify({ role: "viewer" }) }), params);
+    expect(response.status).toBe(204);
+    const listed = await listAccess(request(`${LIST_URL}/${assistant.id}/access`, secret), { params: Promise.resolve({ id: assistant.id }) });
+    expect((await listed.json()).data.find((row: { userId: string }) => row.userId === DEMO_MEMBER.userId).override.role).toBe("viewer");
+    expect((await clearAccess(request(`${LIST_URL}/${assistant.id}/access/${DEMO_MEMBER.userId}`, secret), params)).status).toBe(204);
+    expect(await db.listAssistantAccess(assistant.id)).toEqual([]);
+    const entries = await db.listAuditEntries(DEMO_ORG.id, { domain: "assistants" });
+    expect(entries.filter(entry => entry.operation === "assistants.access.set" && entry.entities.some(entity => entity.id === assistant.id))).toHaveLength(2);
+    expect(entries.find(entry => entry.operation === "assistants.access.set")?.effect).toBe("consequential");
+  });
+  it("records an API-key write through the pinned Db without persisting input content", async () => {
+    const { secret,key } = await mintKey("editor");
+    const res = await postAssistant(new Request(LIST_URL,{ method:"POST", headers:{ authorization:`Bearer ${secret}`,"content-type":"application/json","x-ciele-surface":"mcp" },body:JSON.stringify({ title:"private title must not enter audit" }) }));
+    expect(res.status).toBe(201);
+    const [entry] = (await getMockDb().listAuditEntries(DEMO_ORG.id,{})).filter(row => row.apiKeyId===key.id);
+    expect(entry).toMatchObject({ operation:"assistants.create",effect:"write",outcome:"ok",surface:"mcp",memberId:DEMO_MEMBER.userId });
+    expect(JSON.stringify(entry)).not.toContain("private title");
   });
 });

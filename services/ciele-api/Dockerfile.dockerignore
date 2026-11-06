@@ -1,0 +1,8 @@
+# The context is the repository root (see the Dockerfile); BuildKit reads this
+# file instead of the root .dockerignore, which keeps services/ out of the app
+# image. Only what the service build reads goes in.
+*
+!packages/mcp/golden
+!services/ciele-api/Cargo.toml
+!services/ciele-api/Cargo.lock
+!services/ciele-api/src

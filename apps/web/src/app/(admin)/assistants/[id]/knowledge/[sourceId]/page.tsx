@@ -1,8 +1,8 @@
 import { assistantKnowledgeHref } from "@/lib/knowledge-mode";
 import { listSourceDocumentsOp } from "@ciele/ops";
 import { SourceDocumentsView } from "@/components/knowledge/source-documents-view";
-import { requirePageMember } from "@/lib/authz";
-import { canEdit } from "@/lib/rbac";
+import { requireAssistantPageAccess } from "@/lib/authz";
+import { can } from "@/lib/rbac";
 import { runPageOperation } from "@/lib/operations";
 import {
   assistantDocumentsHref,
@@ -29,7 +29,7 @@ export default async function AssistantSourceDocumentsPage({
 }) {
   const { id, sourceId } = await params;
   const search = parseSourceDocumentsParams(await searchParams);
-  const { role } = await requirePageMember();
+  const { access } = await requireAssistantPageAccess(id);
 
   const page = await runPageOperation(listSourceDocumentsOp, {
     sourceId,
@@ -38,11 +38,14 @@ export default async function AssistantSourceDocumentsPage({
     ascending: search.ascending,
     sort: search.sort || undefined,
     status: search.status || undefined,
+    trustTier: search.trustTier,
   });
 
   return (
     <SourceDocumentsView
       source={page.source}
+      usage={page.usage}
+      qualityAvailable={page.qualityAvailable}
       documents={page.items}
       memoryCounts={page.memoryCounts}
       total={page.total}
@@ -50,7 +53,7 @@ export default async function AssistantSourceDocumentsPage({
       params={search}
       basePath={assistantDocumentsHref(id, page.source.id)}
       backHref={assistantKnowledgeHref(id, page.source.kind)}
-      canEdit={canEdit(role)}
+      canEdit={can(access, "knowledge:edit")}
       backLabel="Knowledge"
       assistantId={id}
     />

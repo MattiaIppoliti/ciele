@@ -18,6 +18,7 @@ async function mintKey(role: "owner" | "viewer" = "viewer") {
   await getMockDb().createApiKey(DEMO_ORG.id, {
     name: `search ${role} key`,
     role,
+    roleId: `builtin:${role}`,
     secretHash: hashApiKeySecret(secret),
     secretHint: apiKeySecretHint(secret),
     createdBy: DEMO_MEMBER.userId,

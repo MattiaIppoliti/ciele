@@ -1,5 +1,6 @@
 "use client";
 
+import { OperatorStatusToggle } from "@/components/shell/operator-status";
 import { prefetchFind } from "@/lib/find-client";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Search } from "lucide-react";
@@ -40,7 +41,7 @@ function useIsLocalhost(): boolean {
 }
 
 /** Global top bar: scope switcher on the left, page title centered. */
-export function TopBar({ demo }: { demo: boolean }) {
+export function TopBar({ demo, operatorId = null }: { demo: boolean; operatorId?: string | null }) {
   const [toggleHovered, setToggleHovered] = useState(false);
   const {
     sidebarDocked,
@@ -205,6 +206,7 @@ export function TopBar({ demo }: { demo: boolean }) {
         <div className="z-10 flex shrink-0 items-center gap-1 sm:gap-2">
           {actions}
           {form}
+          {operatorId && <OperatorStatusToggle memberId={operatorId} />}
           <DeveloperPanelButton />
           {demo && !isLocalhost && (
             <Badge variant="secondary" className="text-muted-foreground">

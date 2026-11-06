@@ -11,6 +11,7 @@ import {
   keepsLinkNavigation,
   laneCountsWithOverrides,
   mergeImprovementRows,
+  matchesImprovementFilters,
   recordImprovementUpdate,
   retainPushedOffRows,
   type ImprovementLaneWindow,
@@ -279,7 +280,7 @@ describe("improvementsUrlStateFromSearchParams", () => {
       improvementsUrlStateFromSearchParams(
         new URLSearchParams("q=login&priority=high&assignee=u1&view=kanban"),
       ),
-    ).toEqual({ q: "login", priority: "high", assignee: "u1", view: "kanban" });
+    ).toEqual({ q: "login", priority: "high", assignee: "u1", view: "kanban", project: "", assistant: "" });
   });
 
   it("ignores a priority or layout that does not exist", () => {
@@ -289,5 +290,24 @@ describe("improvementsUrlStateFromSearchParams", () => {
     });
     expect(state.priority).toBe("");
     expect(state.view).toBe("list");
+  });
+});
+
+
+describe("improvement ownership and project views", () => {
+  it("matches unassigned work separately from a named owner", () => {
+    const row = item("1", "high", "2026-11-03");
+    const filters = { search: "", priority: "", assignee: "unassigned" } as const;
+    expect(matchesImprovementFilters(row, filters)).toBe(true);
+    expect(matchesImprovementFilters({ ...row, assigneeId: "member-1" }, filters)).toBe(false);
+    expect(matchesImprovementFilters({ ...row, assigneeId: "member-1" }, { ...filters, assignee: "member-1" })).toBe(true);
+  });
+  it("keeps project scope in shared URLs and composes it with owner filters", () => {
+    expect(improvementsUrlStateFromSearchParams({ project: "project-1" }).project).toBe("project-1");
+    const row = { ...item("1", "high", "2026-11-03"), projectId: "project-1" };
+    const filters = { search: "", priority: "", assignee: "", project: "project-1" } as const;
+    expect(matchesImprovementFilters(row, filters)).toBe(true);
+    expect(matchesImprovementFilters({ ...row, projectId: "project-2" }, filters)).toBe(false);
+    expect(matchesImprovementFilters(row, { ...filters, assignee: "member-1" })).toBe(false);
   });
 });

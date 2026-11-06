@@ -84,6 +84,7 @@
   "devDependencies": {
     "@agent-hub/eslint-config": "workspace:*",
     "@chat-adapter/state-memory": "^4.41.1",
+    "@electric-sql/pglite-socket": "^0.2.7",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/mdast": "^4.0.4",

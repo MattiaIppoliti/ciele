@@ -60,6 +60,6 @@ describe("setOrgBudgetOp", () => {
   });
 
   it("is an admin's setting", () => {
-    expect(setOrgBudgetOp.capability).toBe("manageMembers");
+    expect(setOrgBudgetOp.capability).toBe("organization:edit");
   });
 });

@@ -3,22 +3,15 @@ import { ChartNoAxesColumnIncreasing } from "lucide-react";
 import { MoreHorizontal } from "lucide-react";
 import type {
   Improvement,
+  ImprovementQuery,
   ImprovementListItem,
   ImprovementPriority,
   ImprovementStatus,
 } from "@agent-hub/core";
-import { IMPROVEMENT_STATUS_VALUES } from "@agent-hub/core";
+import { IMPROVEMENT_STATUS_VALUES, IMPROVEMENT_WORKFLOW } from "@agent-hub/core";
 import { filtersFromSearchParams } from "@/lib/url-state";
 
 type IconType = ComponentType<{ className?: string }>;
-
-const IMPROVEMENT_STATUS_LABELS: Record<ImprovementStatus, string> = {
-  to_do: "To do",
-  in_progress: "In Progress",
-  in_review: "In Review",
-  done: "Done",
-  archived: "Archived",
-};
 
 /** Kanban lanes, in the board order `core` fixes; only the labels live here. */
 export const IMPROVEMENT_STATUSES: Array<{
@@ -26,7 +19,7 @@ export const IMPROVEMENT_STATUSES: Array<{
   label: string;
 }> = IMPROVEMENT_STATUS_VALUES.map((value) => ({
   value,
-  label: IMPROVEMENT_STATUS_LABELS[value],
+  label: IMPROVEMENT_WORKFLOW[value].label,
 }));
 
 export const IMPROVEMENT_PRIORITIES: Array<{
@@ -202,6 +195,7 @@ export interface ImprovementFilters {
   /** Empty string is "all priorities". */
   priority: ImprovementPriority | "";
   assignee: string;
+  project?: string;
 }
 
 /**
@@ -223,7 +217,8 @@ export function matchesImprovementFilters(
     return false;
   }
   if (filters.priority && row.priority !== filters.priority) return false;
-  if (filters.assignee && row.assigneeId !== filters.assignee) return false;
+  if (filters.assignee === "unassigned" ? row.assigneeId !== null : filters.assignee && row.assigneeId !== filters.assignee) return false;
+  if (filters.project && row.projectId !== filters.project) return false;
   return true;
 }
 
@@ -325,6 +320,8 @@ export interface ImprovementsUrlState {
   priority: "" | ImprovementPriority;
   assignee: string;
   view: "list" | "kanban";
+  project: string;
+  assistant: string;
 }
 
 export const DEFAULT_IMPROVEMENTS_URL_STATE: ImprovementsUrlState = {
@@ -332,6 +329,8 @@ export const DEFAULT_IMPROVEMENTS_URL_STATE: ImprovementsUrlState = {
   priority: "",
   assignee: "",
   view: "list",
+  project: "",
+  assistant: "",
 };
 
 export function improvementsUrlStateFromSearchParams(
@@ -341,4 +340,16 @@ export function improvementsUrlStateFromSearchParams(
     priority: ["", ...IMPROVEMENT_PRIORITIES.map((p) => p.value)],
     view: ["list", "kanban"],
   });
+}
+
+
+/** Console URL controls and public API share the same storage query. */
+export function improvementQueryFromUrl(state: ImprovementsUrlState): ImprovementQuery {
+  return {
+    ...(state.q.trim() ? { search: state.q.trim() } : {}),
+    ...(state.priority ? { priority: state.priority } : {}),
+    ...(state.assignee ? { assigneeId: state.assignee === "unassigned" ? null : state.assignee } : {}),
+    ...(state.project ? { projectId: state.project } : {}),
+    ...(state.assistant ? { assistantId: state.assistant } : {}),
+  };
 }

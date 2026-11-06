@@ -62,7 +62,7 @@ describe("SSO connection actions", () => {
       clientSecret: "super-secret",
     });
     expect(result).toEqual({});
-    expect(requireMemberMock).toHaveBeenCalledWith("manageMembers");
+    expect(requireMemberMock).toHaveBeenCalledWith("sso:manage");
 
     const stored = await db.getSsoConnection(DEMO_ORG.id);
     expect(stored?.config).toEqual({ clientId: "client-1", tenantId: "tenant-1" });
@@ -147,7 +147,7 @@ describe("SSO connection actions", () => {
   it("toggles require-sign-in on the assistant (edit capability)", async () => {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
     await setAssistantRequireSignInAction(assistant.id, true);
-    expect(requireMemberMock).toHaveBeenCalledWith("edit");
+    expect(requireMemberMock).toHaveBeenCalledWith("assistants:edit", expect.anything());
     expect((await db.getAssistant(assistant.id))?.requireSignIn).toBe(true);
   });
 

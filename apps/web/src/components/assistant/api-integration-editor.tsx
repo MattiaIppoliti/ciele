@@ -1,4 +1,5 @@
 "use client";
+import { StatusBadge } from "@/components/spaceui/status-badge";
 
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -303,6 +304,7 @@ export function ApiIntegrationEditor({
         </div>
       </div>
 
+      {configured && authType !== "none" && !hasCredential && <StatusBadge status="error" primaryText="Needs setup" className="mt-3" />}
       <div className="mt-4 space-y-4">
         <div className="flex flex-wrap gap-3">
           <div className="w-48 space-y-2">

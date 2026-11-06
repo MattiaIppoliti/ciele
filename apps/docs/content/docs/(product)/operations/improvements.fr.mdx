@@ -1,6 +1,6 @@
 ---
 title: Améliorations
-description: Suivez et menez à bien les tâches visant à corriger les réponses insuffisantes de l'Assistant.
+description: Suivez et menez à bien les tâches visant à corriger les réponses insuffisantes de l’Assistant.
 ---
 
 Une Improvement enregistre un problème de qualité de réponse. Il peut inclure
@@ -9,51 +9,132 @@ correction.
 
 ## Sources des améliorations
 
-- Une action d'un flux d'amélioration crée un élément.
+- Une action Improvement Flow crée un élément.
 - Un Help Desk peut créer un élément après une remontée.
-- Un administrateur peut signaler une réponse depuis l'Inbox.
-- Search knowledge peut créer un élément pour une requête non résolue lorsque
-  cette fonctionnalité est configurée.
+- Un administrateur peut signaler une réponse depuis l’Inbox.
+- Lorsque la fonctionnalité est configurée, Search knowledge peut créer un
+  élément pour une requête non résolue.
 - Un Goal permanent qui échoue crée un élément. Les échecs ultérieurs ajoutent
   des éléments de preuve au même élément.
 
-## Gérer un élément
+Lorsque vous signalez une réponse depuis l'Inbox, indiquez la réponse ou le
+comportement attendu sous le titre.
 
-Ouvrez un élément pour consulter les messages qui lui sont associés et la
-correction suggérée disponible. Vous pouvez modifier son status, sa priority,
-ses tags, son assignee et sa due date.
+## Étapes
 
-L'API, la CLI et le serveur MCP peuvent lister, lire et mettre à jour les
-Improvements existants. La création d'une amélioration reste une opération
-exécutée au moment de l'exécution du produit.
+Le tableau affiche cinq étapes. L’API, la CLI et le serveur MCP utilisent les
+valeurs de statut de la deuxième colonne.
 
-## Planifier le travail sous forme de Tasks
+| Stage | Status | Que faire |
+| --- | --- | --- |
+| **Triage** | `to_do` | Lisez les éléments de preuve, rédigez la réponse attendue et définissez un propriétaire ainsi qu’une priorité. |
+| **Fix** | `in_progress` | Corrigez la Source, la FAQ, le Flow ou l’instruction à l’origine de la réponse. |
+| **Validate** | `in_review` | Posez à nouveau la question initiale, examinez les Sources et vérifiez le widget client. |
+| **Resolved** | `done` | Conservez le résultat et les éléments de preuve pour un diagnostic ultérieur. |
+| **Archived** | `archived` | Conservez un élément en double ou obsolète en dehors du travail actif. |
+
+L’action principale sur un élément le fait passer à l’étape suivante. Le
+sélecteur de statut et la fonctionnalité glisser-déposer permettent toujours de
+déplacer un élément vers n’importe quelle étape. La résolution d’un élément
+enregistre votre décision. Cela n’exécute pas de test et ne publie pas les
+modifications.
+
+## Rechercher des éléments
+
+La recherche identifie le texte dans le titre, la clé `IMP-n` et les balises.
+Ouvrez **Filters** pour filtrer par priorité, par personne assignée, par
+Assistant ou par Projet.
+
+- Dans **Assignee**, sélectionnez **Assigned to me** pour vos propres éléments,
+  ou **Unassigned** pour les éléments sans propriétaire.
+- **Assistant** affiche les éléments pour lesquels il existe des preuves issues
+  des conversations de cet Assistant.
+- **Project** affiche les éléments d’un seul Projet.
+
+Ciele applique les filtres à toutes les Improvements avant d’afficher une page.
+Les décomptes d’étapes et les exportations utilisent les mêmes filtres ; ils
+incluent donc des éléments plus anciens. Un export inclut également la
+description et l’identifiant du projet.
+
+L’API, la CLI et le serveur MCP peuvent lister, lire et mettre à jour les
+Improvements. La liste accepte les mêmes filtres et renvoie le nombre pour
+chaque étape. Seul le produit crée des Improvements.
+
+## Planifiez le travail sous forme de Tasks
 
 Une Improvement enregistre le problème. Une Task enregistre le travail qui
 permet de le résoudre. La page Improvement affiche les Tasks qui la résolvent.
 
 1. Ouvrez l'Improvement.
 2. Sélectionnez **Create task**. La tâche hérite du titre et du projet de
-   l'amélioration.
+   l’amélioration.
 3. Modifiez la tâche si nécessaire, puis sélectionnez **Create task**.
 
 Vous pouvez également associer une Task existante : ouvrez la Task et
-sélectionnez l'Improvement dans son champ **Resolves**.
+sélectionnez l’Improvement dans son champ **Resolves**.
 
-Lorsque toutes les tâches liées sont terminées, Ciele déplace l'Improvement de
-**To do** ou **In progress** vers **In review**. Une personne examine ensuite la
-réponse et clôt l'Improvement. Si vous rouvrez une Task, l'Improvement ne
-revient pas en arrière.
+Lorsque toutes les tâches liées sont terminées, Ciele déplace l’Improvement de
+**Triage** ou **Fix** vers **Validate**. Une personne examine ensuite la réponse
+et clôt l’Improvement. Si vous rouvrez une Task, l’Improvement ne revient pas en
+arrière.
+
+Le fait que les tâches soient terminées ne prouve pas que la réponse est
+désormais correcte. Enregistrez les preuves de validation avant de résoudre
+l’Improvement.
 
 ## Corriger la réponse
 
 1. Lisez la Conversation associée.
-2. Identifiez la Source, la FAQ, le Flow ou l'instruction incorrect(e).
-3. Corrigez la configuration du brouillon.
+2. Identifiez la Source, la FAQ, le Flow ou l’instruction incorrect(e).
+3. Corrigez les connaissances ou le brouillon de configuration.
 4. Posez la question initiale dans Preview.
 5. Confirmez la réponse et les Sources.
-6. Publiez l'Assistant.
-7. Marquez l'Improvement comme terminé.
+6. Publiez les modifications de configuration et confirmez la correction dans le
+   widget client. Les modifications apportées aux connaissances sont effectives.
+7. Enregistrez les preuves de validation, puis résolvez l’Improvement.
+
+L’élément affiche **Correct knowledge**, **Review Flows**, **Test in Preview**
+et **Review publication**. Ces liens ouvrent l’Assistant des éléments de preuve
+de la conversation à l’écran. Si un élément contient des preuves provenant de
+plusieurs Assistants, ouvrez chaque message associé et vérifiez chaque
+Assistant.
 
 Examinez les corrections suggérées générées avant de les utiliser. La suggestion
 enregistrée ne constitue pas une modification de publication.
+
+## Enregistrer les preuves de validation
+
+Dans **Validation evidence**, décrivez le comportement attendu, les ressources
+modifiées et la vérification du widget : l’URL, les étapes et le résultat.
+Sélectionnez ensuite **Record widget pass** ou **Record widget failure**.
+
+Une vérification enregistre le membre, l’heure et la Publication actuelle. Cela
+ne modifie pas l’étape de l’Improvement. Vous ne pouvez pas modifier ni
+supprimer une vérification après l'avoir enregistrée. Les éléments résolus plus
+anciens n’ont pas de vérification enregistrée.
+
+Pour tester avec un modèle, ouvrez **Replay a representative question**. Rédigez
+la question et le texte que la réponse doit contenir. Vous pouvez également
+exiger des citations de sources. Un replay utilise des crédits IA et les limites
+de dépenses de l’Organisation. Il teste la dernière Publication avec la base de
+connaissances active. Un seul replay peut être en attente pour chaque
+Improvement.
+
+Un replay ne fonctionne que pour les Assistants qui se contentent de répondre et
+ne font rien d’autre. Si un Flow peut envoyer un e-mail, appeler une API ou
+effectuer d’autres actions externes, Ciele refuse le replay. Un replay ne crée
+aucune Conversation et ne modifie pas les données Insights.
+
+Sélectionnez **Refresh** pour lire le résultat d’un replay. Lorsque la
+Publication ou la base de connaissances change, Ciele marque les éléments de
+preuve antérieurs comme obsolètes. Enregistrez une nouvelle vérification avant
+d’utiliser ce résultat. Un replay ne vérifie ni le site web hôte, ni l’identité
+du Visitor, ni les conditions d’URL. Vérifiez vous-même le widget client avant
+de résoudre l’élément.
+
+## Projets
+
+Un projet affiche le nombre de ses Improvements à chaque étape. Sélectionnez
+**Review project improvements** pour ouvrir le tableau avec le filtre Project.
+Les coéquipiers associés à un projet consultent ses décisions via la mémoire du
+projet, conformément à leurs autorisations actuelles.

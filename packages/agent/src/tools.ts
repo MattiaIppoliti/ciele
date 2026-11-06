@@ -1,6 +1,6 @@
 import { INTERACTIVE_TABLE_TOOLS } from "./interactive-table-tools";
 import { studyExerciseTool } from "./study-exercise";
-import { tool, type Tool, type ToolSet } from "ai";
+import { jsonSchema, tool, type Tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { registerParallelRead } from "./tool-batch";
 import type {
@@ -8,10 +8,12 @@ import type {
   Assistant,
   KnowledgeSearchResult,
   ReferralCandidate,
+  SkillSnapshot,
 } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS, type PiiOrigin } from "@agent-hub/core";
 import { seedOutbound } from "./pii-masking";
 import { APPROVAL_PENDING_NOTE } from "./approval-gate";
+import { useSkillSpec } from "./skills";
 import { fencedForTurn } from "./untrusted-content";
 import type { TurnSession } from "./session";
 import type {
@@ -35,6 +37,7 @@ import {
 } from "./agentic-search";
 import { EgressPolicyError, egressFetch } from "./egress";
 import { htmlToText } from "./extract";
+import { activeTurnClock } from "./turn-clock";
 import {
   API_CATALOG_SPECS,
   READ_KNOWLEDGE_SOURCE_SPEC,
@@ -73,6 +76,8 @@ export interface ToolRuntimeContext {
   chooseStudyFormat?: import("./types").ActionContext["chooseStudyFormat"];
   assistant: Assistant;
   session: TurnSession;
+  /** Skills the prompt only lists by name; registers `useSkill` (skills.ts). */
+  skillIndex?: SkillSnapshot[];
   /**
    * This tool call's id, present only on the PER-CALL context `instrumentAction`
    * builds (#901). The turn-level context has no call to name, and that is the
@@ -199,6 +204,10 @@ export interface ToolRuntimeContext {
  * One registry entry; `execute` returns the value handed back to the model.
  */
 export interface RuntimeToolSpec {
+  jsonInputSchema?: Record<string, unknown>;
+  traceInput?: TeammateActionTool["traceInput"];
+  /** Bounded payloads such as authored playbooks may declare a larger cap. */
+  maxResultChars?: number;
   name: string;
   /**
    * Where this tool's result comes from, for the PII masking trace (#1079).
@@ -208,6 +217,13 @@ export interface RuntimeToolSpec {
   piiOrigin?: PiiOrigin;
   /** Explicitly audited: no shared Sources, session, terminal or reply writes. */
   execution?: "parallel-read";
+  /**
+   * The tool already caps or windows its own result (a windowed read, an
+   * action result). The instrumented backstop leaves it alone: measured as
+   * escaped JSON, a full 8,000-character window of quote-heavy text can pass
+   * 20,000, and truncating it would break the window's paging.
+   */
+  capsOwnResult?: true;
   mutation?: boolean;
   description: string;
   inputSchema: z.ZodObject<z.ZodRawShape>;
@@ -593,7 +609,7 @@ function emitToolEnd(
  * to happen, and the Visitor is watching it happen.
  */
 function openToolCall(
-  spec: Pick<RuntimeToolSpec, "name" | "label">,
+  spec: Pick<RuntimeToolSpec, "name" | "label" | "traceInput" | "jsonInputSchema">,
   ctx: ToolRuntimeContext,
   rawInput: Record<string, unknown>,
   options: { toolCallId?: string } | undefined
@@ -601,14 +617,14 @@ function openToolCall(
   const callId = options?.toolCallId ?? `call-${++callSeq}`;
   const startedAt = Date.now();
   ctx.loop?.spend();
-  const { progress, args: input } = takeProgress(rawInput);
+  const { progress, args: input } = spec.jsonInputSchema ? { progress: undefined, args: rawInput } : takeProgress(rawInput);
   if (progress) ctx.narrate?.(progress, spec.name);
   ctx.emit({
     type: "tool-start",
     callId,
     tool: spec.name,
     label: spec.label(input),
-    input,
+    input: spec.traceInput ? { arguments: spec.traceInput(input) } : input,
     iteration: ctx.loop?.iteration,
     iterationLimit: ctx.loop?.limit,
   });
@@ -694,6 +710,27 @@ function renderTableTool(ctx: ToolRuntimeContext, spec?: (typeof INTERACTIVE_TAB
 }
 
 /**
+ * The most any instrumented tool hands back to the model in one result.
+ *
+ * A backstop, not the budget a tool should aim for: every built-in caps its
+ * own result well below it (a windowed read returns 8,000 characters plus its
+ * offsets). It exists for the tool that forgot, or that wraps somebody else's
+ * output, so one call can never pour 200k of JSON into the context.
+ */
+const TOOL_RESULT_BACKSTOP_CHARS = 20_000;
+
+function cappedForModel(output: unknown, maxChars: number): unknown {
+  const json = JSON.stringify(output ?? null);
+  if (!json || json.length <= maxChars) return output;
+  return {
+    truncated: true,
+    totalLength: json.length,
+    note: `Only the first ${maxChars} characters are shown. Narrow the request if you need the rest.`,
+    preview: json.slice(0, maxChars),
+  };
+}
+
+/**
  * Wraps an ordinary spec into an AI-SDK tool whose execute emits the
  * tool-start/tool-end lifecycle: structured payloads (tool name, model input,
  * outcome summary, duration) instead of label-only steps. A throwing execute
@@ -710,7 +747,7 @@ function renderTableTool(ctx: ToolRuntimeContext, spec?: (typeof INTERACTIVE_TAB
 function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
   const instrumented = tool({
     description: spec.description,
-    inputSchema: offeredSchema(spec.inputSchema, ctx),
+    inputSchema: spec.jsonInputSchema ? jsonSchema<Record<string, unknown>>(spec.jsonInputSchema) : offeredSchema(spec.inputSchema, ctx),
     execute: async (rawInput: Record<string, unknown>, options) => {
       const { callId, startedAt, input } = openToolCall(spec, ctx, rawInput, options);
       let recorded: Record<string, unknown> | undefined;
@@ -744,7 +781,10 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
           ...(recordedShown && recorded ? { operatorResult: recorded } : {}),
           startedAt,
         });
-        return withBudgetNote(output, ctx.loop);
+        return withBudgetNote(
+          spec.capsOwnResult ? output : cappedForModel(output, spec.maxResultChars ?? TOOL_RESULT_BACKSTOP_CHARS),
+          ctx.loop
+        );
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Tool call failed";
@@ -766,7 +806,14 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
       const effects: (() => void)[] = [];
       const isolated = instrumentAction({ ...spec, execution: undefined }, {
         ...ctx,
-        emit: (event) => effects.push(() => ctx.emit(event)),
+        emit: (event) => {
+          // The lifecycle events are held until commit; the call's time is
+          // recorded now, while its interval is still the real one (#1112).
+          if (event.type === "tool-end") {
+            activeTurnClock()?.toolEnd(event.callId, event.tool, event.durationMs);
+          }
+          effects.push(() => ctx.emit(event));
+        },
         narrate: ctx.narrate ? (text, name) => effects.push(() => ctx.narrate?.(text, name)) : undefined,
       });
       return {
@@ -789,14 +836,7 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
 const ACTION_RESULT_MAX_CHARS = 8_000;
 
 function actionResultForModel(result: unknown): unknown {
-  const json = JSON.stringify(result ?? null);
-  if (!json || json.length <= ACTION_RESULT_MAX_CHARS) return result;
-  return {
-    truncated: true,
-    totalLength: json.length,
-    note: `Only the first ${ACTION_RESULT_MAX_CHARS} characters are shown. Narrow the request if you need the rest.`,
-    preview: json.slice(0, ACTION_RESULT_MAX_CHARS),
-  };
+  return cappedForModel(result, ACTION_RESULT_MAX_CHARS);
 }
 
 /** `improvements.fix.accept` → `improvements_fix_accept`, a legal tool name. */
@@ -827,6 +867,11 @@ function describeEntities(
 function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
   return {
     name: teammateActionToolName(action.operation),
+    traceInput: action.traceInput,
+    // actionResultForModel caps every action result, and a windowed MCP read
+    // must reach the model whole.
+    capsOwnResult: true,
+    jsonInputSchema: action.jsonInputSchema,
     mutation: true,
     description: action.description,
     inputSchema: action.inputSchema,
@@ -843,18 +888,20 @@ function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
         return { pending: true, note: APPROVAL_PENDING_NOTE };
       }
       ctx.signal?.throwIfAborted();
-      const outcome = await action.run(input, { signal: ctx.signal });
-      const result = actionResultForModel(outcome.result);
+      const outcome = await action.run(input, { signal: ctx.signal, sessionId: ctx.session.conversationId });
+      const result = action.domain === "mcp" ? outcome.result : actionResultForModel(outcome.result);
       ctx.recordResult?.({
         operation: action.operation,
         domain: action.domain,
         entity: describeEntities(outcome.entities),
         ...(outcome.payload ? { payload: outcome.payload } : {}),
-        ...(action.domain === "computer" ? { output: result } : {}),
+        ...(["computer", "mcp"].includes(action.domain) ? { output: result } : {}),
       });
-      return action.domain === "computer"
-        ? { content: fencedForTurn(ctx, JSON.stringify(result ?? null), action.label) }
-        : result;
+      if (action.domain === "computer" || action.domain === "mcp") {
+        const failed = action.domain === "mcp" && typeof outcome.result === "object" && outcome.result !== null && "isError" in outcome.result && outcome.result.isError === true;
+        return { ...(failed ? { error: "The remote MCP tool returned an error" } : {}), content: fencedForTurn(ctx, JSON.stringify(result ?? null), action.label) };
+      }
+      return result;
     },
   };
 }
@@ -948,6 +995,11 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   }
   if (ctx.searchMemories) {
     toolset[searchMemoriesSpec.name] = instrumentAction(searchMemoriesSpec, ctx);
+  }
+  // Long playbooks travel as an index; this is how the model opens one.
+  if (ctx.skillIndex && ctx.skillIndex.length > 0) {
+    const spec = useSkillSpec(ctx.skillIndex);
+    toolset[spec.name] = instrumentAction(spec, ctx);
   }
   for (const spec of BUILT_IN_SPECS) {
     const enabled =

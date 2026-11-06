@@ -1,3 +1,5 @@
+import { defineOperation } from "@ciele/ops";
+import { z } from "zod";
 import { NextResponse, type NextRequest } from "next/server";
 import { applicationConnectionOwnerType, sealSecret } from "@agent-hub/core";
 import { connectorAlertKey } from "@agent-hub/agent";
@@ -60,7 +62,7 @@ export async function GET(
     !session?.organization ||
     session.organization.id !== transaction.organizationId ||
     session.userId !== transaction.memberId ||
-    !canAuthorizeApplicationProvider(provider, session.role)
+    !canAuthorizeApplicationProvider(provider, session)
   ) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -96,6 +98,10 @@ export async function GET(
       transaction,
       code,
     });
+    const authorization = defineOperation({
+      name: "applications.connections.authorize", capability: "member", effect: "consequential", input: z.undefined(),
+      entities: (_input, id: string) => [{ kind: "applicationConnection" as const, id }],
+      run: async () => {
     const mutationDb = getWidgetDb();
     const ownerType = applicationConnectionOwnerType(provider);
     if (transaction.connectionId) {
@@ -109,7 +115,7 @@ export async function GET(
         !canReconnectApplicationConnection(
           visible,
           transaction.memberId,
-          session.role
+          session
         )
       ) {
         return clearTransaction(
@@ -144,8 +150,9 @@ export async function GET(
         connectorAlertKey(visible.id)
       );
       revalidateEntities([{ kind: "alerts" }], transaction.organizationId);
+      return visible.id;
     } else {
-      await mutationDb.createApplicationConnection({
+      const created = await mutationDb.createApplicationConnection({
         organizationId: transaction.organizationId,
         ownerMemberId:
           ownerType === "member" ? transaction.memberId : undefined,
@@ -156,7 +163,11 @@ export async function GET(
         providerAccountId: result.providerAccountId,
         metadata: result.metadata,
       });
+      return created.id;
     }
+      },
+    });
+    await authorization.run({ organizationId: transaction.organizationId, userId: transaction.memberId, actorEmail: session.email, role: session.role ?? "viewer", db: sessionDb, surface: "console" },undefined);
     return clearTransaction(completionPage(transaction.returnTo, provider));
   } catch (error) {
     return clearTransaction(

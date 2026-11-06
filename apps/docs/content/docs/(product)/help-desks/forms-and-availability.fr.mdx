@@ -1,34 +1,50 @@
 ---
 title: Formulaires et disponibilité
-description: Collectez les données d'escalade requises et affichez quand un canal est disponible.
+description: Collectez les données d’escalade requises et indiquez quand un canal est disponible.
 ---
 
-## Ajoutez des champs de formulaire
+## Ajouter des champs de formulaire
 
-N'ajoutez que les données dont l'équipe destinataire a besoin. Marquez un champ
-comme obligatoire lorsque le canal ne peut pas fonctionner sans lui.
+Ajoutez uniquement les données dont l’équipe destinataire a besoin. Marquez un
+champ comme obligatoire lorsque le canal ne peut pas fonctionner sans lui.
 
-Testez le formulaire en tant que visiteur. Vérifiez que les champs obligatoires
-empêchent tout envoi incomplet.
+Testez le formulaire en tant que Visitor. Vérifiez que les champs obligatoires
+empêchent une soumission incomplète.
 
 ## Joindre les données de la conversation
 
-Un service d'assistance peut joindre des informations de conversation
-configurées à une escalade. Les données disponibles peuvent inclure un résumé,
-un historique, des données utilisateur et des métadonnées.
+Un Help Desk peut joindre à une remontée les informations de Conversation
+configurées. Les données disponibles peuvent inclure un résumé, un historique,
+des données utilisateur et des métadonnées.
 
-Sélectionnez les données minimales requises par l'équipe destinataire. Vérifiez
-que la sélection est conforme à vos exigences en matière de confidentialité.
+Sélectionnez les données minimales requises par l’équipe destinataire. Vérifiez
+la sélection au regard de vos exigences en matière de confidentialité.
 
-## Configurez la disponibilité
+## Configurer la disponibilité
 
-Définissez la planification du canal et le fuseau horaire. Le widget indique si
-le canal est disponible et peut afficher son prochain créneau disponible.
+Définissez le planning du canal et le fuseau horaire. Le widget indique si le
+canal est disponible et peut afficher son prochain créneau de disponibilité.
 
-Utilisez le fuseau horaire de l'équipe qui reçoit l'escalade. Testez la limite
-au début et à la fin d'une fenêtre de disponibilité.
+Utilisez le fuseau horaire de l’équipe qui reçoit le remontée. Testez la limite
+au début et à la fin d’une fenêtre de disponibilité.
 
-## Envoi d'e-mails
+## Remise des e-mails
 
-Le canal E-mail nécessite un transport Resend configuré. Lorsqu'il est absent,
-Ciele signale que l'e-mail n'a pas été envoyé.
+Le canal Email nécessite un transport Resend configuré. Lorsqu’il est absent,
+Ciele indique que l’e-mail n’a pas été envoyé.
+
+
+## Réutiliser les heures d'ouverture de l'organisation
+
+Choisissez **Business hours** dans l’onglet Availability d’un canal, puis
+sélectionnez un planning nommé. Créez et modifiez des plannings dans
+[Settings](/organization). Les horaires hebdomadaires, le fuseau horaire et les
+jours fériés proviennent de ce planning. Plusieurs canaux peuvent utiliser le
+même planning. Un jour férié les ferme tous, et la prochaine ouverture du Widget
+ignore les dates de fermeture.
+
+**Always available** et **Limited availability** conservent leur comportement
+actuel. La disponibilité limitée conserve ses propres plages horaires
+hebdomadaires et son propre fuseau horaire. Les nouveaux paramètres de canal
+démarrent avec le fuseau horaire par défaut de l'organisation. Un planning ne
+peut pas être supprimé tant qu’un canal l’utilise. Le refus désigne le canal.

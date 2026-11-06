@@ -1,6 +1,7 @@
+import { IMPROVEMENT_STATUS_VALUES, IMPROVEMENT_WORKFLOW } from "@agent-hub/core";
 import { Skeleton } from "@agent-hub/ui";
 
-const LANES = ["To do", "In Progress", "In Review", "Done", "Archived"];
+const LANES = IMPROVEMENT_STATUS_VALUES.map((status) => IMPROVEMENT_WORKFLOW[status].label);
 
 /**
  * Mirrors the Improvements list view (the default), measured against the

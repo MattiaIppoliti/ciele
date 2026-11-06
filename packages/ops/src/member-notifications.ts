@@ -79,7 +79,7 @@ export const countUnreadNotificationsOp = defineOperation({
     ]);
     const readable = new Set(projects.map((project) => project.id));
     const now = Date.now();
-    return rows.filter((row) => inTriage(row, now) && readable.has(row.projectId)).length;
+    return rows.filter((row) => inTriage(row, now) && (row.kind === "conversation_assigned" || readable.has(row.projectId))).length;
   },
 });
 
@@ -179,7 +179,7 @@ export const setNotificationPreferencesOp = defineOperation({
 });
 
 /** A notification with what the page draws beside it, joined at read time (#1048). */
-export interface NotificationItem extends MemberNotification {
+export interface WorkNotificationItem extends Extract<MemberNotification, { taskId: string }> {
   task: Pick<Task, "id" | "projectId" | "parentId" | "seq" | "title" | "status" | "priority" | "assigneeMemberId" | "dueDate">;
   project: Pick<Project, "id" | "key" | "name" | "color" | "icon">;
   /** The comment's words as plain text, or null for a deleted comment and the kinds without one. */
@@ -187,6 +187,10 @@ export interface NotificationItem extends MemberNotification {
   /** Who did it, by the Member's current display name; null for a Teammate or a departed Member. */
   actorName: string | null;
 }
+
+export type NotificationItem = WorkNotificationItem | (Extract<MemberNotification, { kind: "conversation_assigned" }> & {
+  conversation: { id: string; title: string }; task: null; project: null; excerpt: null; actorName: null;
+});
 
 /**
  * The Notifications page's read: the caller's rows with their Task, Project
@@ -226,7 +230,14 @@ export const notificationTriageOp = defineOperation({
         comment ? [[comment.id, comment] as const] : []
       )
     );
-    return wanted.flatMap((row): NotificationItem[] => {
+    const operatorNotices: NotificationItem[] = [];
+    for (const row of wanted) if (row.kind === "conversation_assigned") {
+      const conversation = await ctx.db.getConversation(row.conversationId);
+      if (!conversation?.assistantId || (await ctx.db.getAssistant(conversation.assistantId))?.organizationId !== ctx.organizationId) continue;
+      operatorNotices.push({ ...row, conversation: { id: conversation.id, title: conversation.title ?? "Waiting Visitor" }, task: null, project: null, excerpt: null, actorName: null });
+    }
+    return [...operatorNotices, ...wanted.flatMap((row): NotificationItem[] => {
+      if (row.kind === "conversation_assigned") return [];
       const project = byProject.get(row.projectId);
       const task = tasks.get(row.taskId);
       if (!project || !task) return [];
@@ -250,6 +261,6 @@ export const notificationTriageOp = defineOperation({
           actorName: row.actorMemberId ? (names.get(row.actorMemberId) ?? null) : null,
         },
       ];
-    });
+    })].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 });

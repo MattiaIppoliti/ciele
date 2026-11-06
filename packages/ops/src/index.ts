@@ -10,12 +10,22 @@
  */
 
 export type { MutatedEntity } from "./entities";
+export {
+  outboundWebhookInputSchema, outboundWebhookPatchSchema, listOutboundWebhooksOp, createOutboundWebhookOp,
+  updateOutboundWebhookOp, deleteOutboundWebhookOp, listWebhookDeliveriesOp, sendWebhookTestOp,
+} from "./outbound-webhooks";
 export { escapeCsvField, parseCsv, recordsToCsv, tableToCsv } from "./csv";
 export {
   OperationError,
+  defineOperation,
   type Operation,
+  authorizeOperation,
+  contextAllows,
+  operationAssistantId,
+  operationCapabilities,
   type OperationCapability,
   type OperationEffect,
+  type OperationTier,
   type OperationContext,
   type TeammateActor,
 } from "./operation";
@@ -96,6 +106,8 @@ export {
   searchKnowledgeOp,
   listSourceDocumentsOp,
   updateOrgFaqOp,
+  faqUpdateInput,
+  faqRestoreInput,
   listOrgFaqsOp,
   listOrgKnowledgeSourcesOp,
   listSourcesOp,
@@ -205,6 +217,36 @@ export {
   setMessageFeedbackOp,
 } from "./inbox";
 
+// Quick Texts for the Inbox reply box (#1085).
+export {
+  createQuickTextOp,
+  deleteQuickTextOp,
+  listQuickTextsOp,
+  quickTextInputSchema,
+  quickTextPatchSchema,
+  updateQuickTextOp,
+} from "./quick-texts";
+
+// Operators per Help Desk, presence and assignment (#1084).
+export {
+  assignWaitingConversations,
+  desksWithAvailableOperator,
+  getOperatorStatusOp,
+  listHelpDeskOperatorsOp,
+  setHelpDeskOperatorsOp,
+  setOperatorStatusOp,
+} from "./operator-staffing";
+
+// Human operators (#1082): take a live Conversation over, answer, hand back.
+export type { ConversationLive, TakeOverResult, WaitingConversation } from "./operators";
+export {
+  listWaitingConversationsOp,
+  readConversationLiveOp,
+  releaseConversationOp,
+  replyToConversationOp,
+  takeOverConversationOp,
+} from "./operators";
+
 // Improvements domain (#625): list / detail / update, plus the Suggested Fix
 // lifecycle (#770), whose accept path is the ADR-0017 amendment's one branch.
 export {
@@ -254,7 +296,8 @@ export {
 export type { OperationPorts } from "./operation";
 
 export {
-  connectServiceNowOp,
+  setTicketingTargetOp,
+  ticketingTargetBodySchema,
   createHelpDeskOp,
   createSupportChannelOp,
   deleteHelpDeskOp,
@@ -307,6 +350,20 @@ export {
   updateMemberRoleOp,
   updateOrganizationOp,
 } from "./organization";
+
+// Roles (#1164, ADR-0028).
+export {
+  assertMayHandOn,
+  createRoleOp,
+  deleteRoleOp,
+  getRoleOp,
+  listRolesOp,
+  resetRoleOp,
+  roleView,
+  setRoleDefaultsOp,
+  updateRoleOp,
+  type RoleView,
+} from "./roles";
 
 export {
   apiIntegrationInputSchema,
@@ -468,6 +525,7 @@ export {
   setNotificationPreferencesOp,
   snoozeNotificationsOp,
   type NotificationItem,
+  type WorkNotificationItem,
 } from "./member-notifications";
 export {
   allTasksOp,
@@ -484,3 +542,23 @@ export {
 } from "./work-reads";
 export { todayUtc, type WorkPerson } from "./work-access";
 export type { WorkActivityEntry, WorkNotificationRow } from "./operation";
+
+export { listMcpServersOp, createMcpServerOp, refreshMcpServerOp, setMcpToolPolicyOp, deleteMcpServerOp } from "./remote-mcp";
+
+export { listBusinessHoursOp, createBusinessHoursOp, updateBusinessHoursOp, deleteBusinessHoursOp, setDefaultTimezoneOp, businessHoursInputSchema } from "./business-hours";
+
+export { setDocumentReviewOp, listFaqHistoryOp, restoreFaqVersionOp } from "./knowledge";
+
+export { checkFaqDuplicatesOp, getSourceUsageOp } from "./knowledge";
+
+export { assistantAccessInput, getMemberAssistantAccessOp, listAssistantAccessOp, setAssistantAccessOp, setMemberAssistantScopeOp } from "./assistant-access";
+
+export { auditLogFilterInput, listAuditLogOp, exportAuditLogOp } from "./audit-log";
+
+export { recordAuditOutcome } from "./audit";
+
+export { assistantBundleSchema, exportAssistantBundleOp, importAssistantBundleOp } from "./assistant-bundles";
+
+export { exportScheduleDefinition, exportSchedulePatch, listExportSchedulesOp, createExportScheduleOp, updateExportScheduleOp, deleteExportScheduleOp } from "./export-schedules";
+
+export { listImprovementValidationsOp, recordImprovementValidationOp, requestImprovementReplayOp } from "./improvement-validation";

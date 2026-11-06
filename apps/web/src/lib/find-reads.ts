@@ -239,7 +239,7 @@ const RECORD_READERS: Record<FindKind, (ctx: FindReadContext, r: Reader) => Prom
       facts: [
         {
           label: "Ticketing",
-          value: h.ticketingIntegration ? "Connected" : "Not connected",
+          value: h.ticketingTarget ? "Connected" : "Not connected",
         },
       ],
     }));

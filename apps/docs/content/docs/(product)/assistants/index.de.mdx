@@ -4,8 +4,8 @@ description: Konfigurieren Sie die Identität, das Modell, das Verhalten, die To
 ---
 
 Ein Assistant ist die zentrale Konfigurationseinheit in Ciele. Jeder Assistant
-verfügt über eigenes Knowledge, eigene Flows, eigene Entwurfseinstellungen und
-eine eigene Veröffentlichungsverlauf.
+verfügt über sein eigenes Knowledge, seine eigenen Flows, seine eigenen
+Entwurfseinstellungen und seinen eigenen Veröffentlichungsverlauf.
 
 ## Setup-Abschnitte
 
@@ -33,18 +33,18 @@ organisationsspezifische Fragen zuverlässig zu beantworten.
 
 ## Quellen in der Vorschau prüfen
 
-In der Vorschau werden innerhalb der Antwort des Assistenten nummerierte
-Quellenangaben angezeigt. Bewegen Sie den Mauszeiger über eine Quellenangabe
-oder fokussieren Sie sie mit der Tastatur, um ihren Titel und die Details der
-Quelle anzuzeigen. Drücken Sie die Escape-Taste, um die Karte zu schließen.
-Klicken Sie auf eine Citation mit einer öffentlichen URL, um die Originalseite
-in einem neuen Tab zu öffnen.
+In der Vorschau werden nummerierte Quellenangaben innerhalb der Antwort des
+Assistenten angezeigt. Bewegen Sie den Mauszeiger über eine Quellenangabe oder
+fokussieren Sie sie mit der Tastatur, um ihren Titel und die Details der Quelle
+anzuzeigen. Drücken Sie Escape, um die Karte zu schließen. Klicken Sie auf eine
+Citation mit einer öffentlichen URL, um die Originalseite in einem neuen Tab zu
+öffnen.
 
 Jeder Satz oder Schritt mit Quellenangabe trägt seine Citation neben dem Text,
 den er belegt. Eine Quelle kann in derselben Antwort mehrfach zitiert werden.
-Private Dokumente werden mit einer Vorschau angezeigt, jedoch ohne externen
-Link. Quellen ohne Inline-Referenz bleiben in der Liste „Sources“ unter der
-Antwort verfügbar.
+Private Dokumente werden mit einer Vorschau ohne externen Link angezeigt.
+Quellen ohne Inline-Referenz bleiben in der Sources-Liste unterhalb der Antwort
+verfügbar.
 
 ## Einen Assistenten duplizieren
 
@@ -54,3 +54,33 @@ Knowledge-Inhalte werden nicht kopiert.
 Überprüfen Sie den neuen Assistant vor der Veröffentlichung. Fügen Sie
 insbesondere die erforderlichen Sources hinzu und bestätigen Sie die
 Help-Desk-Verbindungen.
+
+## Einen Assistenten zwischen Organisationen verschieben
+
+Öffnen Sie das Menü „Assistant“ und wählen Sie **Export bundle**, um eine
+versionierte JSON-Datei herunterzuladen. Das Lesen eines Assistants ermöglicht
+den Export.
+
+Wählen Sie **Import bundle as new Assistant** aus, um die Datei hochzuladen. Der
+Import erfordert Bearbeitungszugriff und erstellt immer einen neuen Assistant.
+Bestehende Assistants bleiben unverändert.
+
+Das Bundle enthält die Publication-Konfiguration, Flows, Skills, Guardrails,
+Quick Replies und den Style. Es benennt Collections, Help Desks und Connection
+Providers.
+
+Der Import ordnet diese Namen in der Ziel-Organisation zu. Lesen Sie den
+Importbericht auf fehlende oder mehrdeutige Übereinstimmungen durch. Flows mit
+unaufgelösten Verweisen bleiben deaktiviert.
+
+Credentials, verschlüsselte Werte, Conversations und Visitor-Daten sind
+ausgeschlossen. Konfigurieren Sie die Anmeldeinformationen nach dem Import. API
+Integrations zeigen **Needs setup** an, bis Anmeldeinformationen verfügbar sind.
+
+Der Inhalt der Collection ist nicht enthalten. Importieren Sie Verknüpfungen zu
+vorhandenen Ziel-Sources aus einer passenden Collection. Unbekannte
+Bundle-Versionen werden vor der Erstellung abgelehnt.
+
+Die API stellt `GET /api/v1/assistants/{id}/export` und
+`POST /api/v1/assistants/import` bereit. MCP stellt die Export- und
+Importaktionen von `manage_assistants` bereit.

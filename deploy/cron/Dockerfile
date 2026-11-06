@@ -6,7 +6,8 @@ FROM alpine:3.20
 
 RUN apk add --no-cache curl tzdata
 
-COPY crontab /etc/crontabs/root
+ARG CRONTAB=crontab
+COPY ${CRONTAB} /etc/crontabs/root
 COPY run-job.sh /usr/local/bin/run-job.sh
 RUN chmod +x /usr/local/bin/run-job.sh
 

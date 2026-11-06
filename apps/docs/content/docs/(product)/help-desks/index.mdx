@@ -14,8 +14,103 @@ A Help Desk groups contact channels, availability, form fields, and escalation s
 | Live chat | The widget shows the configured live-chat contact path. |
 | External link | The widget opens the configured destination. |
 | API endpoint | The widget shows the channel form and sends it to the configured endpoint. |
+| Create a ticket | The widget shows the channel form and files a Salesforce Case or a ServiceNow record. The Visitor sees the ticket number. |
+| Live operator | The Visitor stays in the chat and waits for a person from your team. |
 
 Only configure a channel after you test its complete Visitor path.
+
+## Create a ticket
+
+The **Create a ticket** channel files a record in the system that the Help Desk names as its ticketing target. Set the target before you add the channel.
+
+### Set the ticketing target
+
+1. Connect Salesforce or ServiceNow under **Knowledge → Applications**. The connection must belong to the Organization. A personal connection is not shown.
+2. Open the Help Desk.
+3. In **Ticketing Integration**, select **Choose a connection**.
+4. Select the connection.
+5. For ServiceNow, enter the **Table**. The default is `incident`. You can also enter a **Requester email column**. It cannot be `description` or `short_description`, because those columns hold ticket content.
+6. Select **Save**.
+
+### Field mapping
+
+The channel form starts with three fields: Email, Subject, and Description.
+
+| Form field | Salesforce Case | ServiceNow record |
+| --- | --- | --- |
+| Email | Web email (`SuppliedEmail`) | The requester email column. If you set no column, the email goes into the description. |
+| Subject | Subject | `short_description` |
+| Description | Description | `description` |
+
+Other fields that the Visitor fills in go into the description as `Label: value` lines. If the channel's **Conversation Data** includes the full chat history, the transcript follows the description. A Salesforce Case gets the origin `Web`.
+
+The subject limit is 255 characters. The description limit is 32,000 characters, including form values, the summary and the transcript. Ciele asks you to shorten an oversized request before it files a ticket. It does not cut off the text. The external system can enforce lower limits.
+
+### Permissions
+
+- Salesforce: the user who connected the application must have the **Create** permission on Cases. The connection needs no new scope.
+- ServiceNow: the user who connected the application must be able to create records in the target table.
+
+### Results
+
+- The Visitor sees the confirmation message, the ticket number and a **View ticket** link. The external system can require sign-in.
+- The Inbox shows the ticket number in the **Escalation** panel, with a link to the record. A ticket submitted before the first chat message creates a Conversation there too.
+- If the browser retries the same submission, Ciele does not file a second record. A request still in progress stays on the form. Select **Submit** again to check its status.
+- If Salesforce or ServiceNow refuses the record or does not answer, the widget shows the other channels of the Help Desk. The Conversation is not marked as escalated. If a response is lost, the record may exist in the external system. Ciele does not repeat that submission. Contact the Help Desk before you submit a new request.
+- After a failure, an **Integration** alert names the connection and the error. The alert clears when the next ticket is filed.
+
+### ServiceNow with a password
+
+Earlier, a Help Desk could connect ServiceNow with a username and password. That integration no longer files tickets. A Help Desk that still has it shows an alert. Connect ServiceNow under **Knowledge → Applications** and select that connection as the ticketing target.
+
+## Chat summary
+
+The **Conversation Data** tab of an Email, API endpoint or Create a ticket channel has a **Chat summary** setting. When it is on, Ciele writes a short summary of the Conversation when a Visitor escalates. The summary tells your team what the Visitor asked and what the Assistant already answered.
+
+- An email escalation shows the summary above the form fields. If **Full chat history** is also on, the transcript comes after the form fields.
+- An API endpoint escalation sends the summary in the `summary` field of the payload.
+- A Create a ticket escalation appends the summary to the ticket description, followed by the transcript when requested.
+- The Inbox details of the Conversation show the summary.
+
+Ciele uses the AI Provider connections of the Organization for the summary, never the personal subscription of a Member. Ciele records the call in the AI usage of the Organization. If the Visitor sends the same escalation again, Ciele uses the same summary and does not call the model again.
+
+If Ciele cannot write the summary, the escalation still goes out. The email shows the line "Summary unavailable". The API payload has `summary` set to `null` and `summaryNote` set to "Summary unavailable". An escalation before the Visitor sends a message has no summary.
+
+## Live operator channel
+
+A **Live operator** channel lets a Visitor ask for a person without leaving the chat. The channel has a name, an optional form, an availability schedule and a wait timeout. The default wait timeout is 5 minutes.
+
+When a Visitor selects the channel:
+
+1. The Visitor fills in the form, if the channel has one.
+2. The Conversation goes into the **Waiting** list at the top of the Inbox. The oldest wait is first, and each row shows the wait time and the Help Desk.
+3. The Inbox navigation item shows how many Visitors are waiting.
+4. The chat window tells the Visitor that a person will join. The Assistant does not answer while the Visitor waits, but it saves each message.
+5. A Member selects the Conversation and selects **Take over**. The wait stops, and the Member answers in the same chat. Refer to [Inbox](/operations/inbox).
+
+If nobody takes over before the timeout, the chat window tells the Visitor. The Assistant answers again, and the chat window shows the other channels of the Help Desk.
+
+### Operators and status
+
+A Help Desk with a Live operator channel has an **Operators** section. Select the Members who answer this channel. Each operator has a capacity, which is the maximum number of Conversations that the operator holds at the same time. The default capacity is 3.
+
+Each operator sets **Available** or **Away** with the status button in the top bar. Ciele keeps the status when you reload the page. When you sign out, your status changes to **Away**.
+
+Ciele shows the Live operator channel to a Visitor only when at least one operator of the Help Desk is **Available**. A Visitor does not wait in a queue that nobody watches.
+
+### Assignment
+
+When a Visitor starts to wait, Ciele assigns the Conversation to one operator of the Help Desk:
+
+- The operator must be **Available** and below their capacity.
+- Ciele selects the operator with the fewest Conversations. A Conversation that the operator holds or that waits for them counts.
+- If two operators have the same number, Ciele selects the operator who got an assignment least recently.
+
+The assigned operator gets a persistent Member Notification in the console. It stays in **Notifications** until read, archived, or deleted. The Waiting list shows **Assigned to you** for that Conversation. The assigned operator or any other Member who can answer Visitors can take it over.
+
+If no operator is free, the Conversation stays in the Waiting list without an assignment. Ciele assigns it when an operator releases a Conversation or changes to **Available**.
+
+Ciele records the escalation on the Conversation like the other channel types. The Inbox details show the channel name and the form values. If the Help Desk creates Improvements on escalation, this channel does that too.
 
 ## Escalation selection
 
@@ -38,3 +133,9 @@ A Help Desk with no active channel does not show in this list.
 5. Configure availability and form fields.
 6. Connect the Help Desk to an Assistant.
 7. Test the escalation in Preview.
+
+### Console presence
+
+The console renews **Available** while the signed-in operator remains connected. Closing every console tab or losing the session makes the operator **Away** within two minutes.
+
+Reloading an active console preserves the status. A heartbeat never changes an explicit **Away** back to **Available**. Select **Available** to receive assignments again.

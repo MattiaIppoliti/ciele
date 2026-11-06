@@ -45,13 +45,17 @@ async function read(
   const before = previousPeriodFilter(filter);
   const window = { from: dashboardWindow(before).from, to: dashboardWindow(filter).to };
   try {
-    const all = await db.getOrgDashboardFacts(organizationId, window.from, window.to);
+    const [all, moderation] = await Promise.all([
+      db.getOrgDashboardFacts(organizationId, window.from, window.to),
+      db.getModerationCounts(organizationId, dashboardWindow(filter).from, dashboardWindow(filter).to, filter.assistantId),
+    ]);
     const previous = computeUsageDashboard(all, before).totals;
     const active = previous.calls > 0 || previous.turns > 0 || previous.conversations > 0;
     return {
       dashboard: computeUsageDashboard(all, filter),
       previous: active ? previous : null,
       unavailable: false,
+      moderation,
     };
   } catch (error) {
     if (!isMissingFunction(error)) throw error;

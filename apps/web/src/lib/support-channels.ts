@@ -6,6 +6,8 @@ import type {
   SupportChannelConfig,
 } from "@agent-hub/core";
 import { findCountry } from "./countries";
+import { Headphones } from "lucide-react";
+import { DEFAULT_WAIT_TIMEOUT_MINUTES, MAX_WAIT_TIMEOUT_MINUTES } from "@agent-hub/core";
 import { AlignLeft, AtSign, FileText, Mail, MessageCircle, Phone, SquareCheck, Upload, UserRound, Webhook, type LucideIcon } from "lucide-react";
 import { Calendar, ChevronDown, Hash, Link2, List, Share2, SquareArrowOutUpRight, Ticket } from "lucide-react";
 
@@ -14,7 +16,7 @@ export interface ChannelKindMeta {
   subtitle: string;
   icon: LucideIcon;
   defaultName: string;
-  /** Needs the ticketing integration, selectable in a later iteration. */
+  /** Needs the desk's ticketing target; see `channelKindUnavailable`. */
   requiresTicketing?: boolean;
 }
 
@@ -63,7 +65,33 @@ export const CHANNEL_KINDS: Record<ChannelKind, ChannelKindMeta> = {
     icon: Webhook,
     defaultName: "Contact us",
   },
+  live_operator: {
+    label: "Live operator",
+    subtitle: "A person from your team answers in the same chat",
+    icon: Headphones,
+    defaultName: "Talk to a person",
+  },
 };
+
+/**
+ * Why a channel kind cannot be added to a desk yet, or null when it can.
+ * "Create a ticket" needs the desk's ticketing target (#1088); the Salesforce
+ * handover has no runtime yet, see docs/research/salesforce-enhanced-chat-handover.md.
+ */
+export function channelKindUnavailable(
+  kind: ChannelKind,
+  desk: { ticketingReady: boolean }
+): string | null {
+  if (kind === "ticket") {
+    return desk.ticketingReady
+      ? null
+      : "Choose a ticketing target in the Ticketing Integration section first.";
+  }
+  if (CHANNEL_KINDS[kind].requiresTicketing) {
+    return `${CHANNEL_KINDS[kind].label} is not available yet.`;
+  }
+  return null;
+}
 
 export const CHANNEL_KIND_ORDER: ChannelKind[] = [
   "email",
@@ -73,6 +101,7 @@ export const CHANNEL_KIND_ORDER: ChannelKind[] = [
   "external_link",
   "salesforce_chat",
   "api_endpoint",
+  "live_operator",
 ];
 
 export const FIELD_TYPES: Record<
@@ -173,6 +202,12 @@ export function channelSetupError(
   }
   if (kind === "api_endpoint" && !(config.url ?? "").trim()) {
     return "API Endpoint URL is required";
+  }
+  if (kind === "live_operator") {
+    const minutes = config.waitTimeoutMinutes ?? DEFAULT_WAIT_TIMEOUT_MINUTES;
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_WAIT_TIMEOUT_MINUTES) {
+      return `Wait timeout must be a whole number of minutes from 1 to ${MAX_WAIT_TIMEOUT_MINUTES}`;
+    }
   }
   return null;
 }

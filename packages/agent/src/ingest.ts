@@ -47,6 +47,7 @@ import { getEnterpriseCapabilities } from "./ee";
 import { validateEgressTarget } from "./egress";
 import { redactCrawl4aiSecrets } from "./crawl4ai";
 import { errorClassOf, recordRuntimeEvent } from "./telemetry";
+import { activeTurnClock, timedSync } from "./turn-clock";
 import { alertKeys, signalHealth } from "./health";
 
 export type SourceConceptDraft = {
@@ -229,7 +230,7 @@ export async function embedConcept(options: {
    */
   usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
 }): Promise<void> {
-  const chunks = chunkMarkdown(options.body);
+  const chunks = timedSync("chunk", () => chunkMarkdown(options.body));
   // Resolved up-front for usage attribution (the embedding call below is
   // billable) and reused by the health signal at the end.
   const assistant = await options.db
@@ -1114,7 +1115,9 @@ export async function ingestSource(options: {
   // Resolved up-front for the health signals below.
   const assistant = await db.getAssistant(assistantId).catch(() => null);
   try {
-    let concepts = options.drafts ?? sourceConceptDrafts(source, rawText);
+    // Timed as `parse` for the job's timings (#1112). A durable payload
+    // reuses drafts frozen by its first attempt, so a retry parses nothing.
+    let concepts = options.drafts ?? timedSync("parse", () => sourceConceptDrafts(source, rawText));
     const attempt = options.initializeAttempt
       ? await options.initializeAttempt(concepts)
       : null;
@@ -1181,6 +1184,7 @@ export async function ingestSource(options: {
                   connections,
                 });
                 cursor = index + 1;
+                activeTurnClock()?.countConcepts(1);
                 if (options.persistCursor) {
                   if (!(await options.persistCursor(generationId, cursor))) {
                     return "aborted";

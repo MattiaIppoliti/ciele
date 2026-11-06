@@ -1,14 +1,14 @@
 use std::error::Error;
 use std::net::SocketAddr;
 
-use ciele_api::{init_tracing, router, state_from_env};
+use ciele_api::{app_from_env, init_tracing};
 
 /// The self-host binary: the service on a TCP port. On Vercel the same router
 /// runs as a Function instead (`api/ops.rs`).
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_tracing();
-    let state = state_from_env().await?;
+    let app = app_from_env().await?;
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|value| value.parse().ok())
@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let addr: SocketAddr = format!("{host}:{port}").parse()?;
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(%addr, "ciele-api listening");
-    axum::serve(listener, router(state))
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown())
         .await?;
     Ok(())

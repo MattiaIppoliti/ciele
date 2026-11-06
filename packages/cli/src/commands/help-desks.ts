@@ -96,15 +96,20 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
       emit(`Reordered ${result.data.length} channels`, result);
       return EXIT.ok;
     }
-    case "connect-servicenow": {
-      if (!rest[0]) return usage(deps, "help-desks connect-servicenow <deskId> --file <credentials.json>");
-      const input = jsonFile<Parameters<typeof client.helpDesks.connectServiceNow>[1]>(
-        ctx,
-        "help-desks connect-servicenow <deskId> --file <credentials.json>"
-      );
-      if (input === undefined) return EXIT.usage;
-      const desk = await client.helpDesks.connectServiceNow(rest[0], input);
-      emit(`Connected ServiceNow to ${desk.id}`, desk);
+    case "set-ticketing": {
+      const connectionId = str(flags.connection);
+      if (!rest[0] || !connectionId) {
+        return usage(
+          deps,
+          "help-desks set-ticketing <deskId> --connection <connectionId> [--table <table>] [--requester-field <column>]"
+        );
+      }
+      const desk = await client.helpDesks.setTicketing(rest[0], {
+        connectionId,
+        ...(str(flags.table) ? { table: str(flags.table) } : {}),
+        ...(str(flags["requester-field"]) ? { requesterEmailField: str(flags["requester-field"]) } : {}),
+      });
+      emit(`Set the ticketing target of ${desk.id}`, desk);
       return EXIT.ok;
     }
     case "disconnect-ticketing":
@@ -119,7 +124,7 @@ export async function helpDesks(verb: string | undefined, ctx: CommandContext) {
     default:
       return usage(
         deps,
-        "help-desks <list|get|create|update|delete|add-channel|update-channel|delete-channel|reorder-channels|connect-servicenow|disconnect-ticketing>"
+        "help-desks <list|get|create|update|delete|add-channel|update-channel|delete-channel|reorder-channels|set-ticketing|disconnect-ticketing>"
       );
   }
 }

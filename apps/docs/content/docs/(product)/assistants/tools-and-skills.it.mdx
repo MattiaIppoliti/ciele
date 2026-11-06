@@ -8,15 +8,15 @@ funzionalità di runtime e le istruzioni riutilizzabili.
 
 ## Strumenti integrati
 
-| Tool | Default | Comportamento corrente |
+| Tool | Default | Comportamento attuale |
 | --- | :---: | --- |
 | Search knowledge | On | Cerca nella Knowledge collegata e restituisce risposte con citazioni. |
 | Session memory | On | Utilizza le informazioni della sessione di conversazione corrente. |
 | Fetch URL | Off | Legge un URL quando il runtime seleziona lo strumento. |
 | Interactive tables | Off | Mostra i dati come una tabella semplice, una griglia dei record CRM o una tabella delle attività con filtri di stato. |
 
-Search knowledge è sempre disponibile. Puoi abilitare o disabilitare gli altri
-strumenti integrati.
+La funzionalità Search knowledge è sempre disponibile. Puoi abilitare o
+disabilitare gli altri strumenti integrati.
 
 **Interactive tables** organizza i fatti che l'Assistente ha trovato in questa
 risposta. Il runtime seleziona la tabella in base alla tua richiesta e ai dati
@@ -24,16 +24,16 @@ disponibili.
 
 - Una tabella semplice confronta i fatti e può includere domande di follow-up
   per le righe.
-- Una griglia dei record CRM mostra aziende, categorie, ultima interazione,
-  stato della relazione e link ai siti web. Seleziona le righe, ordina,
-  ridimensiona o fissa le colonne.
+- Una griglia dei record CRM mostra le aziende, le categorie, l'ultima
+  interazione, lo stato della relazione e i link ai siti web. Seleziona le
+  righe, ordina, ridimensiona o fissa le colonne.
 - Una tabella delle attività mostra le date, lo stato e i proprietari. Seleziona
   **All**, **To do**, **In Progress** o **Completed** per filtrare le relative
   righe.
 
 I conteggi dei filtri derivano dai dati visualizzati. I dati mancanti rimangono
 vuoti. Le impostazioni della tabella influiscono sulla visualizzazione corrente
-e non modificano i record CRM.
+e non modificano i record del CRM.
 
 Usa **New property** o **Add calculation** nella griglia CRM per preparare una
 richiesta di proprietà. Rivedi il suo prompt, quindi seleziona **Go calculate**.
@@ -41,8 +41,8 @@ Questo invia una normale richiesta di chat. L'harness corrente, le fonti
 connesse e le autorizzazioni continuano ad applicarsi. L'interfaccia utente non
 simula i valori generati.
 
-Le stesse tabelle vengono visualizzate in Preview, nel Widget pubblicato e nel
-transcript dell'Inbox. Pubblica l'Assistente dopo aver abilitato questo
+Le stesse tabelle vengono visualizzate in Preview, nel Widget pubblicato e nella
+trascrizione dell'Inbox. Pubblica l'Assistente dopo aver abilitato questo
 strumento. L'Inbox supporta la visualizzazione, la selezione, il filtraggio e il
 layout delle colonne. Non invia richieste di proprietà.
 
@@ -65,8 +65,8 @@ esercizi interattivi.
 Il chat composer mostra un pulsante **Study exercises**. Seleziona un formato,
 aggiungi un argomento, quindi invia la richiesta.
 
-Quando è abilitato, **Study Mode** viene visualizzato anche in **Flows**. Il
-pulsante Settings apre questa sezione. Disattiva la Study Mode in **Tools &
+Quando è abilitato, **Study Mode** compare anche in **Flows**. Il pulsante
+Settings apre questa sezione. Disattiva la Modalità di studio in **Tools &
 Skills**. Il Flow non ha un interruttore separato. Le richieste dal menu Study
 exercises vanno direttamente a questo Flow. In Thinking viene visualizzata
 l'icona di un tocco accademico.
@@ -86,7 +86,7 @@ supportato o del materiale di studio.
 massimo cinque domande distinte basate sulle Knowledge recuperate.
 
 Seleziona **Check** per salvare una risposta. Ciele mostra se la risposta è
-corretta, qual è quella giusta e una spiegazione. Non puoi modificare una
+corretta, qual è la risposta corretta e una spiegazione. Non puoi modificare una
 risposta già inviata. Le flashcard accettano le varianti ortografiche definite
 al momento della creazione dell'esercizio.
 
@@ -97,12 +97,13 @@ un lettore H5P esterno.
 
 ## Configura un'integrazione API
 
-Un Assistant può utilizzare una sola integrazione API registrata. L'integrazione
-contiene un base URL, una credenziale protetta e gli endpoint descritti.
+Un Assistente può utilizzare una sola integrazione API registrata.
+L'integrazione contiene un base URL, una credenziale protetta e degli endpoint
+descritti.
 
-Per ciascun endpoint, definisci il metodo, il percorso, lo scopo, i parametri e
-la forma della risposta. Il runtime convalida ogni percorso richiesto
-confrontandolo con questo catalogo.
+Per ogni endpoint, definisci il metodo, il percorso, lo scopo, i parametri e la
+forma della risposta. Il runtime convalida ogni path richiesto confrontandolo
+con questo catalogo.
 
 L'agent può esaminare i dettagli dell'endpoint prima di inviare una richiesta.
 Le risposte di grandi dimensioni rimangono disponibili tramite letture a
@@ -123,13 +124,13 @@ modulo dell'endpoint, indica dove la tua API legge la chiave:
 - `header:Idempotency-Key` invia la chiave in un header della richiesta.
 - `body:request_id` invia la chiave nel corpo JSON.
 
-Usa il nome che la tua API legge. Ciele non cerca di indovinare questo nome. API
+Usa il nome che la tua API legge. Ciele non tenta di indovinare questo nome. API
 diverse leggono nomi diversi.
 
 Ciele genera una chiave per ogni chiamata. Un nuovo tentativo della stessa
 chiamata invia la stessa chiave. Una chiamata diversa invia una chiave diversa.
-La tua API può quindi considerare le due richieste come un'unica operazione di
-scrittura.
+La tua API può quindi considerare le due richieste come una singola operazione
+di scrittura.
 
 Anche la tua API deve fare la sua parte. Deve memorizzare la chiave e restituire
 il primo risultato quando rileva nuovamente la chiave.
@@ -152,19 +153,22 @@ associare la stessa Skill a più Assistenti.
 Le modifiche alle Skill sono immediatamente disponibili in Preview. Il Widget
 pubblicato utilizza l'ultimo snapshot di Publication.
 
-### Consenti alle persone di avviare una Skill dalla finestra della chat
+### Consenti alle persone di avviare una Skill dalla finestra di chat
 
 Una Skill può avere un **Opening line**. Scrivilo dal punto di vista della
-persona che chiede, non dell'Assistente.
+persona che pone la domanda, non dell'Assistente.
 
 La finestra di chat mostra un menu **/** con ogni Skill che ha una opening line.
 Quando l'utente seleziona una Skill, la finestra di chat inserisce la opening
 line nella casella dei messaggi. Puoi modificare il testo prima di inviarlo.
 
-Se la battuta di apertura è vuota, la Skill non viene visualizzata nel menu
-**/**. Il prompt della Skill continua ad applicarsi a ogni risposta.
+Se la opening line è vuota, la Skill non viene visualizzata nel menu **/**. Per
+i set di Skill brevi (fino a 4.000 caratteri in totale), inserisci le istruzioni
+per ogni risposta. Per i set più lunghi, il modello visualizza i nomi e le
+descrizioni e carica i playbook corrispondenti su richiesta. Fornisci a ogni
+Skill una descrizione chiara di quando si applica.
 
-Pubblica l'Assistente dopo aver scritto una opening line. Il Widget utilizza
+Pubblica l'Assistente dopo aver scritto una riga di apertura. Il Widget utilizza
 l'ultimo snapshot di Publication.
 
 ## Gli allegati e la Knowledge non sono la stessa cosa
@@ -184,8 +188,8 @@ Per rendere permanente un file, aggiungilo invece in **Library**.
 ## Verifica la configurazione
 
 Poni una domanda che richieda ciascuno degli strumenti abilitati. Prima di
-pubblicare, controlla il pannello Thinking e la sezione Sources.
+pubblicare, controlla il pannello Thinking e le Sources.
 
 Per i dati strutturati, esegui il test di una ricerca esatta per attributo e di
-una ricerca testuale. Verifica l'accesso con ambito utente utilizzando due
-account diversi con cui hai effettuato l'accesso.
+una ricerca testuale. Prova l'accesso con ambito utente utilizzando due account
+diversi con cui hai effettuato l'accesso.

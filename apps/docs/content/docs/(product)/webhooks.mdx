@@ -1,0 +1,131 @@
+---
+title: Webhooks
+description: Receive signed Organization events in your systems.
+---
+
+import { WebhookEvents } from '@/components/webhook-events';
+
+An outbound webhook subscription sends Organization events to a URL that you control. Owner and Admin Members manage subscriptions.
+
+This feature differs from the **HTTP Webhook** Flow action. That action waits for a callback before the Flow continues.
+
+## Add a subscription
+
+1. Open **Settings → Webhooks**.
+2. Select **Add subscription**.
+3. Enter a name and an HTTPS URL.
+4. Select the events to receive.
+5. Select **Save**.
+6. Copy the signing secret to your receiver's secure configuration. Ciele shows this secret only once.
+
+Select **Pause** to stop delivery. Select **Resume** to continue. Delete a subscription to remove its configuration and delivery log.
+
+Production delivery refuses HTTP, loopback, and private network addresses. Development hosts can permit HTTP and loopback through the deployment's existing egress policy.
+
+## Test and inspect delivery
+
+Select **Send test event**. Ciele queues a synthetic `conversation.escalated` event and shows the first attempt's response status.
+
+Select **Deliveries** to inspect the last 100 deliveries. Each row shows the event, attempt count, last HTTP status, and time. Select **Refresh** to load the current result.
+
+A test uses the same signing, queue, and egress checks as a real event. It contains sample identifiers, rather than a real Visitor's data.
+
+## Handle retries
+
+Ciele sends each event as a JSON POST. Its envelope contains `id`, `type`, `createdAt`, `organizationId`, and `data`.
+
+Return a 2xx response within 10 seconds. A non-2xx response, network failure, or timeout causes a retry.
+
+Retries use exponential delays, from one minute to one hour, within a 24-hour delivery window. Each retry keeps the event's original `id`. Store that id to detect duplicate delivery before you process an event again.
+
+A delivery that exhausts its retries raises an Alert naming the subscription. The next successful delivery to that subscription clears the Alert.
+
+### Configure the worker
+
+The background worker must run at least every five minutes for timely delivery and retries. The bundled self-hosted worker already uses that schedule.
+
+The default hosted maintenance schedule runs daily. It cannot provide repeated delivery attempts within the 24-hour window.
+
+For hosted deployments, schedule calls to `/api/cron/finalize-crawls` at least every five minutes. For Vercel Hobby, run the repository's standalone external Docker worker. It starts only a scheduler and uses the hosted app's authenticated drain.
+
+Send `Authorization: Bearer CRON_SECRET`. Store this deployment credential in the scheduler's secret store. The endpoint drains the durable delivery ledger.
+
+Create a private environment file outside the checkout with `APP_URL` (the hosted HTTPS origin without a trailing slash) and `CRON_SECRET`. From the repository root, start the worker on an external Docker host:
+
+```sh
+docker compose --env-file /secure/ciele-worker.env -f deploy/docker-compose.hosted-worker.yml up -d --build
+```
+
+Check the worker logs for a successful drain every five minutes. Then send a test event from Settings and confirm that its delivery log shows `delivered`. The worker must stay running for retries to continue.
+
+
+## Verify the signature
+
+Keep the request's raw body. Do not parse and reserialize JSON before verification.
+
+The `Ciele-Signature` header has the form `t=TIMESTAMP,v1=HEX_DIGEST`. The timestamp uses Unix seconds.
+
+Compute HMAC-SHA256 with the signing secret over the timestamp, a dot, and the exact raw body. Reject timestamps more than five minutes from the current time. Compare digest bytes in constant time.
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verifyCieleSignature(rawBody, header, secret, now = Date.now()) {
+  const parts = /^t=(\d+),v1=([a-f0-9]{64})$/.exec(header ?? "");
+  if (!parts) return false;
+  const timestamp = Number(parts[1]);
+  if (!Number.isSafeInteger(timestamp)) return false;
+  if (Math.abs(now / 1000 - timestamp) > 300) return false;
+  const expected = createHmac("sha256", secret)
+    .update(`${parts[1]}.${rawBody}`)
+    .digest();
+  const received = Buffer.from(parts[2], "hex");
+  return timingSafeEqual(expected, received);
+}
+```
+
+Read the secret from your receiver's secret store. Reject the request before processing its payload if verification fails.
+
+## Event data
+
+Payloads contain metadata. They exclude message text, transcripts, escalation form values, and Visitor identifiers.
+
+Conversation names use the Conversation id, because a chat title can contain Visitor text. Improvement titles derived from chat or Flow input use the Improvement's `IMP` key. Other titles describe the configured entity.
+
+An Improvement's source is `flow_action`, `escalation`, or `manual`. Existing automated verification and maintenance paths use `system`.
+
+The following field declarations and examples come from the same event catalogue that validates delivery.
+
+<WebhookEvents />
+
+## API, CLI, and MCP
+
+The Webhooks Developer Panel shows API and tool examples for the current deployment. Subscription changes require confirmation in Ciele AI. Ordinary Teammates receive no webhook management tools.
+
+Create `webhook.json`:
+
+```json
+{
+  "name": "Support events",
+  "url": "https://support.example.com/ciele/events",
+  "eventTypes": ["conversation.escalated", "feedback.negative"]
+}
+```
+
+```sh
+ciele webhooks list
+ciele webhooks create --file webhook.json --yes
+ciele webhooks deliveries SUBSCRIPTION_ID
+ciele webhooks test SUBSCRIPTION_ID --yes
+ciele webhooks pause SUBSCRIPTION_ID --yes
+ciele webhooks resume SUBSCRIPTION_ID --yes
+ciele webhooks delete SUBSCRIPTION_ID --yes
+```
+
+Use `ciele webhooks update SUBSCRIPTION_ID --file patch.json --yes` to change selected fields. Set `paused` in the patch to pause or resume through the update endpoint.
+
+The REST endpoints start at `/api/v1/webhooks`. Each subscription has `/deliveries` and `/test` subresources.
+
+The MCP `manage_configuration` tool supports `webhook_list`, `webhook_create`, `webhook_update`, `webhook_pause`, `webhook_resume`, `webhook_delete`, `webhook_deliveries`, and `webhook_test` actions.
+
+The standalone worker also drains scheduled Insights exports every five minutes. Both drains use the same authenticated application URL and cron secret.

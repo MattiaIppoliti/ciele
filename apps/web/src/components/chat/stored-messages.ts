@@ -1,6 +1,6 @@
 import type { StoredMessage } from "@agent-hub/core";
 import { EMPTY_TURN_TRACE, type ChatReplyPart } from "@agent-hub/agent/client";
-import type { ChatUserMsg, ChatBotMsg } from "./chat-thread";
+import type { ChatUserMsg, ChatBotMsg, ChatNoticeMsg } from "./chat-thread";
 import { visibleTraceSteps } from "./stored-trace";
 
 type StoredReply = Pick<StoredMessage, "id" | "content" | "trace" | "createdAt"> &
@@ -28,14 +28,30 @@ export function storedBotMessage(message: StoredReply, options = { canViewReason
   };
 }
 
-export function chatMessagesFromStored(messages: readonly StoredMessage[], options = { canViewReasoning: false }): Array<ChatUserMsg | ChatBotMsg> {
-  return messages.map((message) => {
-    return message.role === "user"
-      ? {
-          role: "user",
-          text: message.content.flatMap((part) => part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part && typeof part.text === "string" ? [part.text] : []).join(""),
-          sentAt: message.createdAt ?? null,
-        }
-      : storedBotMessage(message, options);
+function plainText(message: StoredMessage): string {
+  return message.content.flatMap((part) => part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part && typeof part.text === "string" ? [part.text] : []).join("");
+}
+
+/**
+ * Stored messages as chat rows. An `operator` message is a person's reply
+ * (#1082), drawn as a bubble with their name; a `system` message is a line
+ * about the Conversation, drawn as a centred notice.
+ */
+export function chatMessagesFromStored(messages: readonly StoredMessage[], options = { canViewReasoning: false }): Array<ChatUserMsg | ChatBotMsg | ChatNoticeMsg> {
+  return messages.map((message): ChatUserMsg | ChatBotMsg | ChatNoticeMsg => {
+    if (message.role === "user") {
+      return { role: "user", id: message.id, text: plainText(message), sentAt: message.createdAt ?? null };
+    }
+    if (message.role === "system") {
+      return { role: "notice", id: message.id, text: plainText(message), sentAt: message.createdAt };
+    }
+    if (message.role === "operator") {
+      const name = message.authorName ?? "Support";
+      return {
+        ...storedBotMessage(message, options),
+        author: { name, title: "Support team", avatarSeed: name },
+      };
+    }
+    return storedBotMessage(message, options);
   });
 }

@@ -48,6 +48,7 @@ beforeAll(async () => {
     await db.createApiKey(DEMO_ORG.id, {
       name,
       role,
+      roleId: `builtin:${role}`,
       secretHash: hashApiKeySecret(raw),
       secretHint: apiKeySecretHint(raw),
       createdBy: DEMO_MEMBER.userId,

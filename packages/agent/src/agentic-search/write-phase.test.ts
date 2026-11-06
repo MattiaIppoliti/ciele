@@ -115,7 +115,7 @@ describe("runWritePhase", () => {
       recordUsage: (u) => recorded.push(u),
     });
     expect(result.finishReason).toBe("length");
-    expect(recorded).toEqual([{ inputTokens: 10, outputTokens: 5 }]);
+    expect(recorded).toEqual([{ inputTokens: 10, outputTokens: 5 }, { inputTokens: 10, outputTokens: 5 }]);
   });
 
   it("never opens a text bubble when the model writes nothing", async () => {
@@ -177,7 +177,7 @@ describe("the write phase's terminal endings", () => {
 
   it("appends the length notice when the stream was cut off", async () => {
     const ending = await endingFor(["Half an ans"], { unified: "length" });
-    expect(ending.text).toBe("Half an ans");
+    expect(ending.text).toBe("Half an ansHalf an ans");
     expect(ending.fellBack).toBe(false);
     expect(ending.lengthNotice).toMatchObject({
       type: "text",
@@ -208,3 +208,15 @@ describe("the write phase's terminal endings", () => {
     expect(clarifyQuestion(text)).toBe("Which release?");
   });
 });
+
+ it("continues a length cutoff once and stops with the completed answer", async () => {
+   let calls = 0;
+   const model = new MockLanguageModelV3({ doStream: async (options) => {
+     calls += 1;
+     if (calls === 2) expect(JSON.stringify(options.prompt)).toContain("Continue exactly");
+     return writeModel([calls === 1 ? "First " : "last."], calls === 1 ? "length" : "stop").doStream(options);
+   }});
+   const result = await runWritePhase({chatModel:model, system:"write", messages:[{role:"user",content:"hi"}], streaming:false, emit:()=>{}});
+   expect(result).toEqual({text:"First last.", finishReason:"stop"});
+   expect(calls).toBe(2);
+ });

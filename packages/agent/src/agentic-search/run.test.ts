@@ -104,6 +104,33 @@ describe("buildSystemPrompt", () => {
     expect(memoryAt).toBeLessThan(routingAt);
   });
 
+  it("lists indexed skills by name and description, never by body", () => {
+    const prompt = buildSystemPrompt("PLATFORM", makeAssistant(), flow, {
+      skillIndex: [
+        {
+          id: "s1",
+          name: "Refund policy",
+          description: "Questions about getting money back",
+          prompt: "SECRET BODY: offer store credit first.",
+          starter: "",
+        },
+      ],
+    });
+    expect(prompt).toContain("Refund policy: Questions about getting money back");
+    expect(prompt).toContain("useSkill");
+    expect(prompt).not.toContain("SECRET BODY");
+  });
+
+  it("keeps the skill index out of the write phase, which has no tools to load one", () => {
+    const prompt = buildSystemPrompt("PLATFORM", makeAssistant(), flow, {
+      phase: "write",
+      skillIndex: [
+        { id: "s1", name: "Refund policy", description: "Money back", prompt: "Body.", starter: "" },
+      ],
+    });
+    expect(prompt).not.toContain("useSkill");
+  });
+
   it("tells a turn with no searcher not to look anything up", () => {
     const grounded = buildSystemPrompt("PLATFORM", makeAssistant(), flow, {
       phase: "gather",

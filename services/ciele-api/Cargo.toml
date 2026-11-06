@@ -6,12 +6,18 @@ license = "AGPL-3.0-only"
 publish = false
 
 [dependencies]
+aes-gcm = "0.10"
 axum = "0.8"
 base64 = "0.22"
+form_urlencoded = "1"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 getrandom = "0.3"
 hmac = "0.12"
+reqwest = { version = "0.13", default-features = false, features = ["json", "multipart", "rustls-no-provider"] }
+rmcp = { version = "3.7", default-features = false, features = ["server", "transport-streamable-http-server"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "json", "macros"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
@@ -19,6 +25,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tower = { version = "0.5", features = ["util"] }
 vercel_runtime = { version = "2", features = ["axum"] }
+url = "2"
+percent-encoding = "2"
 
 # The Vercel Function; src/main.rs stays the self-host binary.
 [[bin]]

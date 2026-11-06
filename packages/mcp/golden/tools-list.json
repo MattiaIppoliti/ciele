@@ -1,0 +1,1319 @@
+[
+  {
+    "name": "ciele_identity",
+    "description": "Who and where you are: the deployment's API version and shipped domains, plus the Organization and Role this API key acts with. Call this first to learn what you may do.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {}
+    }
+  },
+  {
+    "name": "manage_assistants",
+    "description": "Ask an Assistant a question with `ask` (id + question): it answers as its published widget would, Flows and knowledge search included, and returns the answer with the Sources it cited; pass the returned conversationId to ask a follow-up. It creates a Conversation, so read-only mode refuses it; to read the knowledge without an answer use manage_knowledge `search`. Also list, read, create, update, duplicate or delete the Organization's Assistants. `list` supports limit/cursor; `update` takes a `patch` object; `delete` is permanent and needs an admin-tier key.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "export",
+            "import",
+            "get_access",
+            "set_access",
+            "clear_access",
+            "ask",
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+            "duplicate"
+          ]
+        },
+        "bundle": {
+          "description": "Portable Assistant bundle (import)",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "userId": {
+          "description": "Member id (access overrides)",
+          "type": "string"
+        },
+        "role": {
+          "description": "Assistant access override",
+          "type": "string",
+          "enum": [
+            "denied",
+            "viewer",
+            "editor",
+            "admin"
+          ]
+        },
+        "id": {
+          "description": "Assistant id (ask/get/update/delete/duplicate)",
+          "type": "string"
+        },
+        "question": {
+          "description": "What to ask the Assistant (ask)",
+          "type": "string"
+        },
+        "conversationId": {
+          "description": "A previous answer's conversationId, to continue that thread (ask)",
+          "type": "string"
+        },
+        "title": {
+          "description": "Title (create)",
+          "type": "string"
+        },
+        "nickname": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "patch": {
+          "description": "Fields to change (update)",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "limit": {
+          "type": "number"
+        },
+        "cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_flows",
+    "description": "The Assistant's routing: list an Assistant's Flows, read one (full trigger/conditions/actions config), create, update (incl. enabled true/false), reorder, or delete. The Default behavior flow is locked and cannot be deleted. `flow` carries the FlowInput/FlowPatch body for create/update: call `catalog` FIRST to learn which triggers, actions and condition kinds exist and which pair with which, the server refuses anything outside that list rather than storing it, then `draft` (a patch) or `validate` (a whole Flow) to see what would be stored without storing it, including the human-review action the runtime inserts ahead of a Connector write. `runs` reads an HTTP-triggered Flow's recent inbound calls.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "catalog",
+            "list",
+            "get",
+            "create",
+            "draft",
+            "validate",
+            "runs",
+            "agent_thread",
+            "agent_conversation",
+            "update",
+            "delete",
+            "reorder"
+          ]
+        },
+        "assistantId": {
+          "description": "Required for list/create/reorder",
+          "type": "string"
+        },
+        "id": {
+          "description": "Flow id (get/update/delete)",
+          "type": "string"
+        },
+        "flow": {
+          "description": "FlowInput (create) / FlowPatch (update)",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "orderedIds": {
+          "description": "Full order for reorder; Default stays last",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summary": {
+          "description": "One sentence on what the patch changes (draft)",
+          "type": "string"
+        },
+        "rationale": {
+          "description": "Why this belongs in its own Flow (validate)",
+          "type": "string"
+        },
+        "currentTrigger": {
+          "description": "The open Flow's trigger, when a draft patches only the actions",
+          "type": "string"
+        },
+        "conversationId": {
+          "description": "agent_conversation",
+          "type": "string"
+        },
+        "limit": {
+          "description": "How many runs to return (runs)",
+          "type": "number"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_knowledge",
+    "description": "The Organization's knowledge. To answer a question from it, use search: it returns the passages that match the query, each with its Document, Source and URL to cite, and generates no answer (pass assistantId to search only what that Assistant answers from, omit it to search the whole Library). The rest manages it: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources to a named Collection (add_text/add_url/add_file) or straight to the org Knowledge Library with no Collection id (add_org_text/add_org_url/add_org_file, which is what a newly created Assistant needs, since it has no Collection to name yet), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs). Every action that adds knowledge takes assistantIds: a Collection has no owner, so those links are the only thing that puts the knowledge in an Assistant's reach, and an empty set is refused.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "search",
+            "list_collections",
+            "list_sources",
+            "list_org_sources",
+            "get_source",
+            "list_documents",
+            "review_document",
+            "remove_review",
+            "get_faq",
+            "update_faq",
+            "faq_history",
+            "restore_faq",
+            "check_faq_duplicates",
+            "source_usage",
+            "add_text",
+            "add_url",
+            "add_file",
+            "add_org_text",
+            "add_org_url",
+            "add_org_file",
+            "set_links",
+            "set_direct_access",
+            "delete_source",
+            "recrawl",
+            "add_faq",
+            "add_org_faq",
+            "import_faqs",
+            "import_org_faqs",
+            "export_faqs"
+          ]
+        },
+        "assistantId": {
+          "description": "Required for list_collections; narrows search to that Assistant's Sources",
+          "type": "string"
+        },
+        "collectionId": {
+          "description": "Required for list_sources/add_text/add_url/add_file/add_faq/import_faqs; the add_org_* actions take none",
+          "type": "string"
+        },
+        "documentId": {
+          "type": "string"
+        },
+        "versionId": {
+          "type": "string"
+        },
+        "sourceId": {
+          "description": "Required for get_source/delete_source/recrawl",
+          "type": "string"
+        },
+        "name": {
+          "description": "Source name (add_text/add_org_text) / file name (add_file/add_org_file)",
+          "type": "string"
+        },
+        "text": {
+          "description": "Raw text (add_text/add_org_text)",
+          "type": "string"
+        },
+        "url": {
+          "description": "Page URL (add_url/add_org_url)",
+          "type": "string"
+        },
+        "fileBase64": {
+          "description": "File bytes, base64 (add_file/add_org_file)",
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string"
+        },
+        "csvText": {
+          "description": "CSV content (import_faqs/import_org_faqs)",
+          "type": "string"
+        },
+        "assistantIds": {
+          "description": "Linked assistants. Required by every add (add_text/add_url/add_file/add_org_text/add_org_url/add_org_file/add_faq/import_faqs/add_org_faq/import_org_faqs); for set_links it is the replacement set, where an empty array removes every link",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "directAccess": {
+          "description": "set_direct_access",
+          "type": "boolean"
+        },
+        "kinds": {
+          "description": "Kind filter (list_org_sources)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "description": "Status filter (list_org_sources)",
+          "type": "string"
+        },
+        "q": {
+          "description": "Name search (list_org_sources)",
+          "type": "string"
+        },
+        "query": {
+          "description": "The question to search the knowledge for (search)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_memories",
+    "description": "Inspect long-term-memory settings and subjects, or perform erasure. Read actions: settings/subjects/list. Write actions: enable/disable/delete/wipe. Subject and memory access stays Organization-scoped on the server.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "settings",
+            "enable",
+            "disable",
+            "subjects",
+            "list",
+            "delete",
+            "wipe"
+          ]
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "memoryId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_sso",
+    "description": "Inspect or configure the Organization's verified SSO identity claim, the value an API Integration request can pin with {{identity.claim}}. `status` is read-only; `set_identity` sets a claim name or clears it with null. Configuration requires an admin-tier key and resets SSO validation.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "status",
+            "set_identity",
+            "validate",
+            "connection",
+            "connect",
+            "disconnect"
+          ]
+        },
+        "identityClaim": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input": {
+          "description": "Full SSO connection input for connect",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "publish_assistant",
+    "description": "Publication lifecycle (admin-tier key for writes): `status` (is it live, which version), `publish` (freeze the current config into a new immutable snapshot and serve it), `unpublish` (take the widget offline), `republish` (roll back to an earlier publicationId).",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "status",
+            "publish",
+            "unpublish",
+            "republish"
+          ]
+        },
+        "assistantId": {
+          "type": "string"
+        },
+        "publicationId": {
+          "description": "Required for republish",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "assistantId"
+      ]
+    }
+  },
+  {
+    "name": "read_inbox",
+    "description": "Review and curate end-user Conversations: list/get/export transcripts, pin/unpin, send conversation feedback, set message feedback, or permanently delete a conversation. Also the Human review gate's requests: list them, read one, or decide one (approve/reject; an assignee or an Owner/Admin key).",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "export",
+            "pin",
+            "unpin",
+            "feedback",
+            "message_feedback",
+            "delete",
+            "review_list",
+            "review_get",
+            "review_decide"
+          ]
+        },
+        "reviewId": {
+          "description": "Required for review_get and review_decide",
+          "type": "string"
+        },
+        "status": {
+          "description": "review_list: pending | approved | rejected | expired",
+          "type": "string"
+        },
+        "decision": {
+          "description": "Required for review_decide",
+          "type": "string",
+          "enum": [
+            "approved",
+            "rejected"
+          ]
+        },
+        "inputs": {
+          "description": "review_decide: the reviewer inputs by field id",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "conversationId": {
+          "description": "Required for get",
+          "type": "string"
+        },
+        "conversationIds": {
+          "description": "Required for export",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "feedback": {
+          "anyOf": [
+            {
+              "type": "number",
+              "const": -1
+            },
+            {
+              "type": "number",
+              "const": 0
+            },
+            {
+              "type": "number",
+              "const": 1
+            }
+          ]
+        },
+        "assistantId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_improvements",
+    "description": "The answer-quality kanban: `list` items (filter by search, status, priority, assigneeId, assistantId or projectId; the answer carries per-status `counts` for the same filters), `get` one (with the flagged messages and any drafted fix), `update` status/priority/tags/assigneeId/projectId/dueDate/title/description via `patch`, e.g. move a card to in_progress or done. Stages: to_do is triage, in_progress fix, in_review validate, done resolved. Priority is high, medium, low or none; send \"none\" to clear it, never null.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "update"
+          ]
+        },
+        "id": {
+          "description": "Improvement id (get/update)",
+          "type": "string"
+        },
+        "patch": {
+          "description": "ImprovementPatch (update)",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "limit": {
+          "type": "number"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "search": {
+          "description": "Matches title, IMP-n key or tag (list)",
+          "type": "string",
+          "maxLength": 300
+        },
+        "status": {
+          "description": "One stage (list)",
+          "type": "string",
+          "enum": [
+            "to_do",
+            "in_progress",
+            "in_review",
+            "done",
+            "archived"
+          ]
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "none"
+          ]
+        },
+        "assigneeId": {
+          "description": "Member id; null lists unassigned work (list)",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assistantId": {
+          "description": "Only items with evidence from this Assistant (list)",
+          "type": "string"
+        },
+        "projectId": {
+          "description": "Only items in this Project (list)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_teammates",
+    "description": "Manage the Organization's AI Teammates: the internal agents Members chat with in the console. Delete is a soft delete, so a retired Teammate answers nothing more while its Conversations stay readable. The key acts as the Member who minted it, so `conversations` reads that Member's own thread. Use `provision` to stand one up in a single call (persona + grants + routines). A newly created Teammate can answer questions and nothing else: `set_grants` is what lets it act (improvements/knowledge/inbox; absence is refusal, there is no default) and needs an admin-tier key, and `add_routine` is what makes it run unattended (max 5 per Teammate).",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+            "conversations",
+            "conversation",
+            "grants",
+            "set_grants",
+            "routines",
+            "add_routine",
+            "update_routine",
+            "delete_routine",
+            "memory",
+            "set_memory",
+            "provision",
+            "runtime",
+            "set_runtime",
+            "ag_ui"
+          ]
+        },
+        "id": {
+          "description": "Teammate id",
+          "type": "string"
+        },
+        "conversationId": {
+          "type": "string"
+        },
+        "routineId": {
+          "description": "Routine id (update_routine/delete_routine)",
+          "type": "string"
+        },
+        "config": {
+          "description": "Execution configuration (set_runtime): harness, internet, computer; requires an admin key",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "patch": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "domains": {
+          "description": "Granted domains for set_grants (the whole set, an empty array revokes everything); the domains to grant for provision",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ceiling": {
+          "description": "Capability ceiling (set_grants, provision): \"member\" or \"edit\"",
+          "type": "string"
+        },
+        "approvalBypass": {
+          "description": "set_grants, provision",
+          "type": "boolean"
+        },
+        "instruction": {
+          "description": "What the Routine tells the Teammate to do",
+          "type": "string"
+        },
+        "cadence": {
+          "description": "daily | weekly | monthly",
+          "type": "string"
+        },
+        "hour": {
+          "description": "UTC hour 0-23 the Routine runs at (default 8)",
+          "type": "number"
+        },
+        "body": {
+          "description": "Whole memory document (set_memory); the previous body is kept in history",
+          "type": "string"
+        },
+        "note": {
+          "description": "Why the memory changed (set_memory)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_projects",
+    "description": "Projects: the container of the work (its Tasks, milestones and files), the shared workspace an AI Teammate attaches to, and the owner of the Project memory layer. `set_milestones` replaces the whole list, so send back every milestone to keep with its id. `get` returns the Project with its memory document and that document's history; `set_document` replaces the body and keeps the previous one, so a revert is a restore. Delete cascades the Project's Tasks, files and decisions and detaches its Teammates: archive (`update` with `{\"archived\":true}`) is the move that keeps the record.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+            "set_document",
+            "list_milestones",
+            "set_milestones"
+          ]
+        },
+        "id": {
+          "description": "Project id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Project name (create)",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "patch": {
+          "description": "Fields to change (update)",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "body": {
+          "description": "Whole document (set_document)",
+          "type": "string"
+        },
+        "note": {
+          "description": "Why it changed, shown in history",
+          "type": "string"
+        },
+        "milestones": {
+          "description": "The whole milestone list, dates YYYY-MM-DD (set_milestones)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "date"
+            ]
+          }
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_tasks",
+    "description": "Tasks: the work inside Projects. `list` narrows by `projectId`, `assignee` (a userId), `status` (comma-separated: backlog, to_do, in_progress, in_review, done), `label`, `dueFrom`/`dueTo` (YYYY-MM-DD), `q` (text) and `improvementId`, and pages with `cursor`. `update` takes `patch` with any of title, description, status, priority (urgent/high/medium/low/none), assigneeMemberId, startDate, dueDate (YYYY-MM-DD), plus `labelIds` and `blockedBy` to replace those lists, `position` ({afterId, beforeId}) to reorder, `projectId` to move it, and `archived` to archive or restore it. `comment` posts as the key's Member; mention someone as @[Name](member:<userId>). `delete` takes the task's subtasks, comments and files with it. `labels` lists the Labels; `set_label` creates one (no `id`), changes one (`id`), or deletes one (`id` and `delete: true`).",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+            "list_comments",
+            "comment",
+            "labels",
+            "set_label"
+          ]
+        },
+        "id": {
+          "description": "Task id, or Label id for set_label",
+          "type": "string"
+        },
+        "projectId": {
+          "description": "Project id (list, create; update moves the task)",
+          "type": "string"
+        },
+        "assignee": {
+          "description": "Assignee userId (list)",
+          "type": "string"
+        },
+        "status": {
+          "description": "Comma-separated statuses (list)",
+          "type": "string"
+        },
+        "label": {
+          "description": "Label id (list)",
+          "type": "string"
+        },
+        "dueFrom": {
+          "description": "YYYY-MM-DD (list)",
+          "type": "string"
+        },
+        "dueTo": {
+          "description": "YYYY-MM-DD (list)",
+          "type": "string"
+        },
+        "q": {
+          "description": "Text in the title or description (list)",
+          "type": "string"
+        },
+        "improvementId": {
+          "description": "Tasks resolving this Improvement (list)",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "nextCursor from the previous page (list)",
+          "type": "string"
+        },
+        "title": {
+          "description": "Task title (create)",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string"
+        },
+        "assigneeMemberId": {
+          "type": "string"
+        },
+        "dueDate": {
+          "description": "YYYY-MM-DD",
+          "type": "string"
+        },
+        "patch": {
+          "description": "Fields to change (update)",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "labelIds": {
+          "description": "Replaces the task's labels (create, update)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blockedBy": {
+          "description": "Replaces what blocks the task (update)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "position": {
+          "description": "Where the task goes in the order (update)",
+          "type": "object",
+          "properties": {
+            "afterId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "beforeId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "archived": {
+          "description": "Archive (true) or restore (false) (update)",
+          "type": "boolean"
+        },
+        "delete": {
+          "description": "Delete the Label (set_label with id)",
+          "type": "boolean"
+        },
+        "body": {
+          "description": "Comment text (comment)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Label name (set_label)",
+          "type": "string"
+        },
+        "color": {
+          "description": "Label color: gray, blue, green, amber, red, purple",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_channels",
+    "description": "Read and shape the Organization's Teammate channels: the group threads where Members and AI Teammates work on one thing. Membership is the visibility rule and the key acts as the Member who minted it, so `list` returns that Member's channels. There is no post action: a message in a channel starts a bounded chain of Teammate turns, which runs on the console's streaming surface.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+            "add_member",
+            "remove_member",
+            "add_teammate",
+            "remove_teammate",
+            "oversight",
+            "oversight_read"
+          ]
+        },
+        "id": {
+          "description": "Channel id",
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "userIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "teammateId": {
+          "type": "string"
+        },
+        "teammateIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "patch": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_help_desks",
+    "description": "Manage Help Desks, escalation channels, channel order, and the ticketing target (an Organization-owned Salesforce or ServiceNow application connection). Credential-bearing responses are always redacted by the server.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+            "add_channel",
+            "update_channel",
+            "delete_channel",
+            "reorder_channels",
+            "set_ticketing",
+            "disconnect_ticketing"
+          ]
+        },
+        "id": {
+          "description": "Help Desk id",
+          "type": "string"
+        },
+        "channelId": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "patch": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "orderedIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_configuration",
+    "description": "Manage reusable Skills, per-Assistant Skill selection and standing Goals, operational Alerts, the Inbox's Quick Texts (saved replies), signed outbound webhook subscriptions, and Organization business hours, holidays and default timezone.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "export_schedule_list",
+            "export_schedule_create",
+            "export_schedule_update",
+            "export_schedule_delete",
+            "skill_list",
+            "skill_create",
+            "skill_update",
+            "skill_delete",
+            "assistant_skills_get",
+            "assistant_skills_set",
+            "goal_list",
+            "goal_create",
+            "goal_update",
+            "goal_delete",
+            "alert_list",
+            "alert_resolve",
+            "quick_text_list",
+            "quick_text_create",
+            "quick_text_update",
+            "quick_text_delete",
+            "business_hours_list",
+            "business_hours_create",
+            "business_hours_update",
+            "business_hours_delete",
+            "business_hours_timezone",
+            "webhook_list",
+            "webhook_create",
+            "webhook_update",
+            "webhook_pause",
+            "webhook_resume",
+            "webhook_delete",
+            "webhook_deliveries",
+            "webhook_test"
+          ]
+        },
+        "id": {
+          "description": "Skill, Alert, Quick Text or webhook subscription id",
+          "type": "string"
+        },
+        "assistantId": {
+          "type": "string"
+        },
+        "goalId": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "patch": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "skillIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_organization",
+    "description": "Manage Organization settings, Members, Roles and their Capabilities, invitation links and API keys, read the plan's usage meters and who spent its credits, and read the audit log of configuration changes. Secret keys are returned only once on creation; Role checks match the app.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "get",
+            "update",
+            "member_list",
+            "member_set_role",
+            "member_remove",
+            "invite_list",
+            "invite_create",
+            "invite_revoke",
+            "api_key_list",
+            "api_key_create",
+            "api_key_revoke",
+            "usage_meters",
+            "usage_spenders",
+            "audit_log_list",
+            "member_assistants_get",
+            "member_assistants_set",
+            "role_list",
+            "role_get",
+            "role_create",
+            "role_update",
+            "role_reset",
+            "role_delete",
+            "role_defaults_set"
+          ]
+        },
+        "id": {
+          "description": "Member user id, Invite id, API key id, or Role id",
+          "type": "string"
+        },
+        "roleId": {
+          "description": "member_set_role: a Role id from role_list, custom Roles included; wins over role",
+          "type": "string"
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "patch": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "owner",
+            "admin",
+            "editor",
+            "viewer",
+            "support_agent"
+          ]
+        },
+        "from": {
+          "description": "Usage window start, ISO instant; for audit_log_list a date or ISO instant, inclusive",
+          "type": "string"
+        },
+        "to": {
+          "description": "Usage window end, ISO instant; for audit_log_list a date (the whole day) or ISO instant, inclusive",
+          "type": "string"
+        },
+        "actions": {
+          "description": "audit_log_list: operation names such as members.updateRole",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "actor": {
+          "description": "audit_log_list: a Member's user id, or system",
+          "type": "string"
+        },
+        "order": {
+          "description": "audit_log_list: newest first by default",
+          "type": "string",
+          "enum": [
+            "newest",
+            "oldest"
+          ]
+        },
+        "before": {
+          "description": "audit_log_list: the last entry's createdAt, to read further back",
+          "type": "string"
+        },
+        "beforeId": {
+          "description": "audit_log_list: the last entry's id",
+          "type": "string"
+        },
+        "limit": {
+          "description": "audit_log_list: entries to return, 100 by default, at most 1000",
+          "type": "number"
+        },
+        "scope": {
+          "description": "member_assistants_set: all, or only the listed Assistants",
+          "type": "string",
+          "enum": [
+            "all",
+            "selected"
+          ]
+        },
+        "access": {
+          "description": "member_assistants_set: every row the Member keeps; replaces the rest. roleId names a Role offered on Assistants",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "assistantId": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "denied",
+                  "viewer",
+                  "editor",
+                  "admin"
+                ]
+              },
+              "roleId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "assistantId",
+              "role"
+            ]
+          }
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "manage_integrations",
+    "description": "Manage an Assistant's API integration, Organization model Provider Connections (including the preferred embedding provider), and the Application Connections a Connector Flow action runs through: list them, read the Connector catalogue, or compute the re-consent a Connection needs.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "api_get",
+            "api_set",
+            "api_delete",
+            "provider_list",
+            "provider_create_api_key",
+            "provider_create_compatible",
+            "provider_create_federated",
+            "provider_delete",
+            "provider_set_embedding",
+            "application_list",
+            "application_connectors",
+            "application_reconsent"
+          ]
+        },
+        "id": {
+          "description": "Assistant, Provider Connection or Application Connection id",
+          "type": "string"
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "connectionId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provider": {
+          "description": "Filter Application Connections or Connector actions by provider",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    }
+  }
+]

@@ -185,10 +185,10 @@ function defaultDayAvailability(): DayAvailability {
   return { enabled: false, ranges: [] };
 }
 
-export function defaultChannelAvailability(): ChannelAvailability {
+export function defaultChannelAvailability(timezone = "UTC"): ChannelAvailability {
   return {
     mode: "always",
-    timezone: "UTC",
+    timezone,
     hours: Object.fromEntries(
       WEEK_DAYS.map((day) => [day, defaultDayAvailability()])
     ) as ChannelAvailability["hours"],
@@ -238,7 +238,8 @@ export function normalizeChannelAvailability(raw: unknown): ChannelAvailability 
   const obj = raw as Record<string, unknown>;
   const rawHours = (obj.hours ?? {}) as Record<string, unknown>;
   return {
-    mode: obj.mode === "limited" ? "limited" : "always",
+    mode: obj.mode === "business_hours" ? "business_hours" : obj.mode === "limited" ? "limited" : "always",
+    ...(typeof obj.businessHoursId === "string" ? { businessHoursId: obj.businessHoursId } : {}),
     timezone: typeof obj.timezone === "string" ? obj.timezone : base.timezone,
     hours: Object.fromEntries(
       WEEK_DAYS.map((day) => [day, normalizeDayAvailability(rawHours[day])])

@@ -73,6 +73,8 @@ describe("the Connector catalogue", () => {
       "salesforce.case.get",
       "salesforce.user.get",
       "salesforce.product.get",
+      "salesforce.case.create",
+      "salesforce.case.update",
     ]);
     expect(connectorActionsFor("slack").map((a) => a.key)).toEqual([
       "slack.message.post",
@@ -115,6 +117,8 @@ describe("the Connector catalogue", () => {
 
   it("looks actions up by key and refuses unknown ones", () => {
     expect(connectorAction("slack.message.post")?.effect).toBe("write");
+    expect(connectorAction("salesforce.case.create")?.effect).toBe("write");
+    expect(connectorAction("salesforce.case.update")?.effect).toBe("write");
     expect(connectorAction("slack.message.delete")).toBeNull();
     expect(connectorAction(undefined)).toBeNull();
   });
@@ -188,5 +192,40 @@ describe("the Connector catalogue", () => {
     expect(
       connectorConnectionIssue(create, { ...personal, scopes: ["Files.Read"] }, { allowPersonal: true })
     ).toMatch(/Files\.ReadWrite/);
+  });
+});
+
+describe("Salesforce Case actions (#1087)", () => {
+  it("create takes the Case fields as templates, with Origin defaulting to Web", () => {
+    const create = connectorAction("salesforce.case.create")!;
+    expect(create.fields.map((f) => f.name)).toEqual([
+      "subject",
+      "description",
+      "priority",
+      "status",
+      "origin",
+      "supplied_email",
+      "supplied_name",
+    ]);
+    expect(create.fields.every((f) => f.template)).toBe(true);
+    expect(create.fields.find((f) => f.name === "origin")?.defaultValue).toBe("Web");
+    for (const [name, arg] of [
+      ["priority", "Case.Priority"],
+      ["status", "Case.Status"],
+      ["origin", "Case.Origin"],
+    ] as const) {
+      expect(create.fields.find((f) => f.name === name)?.dynamic).toEqual({
+        loader: "salesforce.picklist",
+        arg,
+      });
+    }
+    expect(create.outputs.map((o) => o.name)).toEqual(["case_id", "case_number", "case_url"]);
+  });
+
+  it("update needs a Case id and fills in nothing by default", () => {
+    const update = connectorAction("salesforce.case.update")!;
+    expect(update.fields[0]).toMatchObject({ name: "case_id", required: true, template: true });
+    expect(update.fields.filter((f) => f.required).map((f) => f.name)).toEqual(["case_id"]);
+    expect(update.fields.filter((f) => f.defaultValue).map((f) => f.name)).toEqual([]);
   });
 });

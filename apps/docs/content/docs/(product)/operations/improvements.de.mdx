@@ -3,60 +3,140 @@ title: Verbesserungen
 description: Verfolgen und erledigen Sie Aufgaben, die darauf abzielen, unzureichende Antworten des Assistenten zu korrigieren.
 ---
 
-Eine Improvement erfasst ein Problem mit der Qualität der Antworten. Es kann
+Eine Improvement erfasst ein Problem mit der Qualität der Antwort. Es kann
 verknüpfte Nachrichten, Sources, eine Beschreibung und einen Lösungsvorschlag
 enthalten.
 
 ## Quellen von Verbesserungen
 
-- Eine Improvement Flow-Aktion erstellt ein Element.
+- Eine Aktion vom Typ „Improvement Flow“ erstellt ein Element.
 - Ein Help Desk kann nach einer Eskalation ein Element erstellen.
 - Ein Administrator kann eine Antwort aus der Inbox markieren.
 - Search Knowledge kann, wenn entsprechend konfiguriert, ein Element für eine
   ungelöste Anfrage erstellen.
-- Ein fortlaufendes Goal, das fehlschlägt, erstellt ein Item. Spätere Fehler
+- Ein fortlaufendes Ziel, das fehlschlägt, erstellt ein Element. Spätere Fehler
   fügen demselben Element weitere Evidenz hinzu.
 
-## Ein Item verwalten
+Wenn Sie eine Antwort aus der Inbox markieren, geben Sie die erwartete Antwort
+oder das erwartete Verhalten unter dem Titel ein.
 
-Öffnen Sie ein Item, um die damit verknüpften Nachrichten und den verfügbaren
-Lösungsvorschlag zu prüfen. Sie können den Status, die Priorität, die Tags, den
-Verantwortlichen und das Fälligkeitsdatum ändern.
+## Stages
 
-Die API, die CLI und der MCP-Server können vorhandene Improvements auflisten,
-lesen und aktualisieren. Die Erstellung von Verbesserungen bleibt ein Vorgang
-zur Laufzeit des Produkts.
+Das Board zeigt fünf Phasen an. Die API, die CLI und der MCP-Server verwenden
+die Statuswerte in der zweiten Spalte.
+
+| Stage | Status | Vorgehensweise |
+| --- | --- | --- |
+| **Triage** | `to_do` | Lesen Sie die Belege, formulieren Sie die erwartete Antwort und legen Sie einen Owner sowie eine Priorität fest. |
+| **Fix** | `in_progress` | Korrigieren Sie die Source, die FAQ, den Flow oder die Anweisung, die die Antwort verursacht hat. |
+| **Validate** | `in_review` | Stellen Sie die ursprüngliche Frage erneut, prüfen Sie die Sources und überprüfen Sie das Customer Widget. |
+| **Resolved** | `done` | Bewahren Sie das Ergebnis und die Evidenz für eine spätere Diagnose auf. |
+| **Archived** | `archived` | Bewahren Sie ein dupliziertes oder veraltetes Element außerhalb der aktiven Arbeit auf. |
+
+Die primäre Aktion für ein Element verschiebt es in die nächste Phase. Mit dem
+Status-Picker und per Drag-and-drop können Sie ein Element weiterhin in jede
+beliebige Phase verschieben. Wenn Sie ein Element abschließen, wird Ihre
+Entscheidung protokolliert. Es wird weder ein Test ausgeführt noch werden
+Änderungen veröffentlicht.
+
+## Elemente suchen
+
+Die Suche findet Text im Titel, im Schlüssel `IMP-n` und in den Tags. Öffnen Sie
+**Filters**, um nach Priority, Assignee, Assistant oder Project zu filtern.
+
+- Wählen Sie in **Assignee** **Assigned to me** für Ihre eigenen Elemente oder
+  **Unassigned** für Elemente ohne Eigentümer aus.
+- **Assistant** zeigt die Elemente mit Belegen aus den Konversationen dieses
+  Assistants an.
+- **Project** zeigt die Elemente in einem Projekt an.
+
+Ciele wendet die Filter auf alle Improvements an, bevor eine Seite angezeigt
+wird. Die Stufenzählungen und die Exporte verwenden dieselben Filter, sodass sie
+auch ältere Elemente enthalten. Ein Export enthält außerdem die Beschreibung und
+die Project-Kennung.
+
+Die API, die CLI und der MCP-Server können Improvements auflisten, lesen und
+aktualisieren. Die Liste akzeptiert dieselben Filter und gibt die Anzahl für
+jede Phase zurück. Nur das Produkt erstellt Improvements.
 
 ## Planen Sie die Arbeit als Tasks
 
 Eine Improvement erfasst das Problem. Eine Task erfasst die Arbeit, die das
-Problem behebt. Die Seite „Improvement“ zeigt die Tasks an, die das Improvement
+Problem behebt. Die Seite „Improvement“ zeigt die Tasks an, die das Problem
 beheben.
 
 1. Öffnen Sie die Improvement.
-2. Wählen Sie **Create task**. Die Task erhält den Titel und das Project der
-   Improvement.
+2. Wählen Sie **Create task**. Die Aufgabe erhält den Titel und das Projekt der
+   Verbesserung.
 3. Ändern Sie die Task gegebenenfalls und wählen Sie anschließend **Create
    task**.
 
 Sie können auch eine bereits vorhandene Aufgabe verknüpfen: Öffnen Sie die
 Aufgabe und wählen Sie die Verbesserung im Feld **Resolves** aus.
 
-Wenn alle verknüpften Tasks abgeschlossen sind, verschiebt Ciele die Improvement
-von **To do** oder **In progress** nach **In review**. Anschließend prüft eine
-Person die Antwort und schließt die Improvement. Wenn Sie eine Task erneut
+Wenn alle verknüpften Tasks abgeschlossen sind, verschiebt Ciele die
+Verbesserung von **Triage** oder **Fix** nach **Validate**. Anschließend prüft
+eine Person die Antwort und schließt die Improvement. Wenn Sie eine Task erneut
 öffnen, wird die Improvement nicht zurückgesetzt.
 
-## Die Antwort korrigieren
+Abgeschlossene Tasks belegen nicht, dass die Antwort jetzt korrekt ist.
+Dokumentieren Sie den Validierungsnachweis, bevor Sie die Improvement
+abschließen.
+
+## Korrigieren Sie die Antwort
 
 1. Lesen Sie die verlinkte Conversation.
-2. Identifizieren Sie die falsche Source, FAQ, Flow oder Anweisung.
-3. Korrigieren Sie die Entwurfskonfiguration.
+2. Identifizieren Sie die fehlerhafte Source, FAQ, Flow oder Anweisung.
+3. Korrigieren Sie das Wissen oder die Entwurfskonfiguration.
 4. Stellen Sie die ursprüngliche Frage in der Vorschau.
 5. Bestätigen Sie die Antwort und die Quellen.
-6. Veröffentlichen Sie den Assistant.
-7. Markieren Sie die Verbesserung als abgeschlossen.
+6. Veröffentlichen Sie die Konfigurationsänderungen und bestätigen Sie die
+   Korrektur im Customer Widget. Änderungen am Wissen sind live.
+7. Erfassen Sie den Validierungsnachweis und schließen Sie dann die Verbesserung
+   ab.
 
-Überprüfen Sie die generierten vorgeschlagenen Korrekturen, bevor Sie sie
-verwenden. Der gespeicherte Vorschlag stellt keine Veröffentlichungsänderung
-dar.
+Das Element zeigt **Correct knowledge**, **Review Flows**, **Test in Preview**
+und **Review publication** an. Diese Links öffnen den Assistant der
+Gesprächsnachweise auf dem Bildschirm. Wenn ein Element Nachweise von mehr als
+einem Assistant enthält, öffnen Sie jede verlinkte Nachricht und überprüfen Sie
+jeden Assistant.
+
+Überprüfen Sie die generierten Verbesserungsvorschläge, bevor Sie sie verwenden.
+Der gespeicherte Vorschlag stellt keine Änderung der Veröffentlichung dar.
+
+## Validierungsnachweise erfassen
+
+Geben Sie in **Validation evidence** das erwartete Verhalten, die geänderten
+Ressourcen und die Widget-Prüfung an: die URL, die Schritte und das Ergebnis.
+Wählen Sie anschließend **Record widget pass** oder **Record widget failure**
+aus.
+
+Eine Prüfung erfasst das Mitglied, den Zeitpunkt und die aktuelle Publication.
+Es ändert nichts an der Phase der Improvement. Sie können einen Check nach dem
+Erfassen weder ändern noch löschen. Für ältere, bereits gelöste Elemente wurde
+keine Prüfung aufgezeichnet.
+
+Um mit einem Modell zu testen, öffnen Sie **Replay a representative question**.
+Geben Sie die Frage und den Text ein, den die Antwort enthalten muss. Sie können
+auch Quellenangaben verlangen. Ein Replay verbraucht AI-Credits und unterliegt
+den Ausgabenlimits der Organisation. Es testet die neueste Publication mit dem
+Live-Wissen. Für jede Improvement kann nur eine Replay in Wartestellung sein.
+
+Eine Wiedergabe funktioniert nur bei Assistenten, die lediglich antworten und
+sonst nichts tun. Wenn ein Flow E-Mails senden, eine API aufrufen oder andere
+externe Aktionen ausführen kann, lehnt Ciele das Replay ab. Eine Wiedergabe
+erstellt keine Conversation und ändert die Insights-Daten nicht.
+
+Wählen Sie **Refresh** aus, um das Ergebnis einer Wiedergabe zu lesen. Wenn sich
+die Publication oder das Knowledge ändert, markiert Ciele die früheren Evidences
+als veraltet. Führen Sie eine neue Überprüfung durch, bevor Sie dieses Ergebnis
+verwenden. Bei einem Replay werden weder die Host-Website, die Visitor-Identität
+noch die URL-Bedingungen überprüft. Überprüfen Sie das Customer Widget selbst,
+bevor Sie das Element abschließen.
+
+## Projekte
+
+Ein Project zeigt die Anzahl seiner Improvements in jeder Phase an. Wählen Sie
+**Review project improvements** aus, um das Board mit dem Filter Project zu
+öffnen. Mit einem Projekt verbundene Teammitglieder lesen dessen Entscheidungen
+über den Project Memory aus, entsprechend ihrer aktuellen Berechtigungen.

@@ -43,7 +43,7 @@ describe("decodeRuntimeEvents", () => {
   const events: RuntimeEvent[] = [
     { type: "notice", label: "Classifying" },
     { type: "text-delta", delta: "Hello" },
-    { type: "done", conversationId: "c1", messageId: "m1" },
+    { type: "done", conversationId: "c1", messageId: "m1", outcome: "answered" },
   ];
 
   it("decodes one JSON event per line", async () => {
@@ -148,7 +148,7 @@ describe("consumeTurnStream", () => {
         type: "part",
         part: { type: "follow_ups", action: "follow_up_questions", questions: ["Q"] },
       },
-      { type: "done", conversationId: "c1", messageId: "m1" },
+      { type: "done", conversationId: "c1", messageId: "m1", outcome: "answered" },
     ]);
 
     expect(view.flowName).toBe("Default behavior");
@@ -508,7 +508,7 @@ describe("streamed component props", () => {
       { type: "text-start", action: "search_knowledge" },
       { type: "text-delta", delta: "Ecco la risposta." },
       { type: "text-end" },
-      { type: "done", conversationId: "c1", messageId: "m1" },
+      { type: "done", conversationId: "c1", messageId: "m1", outcome: "answered" },
     ]);
     expect(view.parts.map((part) => part.type)).toEqual(["text"]);
   });
@@ -577,7 +577,7 @@ describe("streamed component props", () => {
       { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
       finished,
       { type: "tool-end", callId: "t9", tool: "renderTable", ok: true, durationMs: 2 },
-      { type: "done", conversationId: "c1", messageId: "m1" },
+      { type: "done", conversationId: "c1", messageId: "m1", outcome: "answered" },
     ]);
     expect(view.parts).toHaveLength(1);
     expect(view.parts[0]).toMatchObject({ type: "component", props });

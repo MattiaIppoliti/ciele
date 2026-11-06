@@ -1,6 +1,6 @@
 "use server";
 
-import { roleAllowsCapability } from "@agent-hub/core";
+import { capabilitiesAllow } from "@agent-hub/core";
 import {
   allTasksOp,
   listOrgApiKeysOp,
@@ -54,7 +54,7 @@ async function readContext(): Promise<FindReadContext> {
     // The operation declares who may list keys; asking it first keeps a
     // refused Member from reaching the capability check that redirects.
     listApiKeys: async () =>
-      roleAllowsCapability(session.role ?? null, listOrgApiKeysOp.capability)
+      capabilitiesAllow(session.capabilities, listOrgApiKeysOp.capability)
         ? runOperation(listOrgApiKeysOp, {})
         : null,
     insights: () =>

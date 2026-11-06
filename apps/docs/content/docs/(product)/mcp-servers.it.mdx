@@ -1,0 +1,98 @@
+---
+title: Server MCP
+description: Collega strumenti esterni per i Teammate e gli Assistant pubblicati.
+---
+
+Un **MCP Server Connection** collega la tua Organizzazione a un server esterno
+Model Context Protocol. Il server fornisce gli strumenti. Ciele controlla quali
+strumenti possono essere eseguiti.
+
+## Registra un server
+
+Un Owner o un Admin apre **Settings → MCP servers**, seleziona **Add server** e
+inserisce un nome e uno Streamable HTTP URL. Un bearer token è facoltativo.
+Ciele sigilla il token in un archivio delle credenziali separato. Non
+restituisce mai il token nelle impostazioni di connessione né in uno snapshot di
+Publication.
+
+Ciele verifica l'URL e rileva i nomi degli strumenti, le descrizioni e gli
+schemi di input. In produzione sono richiesti endpoint HTTPS pubblici. Gli
+indirizzi privati e i reindirizzamenti vengono rifiutati. Ciele gestisce sia
+l'era dei protocolli moderni sia quella dei protocolli legacy.
+
+Ogni nuovo strumento inizia **Off**. L'annotazione read-only di un server è un
+suggerimento. Non concede alcuna autorizzazione.
+
+## Rivedi i criteri degli strumenti
+
+Ogni strumento ha un unico criterio:
+
+| Policy | Behavior |
+| --- | --- |
+| Run freely | Ciele può chiamare lo strumento senza l'approvazione di un Member. |
+| Ask first | Un Teammate mostra una scheda di approvazione con lo strumento e gli argomenti oscurati prima di chiamarlo. |
+| Off | Ciele non offre lo strumento. |
+
+Approvando una chiamata, l'azione salvata viene eseguita una sola volta tramite
+la richiesta di approvazione dell'azione. Se rifiuti, rimane rifiutata. La
+modifica di una policy è un'operazione di configurazione con effetti rilevanti.
+
+**Refresh** rileva le definizioni correnti. Un criterio viene associato all'hash
+della definizione esaminato dall'Admin. Quando una descrizione, uno schema o un
+altro campo di definizione viene modificato, lo strumento mostra **Changed** e
+viene sospeso. Rivedi la definizione corrente e imposta nuovamente la relativa
+policy. Gli strumenti rimossi rimangono visibili per la revisione e non possono
+essere eseguiti.
+
+## Abilita i server per un Teammate
+
+Nelle impostazioni di esecuzione del Teammate, un Owner o un Admin sceglie i
+server MCP registrati. L'harness nativo di Ciele offre gli strumenti abilitati
+sotto un prefisso server, in modo che i nomi degli strumenti server non possano
+entrare in conflitto. Un Teammate non può registrare un proprio server né
+modificare una policy.
+
+Ask first attende il Member che effettua l'invocazione, un Owner o un Admin. La
+chiamata utilizza gli argomenti salvati dopo l'approvazione. Prima
+dell'esecuzione, vengono nuovamente verificati la sua policy e l'accesso del
+Teammate.
+
+## Abilita gli strumenti per un Assistente
+
+Apri il **Tools & Skills → MCP servers** dell'Assistente. Scegli i suoi
+strumenti Run freely e pubblica. Gli strumenti Ask first non possono essere
+eseguiti per i Visitor. La pubblicazione rifiuta una selezione che richiede
+approvazione, è disabilitata o ha un hash di definizione obsoleto.
+
+Una Publication memorizza solo gli ID dei server, i nomi degli strumenti e gli
+hash delle definizioni. Ciele legge le credenziali sul server quando viene
+eseguita una chiamata. Al momento del turno, uno strumento deve ancora avere la
+policy Run freely e lo stesso hash di definizione. In caso contrario, Ciele lo
+omette e genera un Alert chiedendoti di effettuare una verifica e di procedere
+alla ripubblicazione. Preview applica le stesse regole.
+
+Un turno di Visitor esegue al massimo cinque chiamate MCP. I risultati degli
+strumenti sono dati esterni. Non sono Knowledge Sources e non vengono mai
+aggiunti come citazioni.
+
+## Esamina le chiamate e gli errori
+
+Turn Trace e Inbox mostrano il server, lo strumento, gli argomenti oscurati, lo
+stato e il riepilogo dei risultati. I risultati remoti attraversano la barriera
+per i contenuti non attendibili di Ciele. I risultati di grandi dimensioni
+rimangono in un archivio delimitato per il turno. Il modello legge ulteriori
+finestre tramite un result handle e riceve la lunghezza totale.
+
+Un risultato di tipo Ask first approvato viene salvato insieme alla relativa
+Conversation o al relativo Channel. Il turno successivo riceve una prima
+finestra protetta e può leggere il resto tramite l'handle senza ripetere la
+chiamata esterna. Le altre Conversations non possono leggere quel risultato.
+
+Ogni tentativo di connessione e ogni chiamata a uno strumento ha un timeout
+complessivo di 30 secondi. Le risposte sono limitate a un mebibyte. Un tentativo
+di connessione non riuscito genera un Alert. La connessione successiva andata a
+buon fine la elimina.
+
+Elimina un server per interrompere l'offerta dei suoi strumenti. Le selezioni
+esistenti dell'Assistente devono quindi essere riviste prima di essere
+nuovamente pubblicate.

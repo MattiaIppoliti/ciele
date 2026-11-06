@@ -5,6 +5,7 @@ import {
   widgetOptions,
   widgetSubject,
 } from "@/lib/widget-db";
+import { widgetLiveState, widgetMessage } from "@/lib/widget-live";
 
 /**
  * Subject history: list conversations, or messages of one (?messages=<id>).
@@ -36,7 +37,12 @@ export async function GET(
       return new Response("Not found", { status: 404, headers: cors });
     }
     const messages = await db.listMessages(messagesOf);
-    return Response.json({ messages }, { headers: cors });
+    // Who answers it (#1082): a reopened Conversation a person holds keeps
+    // listening for their replies.
+    return Response.json(
+      { messages: messages.map(widgetMessage), live: widgetLiveState(conversation, new Date()) },
+      { headers: cors }
+    );
   }
 
   const conversations = await db.listConversations(

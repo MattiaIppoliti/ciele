@@ -122,7 +122,7 @@ export function TeammateComputer({
     !busy &&
     !retired &&
     status?.state !== "not_configured" &&
-    (tab !== "terminal" || teammate.capabilityCeiling === "edit");
+    (tab !== "terminal" || teammate.actionCeiling === "edit");
 
   /** Resolves to the state it read, or null when it read nothing. */
   const refresh = useEffectEvent(async (signal: AbortSignal): Promise<ComputerStatus["state"] | null> => {

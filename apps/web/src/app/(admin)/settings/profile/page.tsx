@@ -1,6 +1,5 @@
 "use client";
 
-import { Fingerprint } from "lucide-react";
 import { ProfileClient } from "@/components/settings/profile-client";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { useSettingsSession } from "@/components/settings/settings-session";
@@ -16,7 +15,6 @@ export default function ProfilePage() {
   if (!session) return null;
   return (
     <SettingsPanel
-      icon={Fingerprint}
       title="Profile"
 
     >

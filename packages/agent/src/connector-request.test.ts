@@ -238,7 +238,11 @@ describe("ServiceNow", () => {
       { client }
     );
     expect(outcome.ok).toBe(true);
-    expect(outcome.outputs).toEqual({ sys_id: "abc", number: "INC0001" });
+    expect(outcome.outputs).toEqual({
+      sys_id: "abc",
+      number: "INC0001",
+      url: "https://acme.service-now.com/nav_to.do?uri=incident.do%3Fsys_id%3Dabc",
+    });
     expect(calls[0]!.method).toBe("POST");
     expect(calls[0]!.url).toBe("https://acme.service-now.com/api/now/table/incident");
     expect(JSON.parse(calls[0]!.body!)).toEqual({
@@ -435,6 +439,220 @@ describe("Salesforce", () => {
     );
     expect(outcome.error?.code).toBe("invalid_params");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("Salesforce Cases (#1087)", () => {
+  const salesforce = () =>
+    connection({
+      provider: "salesforce",
+      scopes: ["api", "refresh_token"],
+      sealedCredentials: sealSecret(
+        JSON.stringify({
+          accessToken: "sf-token",
+          instanceUrl: "https://acme.my.salesforce.com",
+          expiresAt: Date.now() + 3_600_000,
+        })
+      ),
+    });
+  const CASE_ID = "500Ws00000AbCdEIAV";
+
+  /** Answers the write, then the CaseNumber read that follows it. */
+  function caseServer(write: () => ReturnType<typeof respond>) {
+    return fakeClient((call) =>
+      call.method === "GET"
+        ? respond(200, JSON.stringify({ Id: CASE_ID, CaseNumber: "00001026" }))
+        : write()
+    );
+  }
+
+  it("creates a Case from the filled-in fields and reads its number back", async () => {
+    const { client, calls } = caseServer(() =>
+      respond(201, JSON.stringify({ id: CASE_ID, success: true, errors: [] }))
+    );
+    const outcome = await executeConnectorAction(
+      {
+        action: "salesforce.case.create",
+        connectionId: "conn-1",
+        params: {
+          subject: "{{workflow.message}}",
+          description: "From {{user.name}}",
+          priority: "High",
+          supplied_email: "{{user.email}}",
+          supplied_name: "{{user.name}}",
+        },
+      },
+      { ...context, "user.email": "ada@example.org" },
+      runtimeFor(salesforce()),
+      { client }
+    );
+    expect(outcome.ok).toBe(true);
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      url: "https://acme.my.salesforce.com/services/data/v65.0/sobjects/Case",
+    });
+    // Status is blank, so Salesforce applies its own default; Origin is "Web".
+    expect(JSON.parse(calls[0]!.body!)).toEqual({
+      Subject: "My laptop broke",
+      Description: "From Ada",
+      Priority: "High",
+      Origin: "Web",
+      SuppliedEmail: "ada@example.org",
+      SuppliedName: "Ada",
+    });
+    expect(new URL(calls[1]!.url).pathname).toBe(
+      `/services/data/v65.0/sobjects/Case/${CASE_ID}`
+    );
+    expect(outcome.outputs).toEqual({
+      case_id: CASE_ID,
+      case_number: "00001026",
+      case_url: `https://acme.my.salesforce.com/lightning/r/Case/${CASE_ID}/view`,
+    });
+  });
+
+  it("keeps a Visitor's quotes and braces inside the JSON value", async () => {
+    const { client, calls } = caseServer(() => respond(201, JSON.stringify({ id: CASE_ID })));
+    const hostile = 'x", "OwnerId": "005evil", "y": "{\n}';
+    await executeConnectorAction(
+      {
+        action: "salesforce.case.create",
+        connectionId: "conn-1",
+        params: { subject: "{{workflow.message}}" },
+      },
+      { ...context, "workflow.message": hostile },
+      runtimeFor(salesforce()),
+      { client }
+    );
+    const body = JSON.parse(calls[0]!.body!) as Record<string, string>;
+    expect(body.Subject).toBe(hostile);
+    expect(body).not.toHaveProperty("OwnerId");
+  });
+
+  it("updates only the fields filled in", async () => {
+    const { client, calls } = caseServer(() => respond(204, ""));
+    const outcome = await executeConnectorAction(
+      {
+        action: "salesforce.case.update",
+        connectionId: "conn-1",
+        params: { case_id: "{{connector.case_id}}", status: "Closed", subject: "" },
+      },
+      { ...context, "connector.case_id": CASE_ID },
+      runtimeFor(salesforce()),
+      { client }
+    );
+    expect(calls[0]).toMatchObject({
+      method: "PATCH",
+      url: `https://acme.my.salesforce.com/services/data/v65.0/sobjects/Case/${CASE_ID}`,
+    });
+    expect(JSON.parse(calls[0]!.body!)).toEqual({ Status: "Closed" });
+    expect(outcome.outputs.case_number).toBe("00001026");
+  });
+
+  it("reports a created Case as created when only the number read-back fails", async () => {
+    const { client, calls } = fakeClient((call) =>
+      call.method === "GET"
+        ? respond(500, "upstream")
+        : respond(201, JSON.stringify({ id: CASE_ID, success: true }))
+    );
+    const outcome = await executeConnectorAction(
+      { action: "salesforce.case.create", connectionId: "conn-1", params: { subject: "x" } },
+      context,
+      runtimeFor(salesforce()),
+      { client }
+    );
+    expect(calls).toHaveLength(2);
+    expect(outcome.ok).toBe(true);
+    expect(outcome.outputs).toMatchObject({ case_id: CASE_ID, case_number: "" });
+  });
+
+  it("keeps the updated Case id and link when the number read-back fails", async () => {
+    const { client, calls } = fakeClient((call) =>
+      call.method === "GET" ? respond(503, "unavailable") : respond(204, "")
+    );
+    const outcome = await executeConnectorAction(
+      { action: "salesforce.case.update", connectionId: "conn-1", params: { case_id: CASE_ID, status: "Closed" } },
+      context, runtimeFor(salesforce()), { client }
+    );
+    expect(calls).toHaveLength(2);
+    expect(outcome.ok).toBe(true);
+    expect(outcome.outputs).toMatchObject({
+      case_id: CASE_ID, case_number: "",
+      case_url: `https://acme.my.salesforce.com/lightning/r/Case/${CASE_ID}/view`,
+    });
+  });
+
+  it("refuses a Case id that is not a Salesforce id, before any call", async () => {
+    const { client, calls } = caseServer(() => respond(204, ""));
+    const outcome = await executeConnectorAction(
+      {
+        action: "salesforce.case.update",
+        connectionId: "conn-1",
+        params: { case_id: "../Account/001", status: "Closed" },
+      },
+      context,
+      runtimeFor(salesforce()),
+      { client }
+    );
+    expect(outcome.error?.code).toBe("invalid_params");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("fails with Salesforce's own message on a refused write", async () => {
+    const { client, calls } = caseServer(() =>
+      respond(
+        400,
+        JSON.stringify([
+          {
+            message: "Required fields are missing: [Product__c]",
+            errorCode: "REQUIRED_FIELD_MISSING",
+            fields: ["Product__c"],
+          },
+        ])
+      )
+    );
+    const outcome = await executeConnectorAction(
+      { action: "salesforce.case.create", connectionId: "conn-1", params: {} },
+      context,
+      runtimeFor(salesforce()),
+      { client }
+    );
+    expect(outcome.ok).toBe(false);
+    expect(outcome.error).toMatchObject({
+      provider: "salesforce",
+      code: "provider",
+      status: 400,
+      message: "REQUIRED_FIELD_MISSING: Required fields are missing: [Product__c]",
+    });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("loads a Case picklist's active values", async () => {
+    const { client, calls } = fakeClient(() =>
+      respond(
+        200,
+        JSON.stringify({
+          fields: [
+            {
+              name: "Priority",
+              picklistValues: [
+                { value: "High", label: "High", active: true },
+                { value: "Legacy", label: "Legacy", active: false },
+                { value: "Low", label: "Low", active: true },
+              ],
+            },
+          ],
+        })
+      )
+    );
+    const loaded = await loadConnectorOptions(
+      "salesforce.picklist",
+      "conn-1",
+      "Case.Priority",
+      runtimeFor(salesforce()),
+      { client }
+    );
+    expect(new URL(calls[0]!.url).pathname).toBe("/services/data/v65.0/sobjects/Case/describe");
+    expect(loaded.options.map((o) => o.value)).toEqual(["High", "Low"]);
   });
 });
 

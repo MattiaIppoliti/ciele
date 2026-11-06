@@ -46,7 +46,7 @@ export function teammateChatHandler(options: {
       (user) => user.remoteUserId === message.author.userId,
     );
     if (!mapped || !message.text.trim() || message.text.length > 32000) return;
-    const db = createOrgPinnedDb(systemDb, connection.organizationId);
+    const db = createOrgPinnedDb(systemDb, connection.organizationId, { memberId: mapped.memberId });
     const [role, teammate] = await Promise.all([
       systemDb.getMemberRole(connection.organizationId, mapped.memberId),
       db.table("teammates").get(connection.teammateId),

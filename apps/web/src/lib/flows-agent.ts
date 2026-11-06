@@ -88,7 +88,7 @@ export function flowsAgentGrounding(catalogue: FlowsAgentCatalogue): string[] {
     draft.customMessage.trim() ? `Message text: ${draft.customMessage.trim()}` : null,
     `Action settings (JSON): ${JSON.stringify(payload.actionSettings)}`,
     "",
-    "Change this flow only with the flows_draft tool. Pass only the fields you change, and pass currentTrigger when you change actions without changing the trigger. Valid action names: " +
+    "Change this flow only with the flows_draft tool. Pass only the fields you change, and pass currentTrigger when you change actions or conditions without changing the trigger. Valid action names: " +
       (Object.keys(FLOW_ACTIONS) as FlowAction[]).join(", ") +
       ". Valid triggers: " +
       (Object.keys(FLOW_TRIGGER_LABELS) as FlowTrigger[]).join(", ") +

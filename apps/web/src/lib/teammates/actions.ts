@@ -1,4 +1,5 @@
-import type { Role, Teammate } from "@agent-hub/core";
+import { capabilitiesForLadderRole, intersectCapabilities, type Role, type Teammate } from "@agent-hub/core";
+import { remoteMcpActions } from "@agent-hub/agent";
 import type { TeammateActionTool } from "@agent-hub/agent";
 import { teammateToolset } from "@ciele/ops";
 import { createOrgPinnedDb } from "@agent-hub/db";
@@ -31,6 +32,12 @@ export async function resolveTeammateActions(args: {
   organizationId: string;
   userId: string;
   role: Role | null;
+  /**
+   * The caller's Capabilities when the surface already resolved them: an API
+   * key's are its Role's intersected with its creator's, narrower than the
+   * creator's own. Absent, the Member's are read and capped at `role`'s tier.
+   */
+  capabilities?: readonly string[];
   actorEmail?: string | null;
   /** A channel bound to a Project passes it (#778, story 11). */
   projectId?: string | null;
@@ -43,6 +50,16 @@ export async function resolveTeammateActions(args: {
     : undefined;
   const role = args.role ?? row?.role ?? null;
   const actorEmail = args.actorEmail || row?.email || "";
+  // The Member's own Capabilities (ADR-0028): Ciele AI acts with exactly what
+  // its Member may do, never with the defaults of the Role's tier, which for a
+  // custom Role can be wider than the Role itself.
+  const capabilities = args.capabilities
+    ?? (userId
+      ? intersectCapabilities(
+          (await serviceDb.getMemberGrant(organizationId, userId))?.capabilities ?? [],
+          capabilitiesForLadderRole(role)
+        )
+      : []);
 
   const tools = await teammateToolset({
     teammate,
@@ -51,16 +68,18 @@ export async function resolveTeammateActions(args: {
       organizationId,
       userId,
       role,
+      capabilities,
       actorEmail: actorEmail || undefined,
-      db: createOrgPinnedDb(serviceDb, organizationId),
+      db: createOrgPinnedDb(serviceDb, organizationId, userId ? { memberId: userId } : undefined),
       // The unpinned client, the same way /api/v1 does: ports need more surface
       // than the pinned view exposes, and the operation, not the port, is the
       // guard.
-      ports: webOperationPorts(serviceDb, { organizationId, actorEmail }),
+      ports: webOperationPorts(serviceDb, { organizationId, actorEmail, memberId: userId || undefined }),
     },
   });
 
-  return tools.map((tool) => ({
+  const remote = await remoteMcpActions({ db: serviceDb, organizationId, teammateId: teammate.id, serverIds: teammate.runtimeConfig?.mcpServerIds });
+  return [...tools.map<TeammateActionTool>((tool) => ({
     operation: tool.operation,
     domain: tool.domain,
     label: tool.label,
@@ -72,7 +91,7 @@ export async function resolveTeammateActions(args: {
       const outcome = await tool.run(input, options);
       return { ...settleToolOutcome(outcome, organizationId), payload: outcome.payload };
     },
-  }));
+  })), ...remote];
 }
 
 /**

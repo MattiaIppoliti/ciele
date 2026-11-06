@@ -37,7 +37,7 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-The hosted endpoint has no read-only switch: its permissions are the Role of the key. A Viewer key is not a read-only agent, though — reviewing conversations counts as curation, so it can pin a conversation, leave feedback and delete one. Use a local stdio server with `CIELE_MCP_READ_ONLY=1` when the agent must not change anything at all.
+The permissions of the hosted endpoint are the Role of the key. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. A self-hosted deployment can set `CIELE_MCP_READ_ONLY=1` to refuse every mutation for every key. For one agent that must not change anything, use a local stdio server with `CIELE_MCP_READ_ONLY=1`.
 
 ## Prepare a local connection
 

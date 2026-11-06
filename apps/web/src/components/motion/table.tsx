@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { TableFilter, TableSearch } from "@/components/ui/table-filters";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { TableRowMenu, type TableMenuAction, type TableMenuChoice } from "@/components/ui/table-menu";
 import { cn } from "@/lib/utils";
 import { RollInText, RollRow } from "./roll-in-text";
 
@@ -61,6 +62,11 @@ export interface TableProps<T> {
   pagination?: ComponentProps<typeof TablePagination>;
   onRowClick?: (row: T) => void;
   isRowSelected?: (row: T) => boolean;
+  /**
+   * The row's right-click menu. Columns whose `editor` offers options join it
+   * on their own as radio groups; this adds the row's actions and its title.
+   */
+  rowMenu?: (row: T) => { title?: string; actions: Array<TableMenuAction | null | false> };
 }
 
 function alignText(align: TableColumn<unknown>["align"]) {
@@ -98,7 +104,22 @@ export function Table<T>({
   pagination,
   onRowClick,
   isRowSelected,
+  rowMenu,
 }: TableProps<T>) {
+  const menuChoices = (row: T): TableMenuChoice[] => columns.flatMap((column) => {
+    const editor = column.editor?.(row);
+    if (!editor?.options) return [];
+    return [{
+      label: typeof column.header === "string" ? column.header : editor.label,
+      value: editor.value,
+      options: editor.options,
+      onChange: (value: string) => void editor.onSave(value),
+    }];
+  });
+  const menuTitle = (row: T) => {
+    const first = columns[0]?.accessor?.(row);
+    return first == null ? noun : String(first);
+  };
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const order = useClientSort();
@@ -174,6 +195,11 @@ export function Table<T>({
           ) : (
             (pagination ? sortedRows : paged.items).map((entry, index) => (
               <RollRow key={entry.id} index={index}>
+              <TableRowMenu
+                title={rowMenu?.(entry.row).title ?? menuTitle(entry.row)}
+                actions={rowMenu?.(entry.row).actions ?? []}
+                choices={menuChoices(entry.row)}
+              >
               <TableRow
                 style={{ height: 56 }}
                 onClick={onRowClick ? () => onRowClick(entry.row) : undefined}
@@ -193,6 +219,7 @@ export function Table<T>({
                   </TableEditableCell>
                 ))}
               </TableRow>
+              </TableRowMenu>
               </RollRow>
             ))
           )}

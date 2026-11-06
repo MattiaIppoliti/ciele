@@ -1,6 +1,16 @@
 import type { AssistantAvailabilityFact } from "@agent-hub/core";
+import { requireValidationTargets } from "./improvement-validation";
 import type { PostgrestSingleResponse, SupabaseClient } from "@supabase/supabase-js";
-import type { MessageReaction } from "@agent-hub/core";
+import type { MessageReaction, MemberGrant, OrgRole } from "@agent-hub/core";
+import {
+  BUILTIN_ROLE_KEYS,
+  CAPABILITIES,
+  builtinKeyOfSyntheticId,
+  builtinOrgRole,
+  capabilitiesForLadderRole,
+  compareOrgRoles,
+  roleLabel,
+} from "@agent-hub/core";
 import {
   RETRIEVAL_OVERFETCH,
   capPerSource,
@@ -13,6 +23,7 @@ import {
   decodeMemorySubjectCursor,
   finalizeImprovementPage,
   finalizePage,
+  improvementFilters,
   normalizeImprovementPageInput,
 } from "./improvement-pagination";
 import type {
@@ -27,6 +38,8 @@ import type {
   ApplicationSource,
   ApplicationSyncRun,
   Assistant,
+  AssistantAccessEntry,
+  AssistantAccessRole,
   AssistantGuardrail,
   AssistantGoal,
   AssistantTools,
@@ -42,6 +55,9 @@ import type {
   SourceDocumentListItem,
   Conversation,
   ConversationMetadata,
+  ConversationOperator,
+  MessageRole,
+  OperatorState,
   DashboardFacts,
   ExportJob,
   Flow,
@@ -105,6 +121,7 @@ import type {
   ReviewRequest,
   WebhookSubscription,
   Role,
+  MemberAssistantScope,
   Skill,
   Source,
   SsoConnection,
@@ -118,6 +135,8 @@ import type {
   SupportChannelConfig,
   TeammateRoutine,
   TicketingIntegration,
+  TicketingTarget,
+  EscalationTicket,
   UsageDailyRow,
   UsageKind,
   UsageEventRow,
@@ -127,6 +146,9 @@ import type {
 } from "@agent-hub/core";
 import {
   ASSISTANT_GOAL_CAP,
+  AUDIT_SYSTEM_ACTOR,
+  DEFAULT_AUDIT_RETENTION_DAYS,
+  MAX_WAIT_TIMEOUT_MINUTES,
   capMemoryDocument,
   compareOrgKnowledgeSources,
   colorizeOverview,
@@ -152,6 +174,7 @@ import {
 import {
   DB_TABLE_SPECS,
   camelToSnakeKey,
+  snakeToCamelKey,
   domainToRow,
   newTableRowId,
   patchRow,
@@ -228,9 +251,32 @@ function assertConversationWritten(data: unknown, id: string): void {
  * deploy is live minutes before the CI migrate job (supabase/CLAUDE.md).
  */
 const ORGANIZATION_COLUMNS =
+  "id, name, logo_url, trace_retention_days, transcript_retention_days, message_retention_days, improvement_retention_days, audit_retention_days, default_timezone, created_at";
+const ORGANIZATION_COLUMNS_PRE_DATA_RETENTION =
+  "id, name, logo_url, trace_retention_days, transcript_retention_days, default_timezone, created_at";
+const ORGANIZATION_COLUMNS_PRE_BUSINESS_HOURS =
   "id, name, logo_url, trace_retention_days, transcript_retention_days, created_at";
 const ORGANIZATION_COLUMNS_LEGACY =
   "id, name, logo_url, trace_retention_days, created_at";
+
+/** Newest first; each read steps down one tier per schema-lag error. */
+const ORGANIZATION_COLUMN_TIERS = [
+  ORGANIZATION_COLUMNS,
+  ORGANIZATION_COLUMNS_PRE_DATA_RETENTION,
+  ORGANIZATION_COLUMNS_PRE_BUSINESS_HOURS,
+  ORGANIZATION_COLUMNS_LEGACY,
+] as const;
+
+async function withOrganizationColumns<
+  R extends { error: { code?: string; message?: string } | null },
+>(run: (columns: string) => PromiseLike<R>, tiers: readonly string[] = ORGANIZATION_COLUMN_TIERS): Promise<R> {
+  let result = await run(tiers[0]!);
+  for (const columns of tiers.slice(1)) {
+    if (!(result.error && isSchemaLagError(result.error))) break;
+    result = await run(columns);
+  }
+  return result;
+}
 
 const PROFILE_COLUMNS = "id, email, username, first_name, last_name, avatar_url";
 
@@ -255,12 +301,17 @@ function toProfile(row: ProfileRow): Profile {
 }
 
 interface OrganizationRow {
+  default_timezone?: string;
   id: string;
   name: string;
   logo_url: string | null;
   trace_retention_days: number | null;
   /** Absent when the row was read with the legacy column list. */
   transcript_retention_days?: number | null;
+  /** Absent on the column lists from before 20261104130000. */
+  message_retention_days?: number | null;
+  improvement_retention_days?: number | null;
+  audit_retention_days?: number;
   created_at: string;
 }
 
@@ -271,6 +322,10 @@ function toOrganization(row: OrganizationRow): Organization {
     logoUrl: row.logo_url,
     traceRetentionDays: row.trace_retention_days,
     transcriptRetentionDays: row.transcript_retention_days ?? null,
+    messageRetentionDays: row.message_retention_days ?? null,
+    improvementRetentionDays: row.improvement_retention_days ?? null,
+    auditRetentionDays: row.audit_retention_days ?? DEFAULT_AUDIT_RETENTION_DAYS,
+    defaultTimezone: row.default_timezone ?? "UTC",
     createdAt: row.created_at,
   };
 }
@@ -315,8 +370,42 @@ interface HelpDeskRow {
   description: string;
   auto_generate_improvements: boolean | null;
   ticketing_integration: TicketingIntegration | null;
+  /** Absent on a database one migration behind (20261022100000). */
+  ticketing_target?: TicketingTarget | null;
   created_at: string;
   updated_at: string;
+}
+
+interface EscalationTicketRow {
+  id: string;
+  organization_id: string;
+  idempotency_key: string;
+  help_desk_id: string;
+  channel_id: string;
+  conversation_id: string | null;
+  provider: EscalationTicket["provider"];
+  status: EscalationTicket["status"];
+  ticket: EscalationTicket["ticket"];
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function toEscalationTicket(row: EscalationTicketRow): EscalationTicket {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    idempotencyKey: row.idempotency_key,
+    helpDeskId: row.help_desk_id,
+    channelId: row.channel_id,
+    conversationId: row.conversation_id,
+    provider: row.provider,
+    status: row.status,
+    ticket: row.ticket ?? null,
+    error: row.error,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 function toHelpDesk(row: HelpDeskRow): HelpDesk {
@@ -327,6 +416,7 @@ function toHelpDesk(row: HelpDeskRow): HelpDesk {
     description: row.description ?? "",
     autoGenerateImprovements: row.auto_generate_improvements ?? false,
     ticketingIntegration: row.ticketing_integration ?? null,
+    ticketingTarget: row.ticketing_target,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   };
@@ -409,6 +499,18 @@ interface ConversationRow {
   session_version?: number | null;
   pinned: boolean | null;
   legal_hold?: boolean | null;
+  /** Absent before 20261104130000_data_retention. */
+  messages_deleted_through?: string | null;
+  operator_state?: OperatorState | null;
+  operator_member_id?: string | null;
+  operator_name?: string | null;
+  operator_held_at?: string | null;
+  waiting_since?: string | null;
+  waiting_help_desk_id?: string | null;
+  waiting_channel_id?: string | null;
+  wait_timeout_minutes?: number | null;
+  assigned_member_id?: string | null;
+  assigned_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -417,8 +519,10 @@ interface MessageRow {
   id: string;
   request_id?: string | null;
   conversation_id: string;
-  role: "user" | "assistant";
+  role: MessageRole;
   content: unknown[];
+  author_member_id?: string | null;
+  author_name?: string | null;
   flow_id: string | null;
   flow_name: string | null;
   feedback: -1 | 0 | 1;
@@ -460,7 +564,8 @@ async function searchChunkRows(
   client: SupabaseClient,
   query: ChunkSearchQuery,
   scope: {
-    rpc: "match_chunks_linked" | "match_chunks_collections" | "match_chunks_sources";
+    rpc: "match_chunks_linked" | "match_chunks_collections" | "match_chunks_sources" | "match_chunks_faqs";
+    faqCollectionIds?: string[];
     rpcArgs: Record<string, unknown>;
     /**
      * Narrows the lexical `concept_chunks` query to the scope. Null when the
@@ -483,6 +588,11 @@ async function searchChunkRows(
     if (!scope.lexicalScope) return [];
     const tokens = lexicalTokens(query.text, 5);
     if (tokens.length === 0) return [];
+    if (scope.faqCollectionIds) {
+      const result = await client.rpc("match_faq_chunks_lexical", { p_collection_ids: scope.faqCollectionIds, p_tokens: tokens, p_question: query.text, p_match_count: fetchLimit });
+      if (result.error) throw result.error;
+      return (result.data as Array<{ concept_id: string; content: string }>).map(row => ({ ...row, similarity: LEXICAL_SIMILARITY }));
+    }
     const pattern = tokens.map((t) => `content.ilike.%${t}%`).join(",");
     const build = (withActive: boolean) => {
       const base = withActive
@@ -645,8 +755,26 @@ function toConversation(row: ConversationRow): Conversation {
     sessionVersion: row.session_version ?? 0,
     pinned: row.pinned ?? false,
     legalHold: row.legal_hold ?? false,
+    messagesDeletedThrough: row.messages_deleted_through ?? null,
+    operator: toConversationOperator(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+/** Who answers the Conversation; a row read before #1082's columns is the AI's. */
+function toConversationOperator(row: ConversationRow): ConversationOperator {
+  return {
+    state: row.operator_state ?? "ai",
+    memberId: row.operator_member_id ?? null,
+    memberName: row.operator_name ?? null,
+    heldAt: row.operator_held_at ?? null,
+    waitingSince: row.waiting_since ?? null,
+    waitingHelpDeskId: row.waiting_help_desk_id ?? null,
+    waitingChannelId: row.waiting_channel_id ?? null,
+    waitTimeoutMinutes: row.wait_timeout_minutes ?? null,
+    assignedMemberId: row.assigned_member_id ?? null,
+    assignedAt: row.assigned_at ?? null,
   };
 }
 
@@ -695,6 +823,9 @@ function toStoredMessage(row: MessageRow): StoredMessage {
     conversationId: row.conversation_id,
     role: row.role,
     content: row.content ?? [],
+    ...(row.author_member_id || row.author_name
+      ? { authorMemberId: row.author_member_id ?? null, authorName: row.author_name ?? null }
+      : {}),
     flowId: row.flow_id,
     flowName: row.flow_name,
     feedback: row.feedback,
@@ -1017,8 +1148,65 @@ interface InviteRow {
   organization_id: string;
   email: string;
   role: Role;
+  role_id?: string | null;
+  org_roles?: { name: string } | null;
   token: string;
   created_at: string;
+}
+
+interface OrgRoleRow {
+  id: string;
+  organization_id: string;
+  key: string | null;
+  name: string;
+  description: string;
+  capabilities: string[];
+  organization_level: boolean;
+  assistant_level: boolean;
+  tier: Role;
+  member_default?: boolean;
+  assistant_default?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+const API_KEY_COLUMNS_LEGACY =
+  "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at";
+const API_KEY_COLUMNS = `${API_KEY_COLUMNS_LEGACY}, role_id, org_roles(name, key, capabilities)`;
+
+const ORG_ROLE_COLUMNS_PRE_DEFAULTS =
+  "id, organization_id, key, name, description, capabilities, organization_level, assistant_level, tier, created_at, updated_at";
+const ORG_ROLE_COLUMNS = `${ORG_ROLE_COLUMNS_PRE_DEFAULTS}, member_default, assistant_default`;
+
+function toOrgRole(row: OrgRoleRow, counts?: { members: number; apiKeys: number; invites: number; assistants: number }): OrgRole {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    key: row.key,
+    name: row.name,
+    description: row.description,
+    // Owner's row lists the catalogue it was last written against; it holds
+    // every Capability by definition, including ones added since.
+    capabilities: row.key === "owner" ? [...CAPABILITIES] : row.capabilities,
+    organizationLevel: row.organization_level,
+    assistantLevel: row.assistant_level,
+    tier: row.tier,
+    memberCount: counts?.members ?? 0,
+    apiKeyCount: counts?.apiKeys ?? 0,
+    inviteCount: counts?.invites ?? 0,
+    assistantGrantCount: counts?.assistants ?? 0,
+    // One migration behind (20261104160000) the defaults are today's.
+    memberDefault: row.member_default ?? row.key === "editor",
+    assistantDefault: row.assistant_default ?? row.key === "viewer",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/** The table is missing (one migration behind): answer the built-ins. */
+function isMissingRelation(error: unknown): boolean {
+  const value = error as { code?: string; message?: string } | null;
+  return value?.code === "42P01" || value?.code === "PGRST205" || value?.code === "PGRST200" || isSchemaLagError(error);
 }
 
 interface OrgApiKeyRow {
@@ -1027,6 +1215,8 @@ interface OrgApiKeyRow {
   name: string;
   secret_hint: string;
   role: Role;
+  role_id?: string | null;
+  org_roles?: { name: string; key?: string | null; capabilities?: string[] } | null;
   created_by: string | null;
   created_at: string;
   last_used_at: string | null;
@@ -1301,7 +1491,13 @@ function toExportJob(row: Record<string, unknown>): ExportJob {
 }
 
 function toInvite(row: InviteRow): Invite {
-  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as Invite;
+  // Every column, as before Roles had ids, plus the Role's name.
+  const { org_roles: role, ...columns } = row;
+  return {
+    ...(rowToDomain(columns as unknown as Record<string, unknown>) as unknown as Invite),
+    roleId: row.role_id ?? null,
+    roleName: role?.name ?? roleLabel(row.role),
+  };
 }
 
 function toOrgApiKey(row: OrgApiKeyRow): OrgApiKey {
@@ -1311,11 +1507,44 @@ function toOrgApiKey(row: OrgApiKeyRow): OrgApiKey {
     name: row.name,
     secretHint: row.secret_hint,
     role: row.role,
+    roleId: row.role_id ?? null,
+    roleName: row.org_roles?.name ?? roleLabel(row.role),
+    ...(row.org_roles?.capabilities
+      ? { roleCapabilities: row.org_roles.key === "owner" ? [...CAPABILITIES] : row.org_roles.capabilities }
+      : {}),
     createdBy: row.created_by ?? "",
     createdAt: row.created_at,
     lastUsedAt: row.last_used_at,
     revokedAt: row.revoked_at,
   };
+}
+
+/** A row's renamed columns under their old names, for a database one migration behind. */
+function legacyColumns(spec: { renamedColumns?: Record<string, string> }, row: Record<string, unknown>): Record<string, unknown> {
+  if (!spec.renamedColumns) return row;
+  const out = { ...row };
+  for (const [field, legacy] of Object.entries(spec.renamedColumns)) {
+    const column = camelToSnakeKey(field);
+    if (column in out) {
+      out[legacy] = out[column];
+      delete out[column];
+    }
+  }
+  return out;
+}
+
+/** A row read under a column's old name, given its new field name. */
+function withRenamedFields(spec: { renamedColumns?: Record<string, string> }, row: Record<string, unknown>): Record<string, unknown> {
+  if (!spec.renamedColumns) return row;
+  const out = { ...row };
+  for (const [field, legacy] of Object.entries(spec.renamedColumns)) {
+    const legacyField = snakeToCamelKey(legacy);
+    if (!(field in out) && legacyField in out) {
+      out[field] = out[legacyField];
+      delete out[legacyField];
+    }
+  }
+  return out;
 }
 
 /**
@@ -1356,7 +1585,7 @@ function supabaseTable<K extends DbTableName>(
         });
       };
       const toRows = (data: unknown[] | null) =>
-        (data ?? []).map((row) => rowToDomain(row as Record<string, unknown>) as unknown as DbTableRow<K>);
+        (data ?? []).map((row) => withRenamedFields(spec, rowToDomain(row as Record<string, unknown>)) as unknown as DbTableRow<K>);
       if (options?.offset !== undefined) {
         const pageSize = options.limit ?? 100;
         return toRows(must(await select().range(options.offset, options.offset + pageSize - 1)));
@@ -1380,7 +1609,7 @@ function supabaseTable<K extends DbTableName>(
         .select("*")
         .eq("id", id)
         .maybeSingle());
-      return data ? (rowToDomain(data) as unknown as DbTableRow<K>) : null;
+      return data ? (withRenamedFields(spec, rowToDomain(data)) as unknown as DbTableRow<K>) : null;
     },
 
     async insert(values) {
@@ -1406,24 +1635,22 @@ function supabaseTable<K extends DbTableName>(
         );
         ({ data, error } = await client
           .from(spec.table)
-          .insert({ id, ...domainToRow(trimmed) })
+          .insert({ id, ...legacyColumns(spec, domainToRow(trimmed)) })
           .select()
           .single());
       }
       if (error) throw error;
-      return rowToDomain(data) as unknown as DbTableRow<K>;
+      return withRenamedFields(spec, rowToDomain(data)) as unknown as DbTableRow<K>;
     },
 
     async update(id, patch) {
       const row = domainToRow({ ...patch });
       if (spec.touchesUpdatedAt) row.updated_at = new Date().toISOString();
-      const data = must(await client
-        .from(spec.table)
-        .update(row)
-        .eq("id", id)
-        .select()
-        .single());
-      return rowToDomain(data) as unknown as DbTableRow<K>;
+      const write = (values: Record<string, unknown>) =>
+        client.from(spec.table).update(values).eq("id", id).select().single();
+      let result = await write(row);
+      if (result.error && isSchemaLagError(result.error) && spec.renamedColumns) result = await write(legacyColumns(spec, row));
+      return withRenamedFields(spec, rowToDomain(must(result))) as unknown as DbTableRow<K>;
     },
 
     async delete(id) {
@@ -1605,10 +1832,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // `getCurrentOrg` runs on every signed-in request, so a column the
       // deploy knows and the database does not yet must not 500 the console
       // for the window between the Vercel deploy and the migrate job.
-      let result = await membershipFor(ORGANIZATION_COLUMNS);
-      if (result.error && isSchemaLagError(result.error)) {
-        result = await membershipFor(ORGANIZATION_COLUMNS_LEGACY);
-      }
+      const result = await withOrganizationColumns(membershipFor);
       const { data, error } = result;
       if (error) throw error;
       if (data?.organizations) {
@@ -1626,10 +1850,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         orgQuery = preferredOrgId ? orgQuery.eq("id", preferredOrgId) : orgQuery;
         return orgQuery.limit(1).maybeSingle();
       };
-      let orgResult = await orgFor(ORGANIZATION_COLUMNS);
-      if (orgResult.error && isSchemaLagError(orgResult.error)) {
-        orgResult = await orgFor(ORGANIZATION_COLUMNS_LEGACY);
-      }
+      const orgResult = await withOrganizationColumns(orgFor);
       const { data: orgRow, error: orgError } = orgResult;
       if (orgError) throw orgError;
       if (!orgRow) return null;
@@ -1642,10 +1863,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async listOrganizations() {
       const listWith = (columns: string) =>
         client.from("organizations").select(columns).order("name", { ascending: true });
-      let result = await listWith(ORGANIZATION_COLUMNS);
-      if (result.error && isSchemaLagError(result.error)) {
-        result = await listWith(ORGANIZATION_COLUMNS_LEGACY);
-      }
+      const result = await withOrganizationColumns(listWith);
       if (result.error) throw result.error;
       return (result.data as unknown as OrganizationRow[]).map(toOrganization);
     },
@@ -1653,6 +1871,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async updateOrganization(organizationId, patch: OrganizationPatch) {
       const row = patchRow(patch, [
         "name", "logoUrl", "traceRetentionDays", "transcriptRetentionDays",
+        "messageRetentionDays", "improvementRetentionDays", "auditRetentionDays",
       ]);
       const updateWith = (columns: string) =>
         client
@@ -1662,6 +1881,23 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           .select(columns)
           .single();
       let result = await updateWith(ORGANIZATION_COLUMNS);
+      if (result.error && isSchemaLagError(result.error)) {
+        // Same refusal as below, one migration later: a window the database
+        // cannot store must not read back as saved.
+        if (
+          patch.messageRetentionDays !== undefined ||
+          patch.improvementRetentionDays !== undefined ||
+          patch.auditRetentionDays !== undefined
+        ) {
+          throw new Error(
+            "Data retention is temporarily unavailable while the database updates"
+          );
+        }
+        result = await updateWith(ORGANIZATION_COLUMNS_PRE_DATA_RETENTION);
+      }
+      if (result.error && isSchemaLagError(result.error)) {
+        result = await updateWith(ORGANIZATION_COLUMNS_PRE_BUSINESS_HOURS);
+      }
       if (result.error && isSchemaLagError(result.error)) {
         // The column the patch names does not exist yet: refuse readably
         // rather than report a saved window that nothing will enforce. A patch
@@ -1729,17 +1965,26 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async listMembers(organizationId) {
       // One query: emails come through the organization_members -> profiles
       // embed (FK added in 0020 -- the profile mirror exists for this join).
-      const data = must(await client
-        .from("organization_members")
-        .select(
-          "user_id, role, created_at, profiles(email, username, first_name, last_name, avatar_url)"
-        )
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true }));
+      const read = (columns: string) =>
+        client
+          .from("organization_members")
+          .select(`${columns}, profiles(email, username, first_name, last_name, avatar_url)`)
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: true });
+      // `assistant_scope` lands in 20261104132000; one migration behind, every
+      // Member reads as unlimited, which is what they still are.
+      // `role_id` lands in 20261104140000 and `assistant_scope` in 20261104132000.
+      let result = await read("user_id, role, role_id, org_roles(name), created_at, assistant_scope");
+      if (result.error && isMissingRelation(result.error)) result = await read("user_id, role, created_at, assistant_scope");
+      if (result.error && isSchemaLagError(result.error)) result = await read("user_id, role, created_at");
+      const data = must(result);
       const rows = data as unknown as Array<{
         user_id: string;
         role: Role;
+        role_id?: string | null;
+        org_roles?: { name: string } | null;
         created_at: string;
+        assistant_scope?: MemberAssistantScope;
         profiles: {
           email: string;
           username: string | null;
@@ -1752,20 +1997,202 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         userId: r.user_id,
         email: r.profiles?.email ?? "",
         role: r.role,
+        roleId: r.role_id ?? null,
+        roleName: r.org_roles?.name ?? roleLabel(r.role),
         username: r.profiles?.username ?? null,
         firstName: r.profiles?.first_name ?? null,
         lastName: r.profiles?.last_name ?? null,
         avatarUrl: r.profiles?.avatar_url ?? null,
         createdAt: r.created_at,
+        assistantScope: r.assistant_scope ?? "all",
       })) satisfies Member[];
     },
 
-    async updateMemberRole(organizationId, userId, role) {
+    async updateMemberRole(organizationId, userId, roleId) {
+      // A synthesized built-in id is all a database one migration behind has.
+      const legacy = builtinKeyOfSyntheticId(roleId);
       must(await client
         .from("organization_members")
-        .update({ role })
+        .update(legacy ? { role: legacy } : { role_id: roleId })
         .eq("organization_id", organizationId)
         .eq("user_id", userId));
+    },
+
+    async getMemberGrant(organizationId, userId) {
+      const result = await client
+        .from("organization_members")
+        .select("role, role_id, org_roles(key, name, capabilities)")
+        .eq("organization_id", organizationId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (result.error && isMissingRelation(result.error)) {
+        const role = await this.getMemberRole(organizationId, userId);
+        return role ? { role, roleId: null, roleName: roleLabel(role), capabilities: capabilitiesForLadderRole(role) } : null;
+      }
+      const row = must(result) as unknown as {
+        role: Role;
+        role_id: string | null;
+        org_roles: { key: string | null; name: string; capabilities: string[] } | null;
+      } | null;
+      if (!row) return null;
+      const roleRow = row.org_roles;
+      return {
+        role: row.role,
+        roleId: row.role_id,
+        roleName: roleRow?.name ?? roleLabel(row.role),
+        capabilities: !roleRow
+          ? capabilitiesForLadderRole(row.role)
+          : roleRow.key === "owner" ? [...CAPABILITIES] : roleRow.capabilities,
+      } satisfies MemberGrant;
+    },
+
+    async listOrgRoles(organizationId) {
+      let result = await client.from("org_roles").select(ORG_ROLE_COLUMNS).eq("organization_id", organizationId);
+      if (result.error?.code === "42703") {
+        result = (await client.from("org_roles").select(ORG_ROLE_COLUMNS_PRE_DEFAULTS).eq("organization_id", organizationId)) as unknown as typeof result;
+      }
+      if (result.error && isMissingRelation(result.error)) {
+        return BUILTIN_ROLE_KEYS.map((key) => builtinOrgRole(organizationId, key));
+      }
+      const rows = must(result) as unknown as OrgRoleRow[];
+      // Who holds what. Keys and invitations read under their own policies, so
+      // a Member who cannot manage them sees zero there, not an error.
+      const tally = async (
+        table: "organization_members" | "organization_api_keys" | "organization_invites",
+        pending?: "revoked_at" | "accepted_at"
+      ) => {
+        const counts = new Map<string, number>();
+        const query = client.from(table).select("role_id").eq("organization_id", organizationId);
+        const { data } = await (pending ? query.is(pending, null) : query);
+        for (const item of (data ?? []) as Array<{ role_id: string | null }>) {
+          if (item.role_id) counts.set(item.role_id, (counts.get(item.role_id) ?? 0) + 1);
+        }
+        return counts;
+      };
+      const assistantGrants = async () => {
+        const counts = new Map<string, number>();
+        const { data } = await client
+          .from("assistant_access")
+          .select("role_id, assistants!inner(organization_id)")
+          .eq("assistants.organization_id", organizationId);
+        for (const item of (data ?? []) as unknown as Array<{ role_id: string | null }>) {
+          if (item.role_id) counts.set(item.role_id, (counts.get(item.role_id) ?? 0) + 1);
+        }
+        return counts;
+      };
+      const [members, apiKeys, invites, assistants] = await Promise.all([
+        tally("organization_members"),
+        tally("organization_api_keys", "revoked_at"),
+        tally("organization_invites", "accepted_at"),
+        assistantGrants(),
+      ]);
+      return rows
+        .map((row) => toOrgRole(row, {
+          members: members.get(row.id) ?? 0,
+          apiKeys: apiKeys.get(row.id) ?? 0,
+          invites: invites.get(row.id) ?? 0,
+          assistants: assistants.get(row.id) ?? 0,
+        }))
+        .sort(compareOrgRoles);
+    },
+
+    async createOrgRole(organizationId, input) {
+      const data = must(await client
+        .from("org_roles")
+        .insert({
+          organization_id: organizationId,
+          name: input.name,
+          description: input.description,
+          capabilities: input.capabilities,
+          organization_level: input.organizationLevel,
+          assistant_level: input.assistantLevel,
+        })
+        .select(ORG_ROLE_COLUMNS)
+        .single());
+      return toOrgRole(data as unknown as OrgRoleRow);
+    },
+
+    async updateOrgRole(organizationId, roleId, patch) {
+      const row: Record<string, unknown> = {};
+      if (patch.name !== undefined) row.name = patch.name;
+      if (patch.description !== undefined) row.description = patch.description;
+      if (patch.capabilities !== undefined) row.capabilities = patch.capabilities;
+      if (patch.organizationLevel !== undefined) row.organization_level = patch.organizationLevel;
+      if (patch.assistantLevel !== undefined) row.assistant_level = patch.assistantLevel;
+      const data = must(await client
+        .from("org_roles")
+        .update(row)
+        .eq("organization_id", organizationId)
+        .eq("id", roleId)
+        .select(ORG_ROLE_COLUMNS)
+        .single());
+      return toOrgRole(data as unknown as OrgRoleRow);
+    },
+
+    async setRoleDefaults(organizationId, defaults) {
+      must(await client.rpc("set_role_defaults", {
+        p_organization_id: organizationId,
+        p_member_role_id: defaults.memberRoleId ?? null,
+        p_assistant_role_id: defaults.assistantRoleId ?? null,
+      }));
+    },
+
+    async getMemberAssistantGrant(organizationId, userId, assistantId) {
+      const member = must(await client
+        .from("organization_members")
+        .select("role, assistant_scope")
+        .eq("organization_id", organizationId)
+        .eq("user_id", userId)
+        .maybeSingle()) as { role: Role; assistant_scope?: MemberAssistantScope } | null;
+      if (!member) return null;
+      const read = (columns: string) => client
+        .from("assistant_access")
+        .select(columns)
+        .eq("assistant_id", assistantId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      let result = await read("role, role_id, org_roles(key, capabilities)");
+      if (result.error && isMissingRelation(result.error)) result = await read("role");
+      const row = must(result) as unknown as {
+        role: AssistantAccessRole;
+        org_roles?: { key: string | null; capabilities: string[] } | null;
+      } | null;
+      return {
+        role: member.role,
+        scope: member.assistant_scope ?? "all",
+        override: row
+          ? {
+              role: row.role,
+              capabilities: row.org_roles
+                ? row.org_roles.key === "owner" ? [...CAPABILITIES] : row.org_roles.capabilities
+                : null,
+            }
+          : null,
+      };
+    },
+
+    async deleteOrgRole(organizationId, roleId) {
+      const result = await client
+        .from("org_roles")
+        .delete()
+        .eq("organization_id", organizationId)
+        .eq("id", roleId)
+        // RLS filters a refused delete to zero rows without an error.
+        .select("id");
+      // A holder the caller cannot see (an API key, under its own policy)
+      // still holds it: the foreign key says so.
+      if (result.error?.code === "23503") {
+        throw new Error("This role is still held by a member, an invitation or an API key");
+      }
+      return (must(result) ?? []).length > 0;
+    },
+
+    async leaveOrganization(organizationId, userId, entry) {
+      const result = await client.rpc("leave_organization_with_audit", { p_organization_id: organizationId, p_user_id: userId, p_entry: entry });
+      if (!result.error) return { auditRecorded: result.data === true };
+      if (!isSchemaLagError(result.error)) throw result.error;
+      await this.removeMember(organizationId, userId);
+      return { auditRecorded: false };
     },
 
     async removeMember(organizationId, userId) {
@@ -1777,28 +2204,34 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listInvites(organizationId) {
-      const data = must(await client
+      const read = (columns: string) => client
         .from("organization_invites")
-        .select("*")
+        .select(columns)
         .eq("organization_id", organizationId)
         .is("accepted_at", null)
-        .order("created_at", { ascending: false }));
-      return (data as InviteRow[]).map(toInvite);
+        .order("created_at", { ascending: false });
+      let result = await read("*, org_roles(name)");
+      if (result.error && isMissingRelation(result.error)) result = await read("*");
+      return (must(result) as unknown as InviteRow[]).map(toInvite);
     },
 
-    async createInvite(organizationId, role, email) {
-      const row = {
+    async createInvite(organizationId, roleId, email) {
+      const legacy = builtinKeyOfSyntheticId(roleId);
+      const row: Record<string, unknown> = {
         organization_id: organizationId,
-        role,
+        ...(legacy ? { role: legacy } : { role_id: roleId }),
         email: email ?? "",
         token: shortId() + shortId(),
       };
-      const data = must(await client
+      const inserted = must(await client
         .from("organization_invites")
         .insert(row)
-        .select()
-        .single());
-      return toInvite(data as InviteRow);
+        .select("*")
+        .single()) as unknown as InviteRow;
+      if (legacy) return toInvite(inserted);
+      // Read back with the Role's name: an insert's RETURNING has no embeds.
+      const data = must(await client.from("organization_invites").select("*, org_roles(name)").eq("id", inserted.id).single());
+      return toInvite(data as unknown as InviteRow);
     },
 
     async revokeInvite(inviteId) {
@@ -1811,33 +2244,34 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Organization API keys (#618) -----------------------------------
 
     async listApiKeys(organizationId) {
-      const data = must(await client
+      const read = (columns: string) => client
         .from("organization_api_keys")
-        .select(
-          "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
-        )
+        .select(columns)
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false }));
-      return (data as OrgApiKeyRow[]).map(toOrgApiKey);
+        .order("created_at", { ascending: false });
+      let result = await read(API_KEY_COLUMNS);
+      if (result.error && isMissingRelation(result.error)) result = await read(API_KEY_COLUMNS_LEGACY);
+      return (must(result) as unknown as OrgApiKeyRow[]).map(toOrgApiKey);
     },
 
     async createApiKey(organizationId, input: OrgApiKeyInput) {
-      const row = {
+      const legacy = builtinKeyOfSyntheticId(input.roleId);
+      const row: Record<string, unknown> = {
         organization_id: organizationId,
         name: input.name,
         secret_hash: input.secretHash,
         secret_hint: input.secretHint,
-        role: input.role,
+        ...(legacy ? { role: input.role } : { role_id: input.roleId }),
         created_by: input.createdBy,
       };
       const data = must(await client
         .from("organization_api_keys")
         .insert(row)
-        .select(
-          "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
-        )
-        .single());
-      return toOrgApiKey(data as OrgApiKeyRow);
+        .select(API_KEY_COLUMNS_LEGACY)
+        .single()) as unknown as OrgApiKeyRow;
+      if (legacy) return toOrgApiKey(data);
+      const read = must(await client.from("organization_api_keys").select(API_KEY_COLUMNS).eq("id", data.id).single());
+      return toOrgApiKey(read as unknown as OrgApiKeyRow);
     },
 
     async revokeApiKey(keyId) {
@@ -1863,14 +2297,15 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async getApiKeyByHash(secretHash) {
-      const data = must(await client
+      const read = (columns: string) => client
         .from("organization_api_keys")
-        .select(
-          "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
-        )
+        .select(columns)
         .eq("secret_hash", secretHash)
-        .maybeSingle());
-      return data ? toOrgApiKey(data as OrgApiKeyRow) : null;
+        .maybeSingle();
+      let result = await read(API_KEY_COLUMNS);
+      if (result.error && isMissingRelation(result.error)) result = await read(API_KEY_COLUMNS_LEGACY);
+      const data = must(result);
+      return data ? toOrgApiKey(data as unknown as OrgApiKeyRow) : null;
     },
 
     async touchApiKeyLastUsed(keyId) {
@@ -1948,11 +2383,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         suggested_questions: [],
         chat_launcher_enabled: true,
       };
-      const data = must(await client
-        .from("assistants")
-        .insert(row)
-        .select()
-        .single());
+      // Insert, then read back: INSERT ... RETURNING checks the read policy
+      // before the after-insert trigger gives a limited creator their access
+      // row (20261104132000), so a returning insert would refuse them.
+      must(await client.from("assistants").insert(row));
+      const data = must(await client.from("assistants").select().eq("id", row.id).single());
 
       const flowRows = DEFAULT_FLOWS.map((f, i) => ({
         id: shortId(),
@@ -1998,6 +2433,102 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     // --- Flows -----------------------------------------------------------
+
+    async listAssistantAccess(assistantId) {
+      // Same one-query profiles embed as listMembers (dual FK, see the
+      // assistant_access migration). `role_id` lands in 20261104160000.
+      const read = (roleColumns: string) => client
+        .from("assistant_access")
+        .select(`user_id, role, ${roleColumns}granted_at, granted_by, profiles(email, username, first_name, last_name, avatar_url)`)
+        .eq("assistant_id", assistantId)
+        .order("granted_at", { ascending: true });
+      let result = await read("role_id, org_roles(name), ");
+      if (result.error && isMissingRelation(result.error)) result = await read("");
+      const rows = must(result) as unknown as Array<{
+        user_id: string;
+        role: AssistantAccessRole;
+        role_id?: string | null;
+        org_roles?: { name: string } | null;
+        granted_at: string;
+        granted_by: string | null;
+        profiles: {
+          email: string;
+          username: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          avatar_url: string | null;
+        } | null;
+      }>;
+      return rows.map((r) => ({
+        userId: r.user_id,
+        email: r.profiles?.email ?? "",
+        username: r.profiles?.username ?? null,
+        firstName: r.profiles?.first_name ?? null,
+        lastName: r.profiles?.last_name ?? null,
+        avatarUrl: r.profiles?.avatar_url ?? null,
+        role: r.role,
+        roleId: r.role_id ?? null,
+        ...(r.role === "denied" ? {} : { roleName: r.org_roles?.name ?? roleLabel(r.role) }),
+        grantedAt: r.granted_at,
+        grantedBy: r.granted_by,
+      })) satisfies AssistantAccessEntry[];
+    },
+
+    async setAssistantAccess(assistantId, userId, role, roleId) {
+      // granted_at/granted_by are stamped by a DB trigger on every write; the
+      // tier in `role` follows `role_id` (20261104160000).
+      const named = roleId && !builtinKeyOfSyntheticId(roleId);
+      const { error } = await client.from("assistant_access").upsert(
+        named
+          ? { assistant_id: assistantId, user_id: userId, role: "viewer", role_id: roleId }
+          : { assistant_id: assistantId, user_id: userId, role, ...(role === "denied" ? {} : { role_id: null }) },
+        { onConflict: "assistant_id,user_id" }
+      );
+      if (error) throw error;
+    },
+
+    async listMemberAssistantAccess(organizationId, userId) {
+      const read = (roleColumns: string) => client
+        .from("assistant_access")
+        .select(`assistant_id, role, ${roleColumns}assistants!inner(organization_id)`)
+        .eq("user_id", userId)
+        .eq("assistants.organization_id", organizationId);
+      let result = await read("role_id, org_roles(name), ");
+      if (result.error && isMissingRelation(result.error)) result = await read("");
+      return (must(result) as unknown as Array<{
+        assistant_id: string;
+        role: AssistantAccessRole;
+        role_id?: string | null;
+        org_roles?: { name: string } | null;
+      }>).map((row) => ({
+        assistantId: row.assistant_id,
+        role: row.role,
+        roleId: row.role_id ?? null,
+        ...(row.org_roles ? { roleName: row.org_roles.name } : {}),
+      }));
+    },
+
+    async setMemberAssistantScope(organizationId, userId, scope, access) {
+      must(await client.rpc("set_member_assistant_scope", {
+        p_organization_id: organizationId,
+        p_user_id: userId,
+        p_scope: scope,
+        p_grants: access.map((row) => ({
+          assistant_id: row.assistantId,
+          role: row.role,
+          role_id: row.roleId && !builtinKeyOfSyntheticId(row.roleId) ? row.roleId : null,
+        })),
+      }));
+    },
+
+    async clearAssistantAccess(assistantId, userId) {
+      const { error } = await client
+        .from("assistant_access")
+        .delete()
+        .eq("assistant_id", assistantId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
 
     async listFlows(assistantId) {
       const data = must(await client
@@ -2241,13 +2772,173 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async clearTicketingIntegration(helpDeskId) {
+      const clear = (withTarget: boolean) =>
+        client
+          .from("help_desks")
+          .update({
+            ticketing_integration: null,
+            ...(withTarget ? { ticketing_target: null } : {}),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", helpDeskId)
+          .select()
+          .single();
+      let result = await clear(true);
+      // One migration behind (20261022100000): there is no target to clear yet.
+      if (result.error && isSchemaLagError(result.error)) result = await clear(false);
+      return toHelpDesk(must(result) as HelpDeskRow);
+    },
+
+    async setTicketingTarget(helpDeskId, target) {
       const data = must(await client
         .from("help_desks")
-        .update({ ticketing_integration: null, updated_at: new Date().toISOString() })
+        .update({ ticketing_target: target, updated_at: new Date().toISOString() })
         .eq("id", helpDeskId)
         .select()
         .single());
       return toHelpDesk(data as HelpDeskRow);
+    },
+
+    async recordAuditEntry(entry) {
+      const { error } = await client.rpc("record_audit_entry", { p_entry: entry });
+      if (error) throw error;
+    },
+    async listAuditEntries(organizationId, filter) {
+      const oldest = filter.order === "oldest";
+      let query = client.from("audit_log").select("*").eq("organization_id", organizationId);
+      // No member id means no person made it: an unattended job or the system.
+      if (filter.memberId === AUDIT_SYSTEM_ACTOR) query = query.is("member_id", null);
+      else if (filter.memberId) query = query.eq("member_id", filter.memberId);
+      if (filter.domain) query = query.eq("domain", filter.domain);
+      if (filter.operations?.length) query = query.in("operation", filter.operations);
+      if (filter.from) query = query.gte("created_at", filter.from);
+      if (filter.to) query = query.lte("created_at", filter.to);
+      const [cursorAt, cursorId, op] = oldest
+        ? [filter.after, filter.afterId, "gt"]
+        : [filter.before, filter.beforeId, "lt"];
+      if (cursorAt && cursorId) query = query.or(`created_at.${op}.${cursorAt},and(created_at.eq.${cursorAt},id.${op}.${cursorId})`);
+      else if (cursorAt) query = oldest ? query.gt("created_at", cursorAt) : query.lt("created_at", cursorAt);
+      const { data, error } = await query.order("created_at", { ascending: oldest }).order("id", { ascending: oldest }).limit(Math.min(1000, Math.max(1, filter.limit ?? 100)));
+      if (error) { if (isSchemaLagError(error)) return []; throw error; }
+      return (data ?? []).map(row => ({ id: row.id, organizationId: row.organization_id, createdAt: row.created_at, operation: row.operation, effect: row.effect, entities: row.entities, memberId: row.member_id, memberName: row.member_name, memberEmail: row.member_email, apiKeyId: row.api_key_id, teammateId: row.teammate_id, agentAuthor: row.agent_author, surface: row.surface, outcome: row.outcome, targetLabel: row.target_label ?? null, targetDetail: row.target_detail ?? null, changes: row.changes ?? {} })) as import("@agent-hub/core").AuditLogEntry[];
+    },
+
+    async getSourceUsage(organizationId, now) {
+      return must(await client.rpc("get_source_usage", { p_organization_id: organizationId, p_now: now }));
+    },
+
+    async setDocumentReview(organizationId, input) {
+      const row = must(await client.rpc("set_document_review", { p_organization_id: organizationId, p_document_id: input.documentId, p_member_id: input.memberId, p_reviewed: input.reviewed }));
+      return toConcept(row);
+    },
+
+    async saveBusinessHours(organizationId, id, input) {
+      const data = must(await client.rpc("save_business_hours", { p_organization_id: organizationId, p_id: id ?? shortId(), p_create: id === null, p_name: input.name, p_timezone: input.timezone, p_hours: input.hours, p_holidays: input.holidays, p_is_default: input.isDefault }));
+      return rowToDomain(data) as unknown as import("@agent-hub/core").BusinessHours;
+    },
+    async deleteBusinessHours(organizationId, id) {
+      must(await client.rpc("delete_business_hours", { p_organization_id: organizationId, p_id: id }));
+    },
+    async setDefaultTimezone(organizationId, timezone) {
+      must(await client.rpc("set_default_timezone", { p_organization_id: organizationId, p_timezone: timezone }));
+    },
+
+    async createMcpServerConnection(organizationId, input) {
+      const data = must(await client.rpc("create_mcp_server_connection", {
+        p_id: shortId(), p_organization_id: organizationId, p_name: input.name, p_url: input.url, p_tools: input.tools, p_encrypted_token: input.encryptedToken,
+      }));
+      return rowToDomain(data) as unknown as import("@agent-hub/core").McpServerConnection;
+    },
+    async compareAndSetMcpTools(organizationId, serverId, revision, tools) {
+      const data = must(await client.from("mcp_server_connections").update({ tools, revision: revision + 1, updated_at: new Date().toISOString() }).eq("id", serverId).eq("organization_id", organizationId).eq("revision", revision).select("*").maybeSingle());
+      return data ? rowToDomain(data) as unknown as import("@agent-hub/core").McpServerConnection : null;
+    },
+    async getMcpServerToken(serverId) {
+      const data = must(await client.from("mcp_server_secrets").select("encrypted_token").eq("id", serverId).maybeSingle());
+      return data?.encrypted_token ?? null;
+    },
+
+    async createOutboundWebhookSubscription(organizationId, input) {
+      const data = must(await client.rpc("create_outbound_webhook_subscription", {
+        p_id: shortId(), p_organization_id: organizationId, p_name: input.name,
+        p_url: input.url, p_event_types: input.eventTypes, p_encrypted_secret: input.encryptedSecret,
+      }));
+      return rowToDomain(data) as unknown as import("@agent-hub/core").OutboundWebhookSubscription;
+    },
+
+    async getOutboundWebhookSecret(subscriptionId) {
+      const data = must(await client.from("outbound_webhook_secrets").select("encrypted_secret").eq("id", subscriptionId).maybeSingle());
+      return data?.encrypted_secret ?? null;
+    },
+
+    async queueOutboundWebhookEvent(organizationId, event, subscriptionId) {
+      if (event.organizationId !== organizationId) throw new Error("Webhook event Organization mismatch");
+      must(await client.rpc("queue_outbound_webhook_event", { p_event: event, p_subscription_id: subscriptionId ?? null }));
+    },
+
+    async recordWebhookDeliveryAttempt(input) {
+      return must(await client.rpc("record_webhook_delivery_attempt", {
+        p_delivery_id: input.deliveryId, p_job_id: input.jobId, p_lease_token: input.leaseToken,
+        p_now: input.now, p_status: input.status, p_status_code: input.statusCode,
+      })) === true;
+    },
+
+    async getEscalationTicket(organizationId, idempotencyKey) {
+      const data = must(await client
+        .from("escalation_tickets")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle());
+      return data ? toEscalationTicket(data as EscalationTicketRow) : null;
+    },
+
+    async claimEscalationTicket(input) {
+      const now = new Date();
+      const inserted = await client
+        .from("escalation_tickets")
+        .insert({
+          id: shortId(),
+          organization_id: input.organizationId,
+          idempotency_key: input.idempotencyKey,
+          help_desk_id: input.helpDeskId,
+          channel_id: input.channelId,
+          conversation_id: input.conversationId,
+          provider: input.provider,
+          status: "pending",
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .select("*")
+        .single();
+      if (!inserted.error) {
+        return { ticket: toEscalationTicket(inserted.data as EscalationTicketRow), claimed: true };
+      }
+      // 23505: this key was claimed before; read it rather than file again.
+      if ((inserted.error as { code?: string }).code !== "23505") throw inserted.error;
+      const existing = toEscalationTicket(
+        must(await client
+          .from("escalation_tickets")
+          .select("*")
+          .eq("organization_id", input.organizationId)
+          .eq("idempotency_key", input.idempotencyKey)
+          .single()) as EscalationTicketRow
+      );
+      // A timed-out write may already exist at the provider. Never repeat
+      // a POST under the same key, including after a process crash.
+      return { ticket: existing, claimed: false };
+    },
+
+    async settleEscalationTicket(id, outcome) {
+      must(await client
+        .from("escalation_tickets")
+        .update(
+          outcome.status === "filed"
+            ? { status: "filed", ticket: outcome.ticket, error: null, updated_at: new Date().toISOString() }
+            : { status: "failed", error: outcome.error, updated_at: new Date().toISOString() }
+        )
+        .eq("id", id)
+        .eq("status", "pending"));
     },
 
     // --- Widget SSO connections -----------------------------------------
@@ -2537,6 +3228,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .maybeSingle());
       if (!data) return null;
       return toCollection(data as Record<string, unknown>);
+    },
+
+    async getOrgLibraryCollection(organizationId) {
+      const row = must(await client.from("knowledge_collections").select("*").eq("id", `org-library-${organizationId}`).eq("organization_id", organizationId).maybeSingle());
+      return row ? toCollection(row) : null;
     },
 
     async getOrCreateOrgLibraryCollection(organizationId) {
@@ -3405,6 +4101,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       };
     },
 
+    async queueDueExportSchedules(now, limit) {
+      const result = await client.rpc("queue_due_export_schedules", { p_now: now, p_limit: limit });
+      if (result.error && isSchemaLagError(result.error)) return 0;
+      return Number(must(result));
+    },
+
     async createExportJob(organizationId, input) {
       const data = must(await client
         .from("export_jobs")
@@ -3814,7 +4516,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return toConcept(data as Record<string, unknown>);
     },
 
-    async updateConcept(id, patch) {
+    async updateConcept(id, patch, edit) {
+      if (edit) {
+        const result = await client.rpc("edit_document", { p_document_id: id, p_frontmatter: patch.frontmatter ?? null, p_body: patch.body ?? null, p_actor: edit.actor, p_force_version: edit.forceVersion ?? false });
+        if (!result.error) return toConcept(result.data as Record<string,unknown>);
+        if (edit.forceVersion || !isSchemaLagError(result.error)) throw result.error;
+      }
       const row = patchRow(patch, ["frontmatter", "body"]);
       const data = must(await client
         .from("concepts")
@@ -3929,7 +4636,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // No assistant, so no per-(assistant, source) Direct access grant: a
       // Teammate cites the file, it never hands out a signed original.
       return searchChunkRows(client, query, {
-        rpc: "match_chunks_collections",
+        rpc: query.faqOnly ? "match_chunks_faqs" : "match_chunks_collections",
+        faqCollectionIds: query.faqOnly ? scoped : undefined,
         rpcArgs: { p_collection_ids: scoped },
         lexicalScope: (builder) => builder.in("collection_id", scoped),
         hydrateFor: null,
@@ -3962,7 +4670,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     // --- Publications --------------------------------------------------------
 
-    async createPublication(assistantId, config: PublicationConfig) {
+    async createPublication(assistantId, config: PublicationConfig, createdBy = null) {
       // Read the latest version, insert the next. Two publishes at once pick
       // the same number and unique(assistant_id, version) refuses the second;
       // that one re-reads and takes the next number rather than failing with a
@@ -3978,7 +4686,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         const version = (latest?.version ?? 0) + 1;
         const inserted = await client
           .from("publications")
-          .insert({ id: shortId(), assistant_id: assistantId, version, config })
+          .insert({ id: shortId(), assistant_id: assistantId, version, config, created_by: createdBy })
           .select()
           .single();
         if (inserted.error && (inserted.error as { code?: string }).code === "23505" && attempt < 2) {
@@ -4103,7 +4811,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const cursor = decodeInboxCursor(query.cursor);
       const optionalText = (value: string | undefined) =>
         value?.trim() ? value.trim() : null;
-      const data = must(await client.rpc("get_inbox_page", {
+      const params = {
         p_organization_id: organizationId,
         p_limit: limit,
         p_cursor_updated_at: cursor?.updatedAt ?? null,
@@ -4124,7 +4832,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_feedback: optionalText(query.feedback),
         p_escalation: optionalText(query.escalation),
         p_staff: optionalText(query.staff),
-      }));
+      };
+
+      const result = query.flaggedAnswer
+        ? await client.rpc("get_flagged_inbox_page", { p_organization_id: organizationId, p_query: params })
+        : await client.rpc("get_inbox_page", params);
+      if (query.flaggedAnswer && result.error && isSchemaLagError(result.error)) return { conversations: [], nextCursor: null, qualityAvailable: false };
+      const data = must(result);
 
       type InboxPageRow = {
         id: string;
@@ -4295,6 +5009,135 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("id", id)
         .select("id"));
       assertConversationWritten(data, id);
+    },
+
+    async takeOverConversation({ conversationId, memberId, memberName, now }) {
+      // `.is("operator_member_id", null)` is the whole first-wins rule: the row
+      // is written only if nobody took it between the caller's read and now.
+      const data = must(await client
+        .from("conversations")
+        .update({
+          operator_state: "held",
+          operator_member_id: memberId,
+          operator_name: memberName,
+          operator_held_at: now,
+          waiting_since: null,
+          waiting_help_desk_id: null,
+          waiting_channel_id: null,
+          wait_timeout_minutes: null,
+          // assigned_* are kept: the last-assigned tie-break reads them (#1084).
+          updated_at: now,
+        })
+        .eq("id", conversationId)
+        .is("operator_member_id", null)
+        .select("*")
+        .maybeSingle());
+      return data ? toConversation(data as ConversationRow) : null;
+    },
+
+    async releaseConversation({ conversationId, memberId }) {
+      let query = client
+        .from("conversations")
+        .update({
+          operator_state: "ai",
+          operator_member_id: null,
+          operator_name: null,
+          operator_held_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId)
+        .eq("operator_state", "held");
+      if (memberId) query = query.eq("operator_member_id", memberId);
+      const data = must(await query.select("*").maybeSingle());
+      return data ? toConversation(data as ConversationRow) : null;
+    },
+
+    async startConversationWait(input) {
+      const data = must(await client
+        .from("conversations")
+        .update({
+          operator_state: "waiting",
+          waiting_since: input.now,
+          waiting_help_desk_id: input.helpDeskId,
+          waiting_channel_id: input.channelId,
+          wait_timeout_minutes: input.timeoutMinutes,
+          assigned_member_id: input.assignedMemberId ?? null,
+          assigned_at: input.assignedMemberId ? input.now : null,
+          updated_at: input.now,
+        })
+        .eq("id", input.conversationId)
+        .in("operator_state", ["ai", "waiting"])
+        .select("*")
+        .maybeSingle());
+      return data ? toConversation(data as ConversationRow) : null;
+    },
+
+    async renewOperatorPresence({ organizationId, memberId, now }) {
+      const { data, error } = await client.rpc("renew_operator_presence", { p_org: organizationId, p_member: memberId, p_now: now });
+      if (error && ["PGRST202", "42883"].includes(error.code)) return false;
+      if (error) throw error;
+      return data === true;
+    },
+
+    async assignWaitingConversation({ conversationId, memberId, now }) {
+      const data = must(await client
+        .from("conversations")
+        .update({ assigned_member_id: memberId, assigned_at: now })
+        .eq("id", conversationId)
+        .eq("operator_state", "waiting")
+        // First assignment wins: two assigners racing cannot both land, so
+        // an operator is never put over capacity by a lost update.
+        .is("assigned_member_id", null)
+        .select("*")
+        .maybeSingle());
+      return data ? toConversation(data as ConversationRow) : null;
+    },
+
+    async listOperatorAssignments(organizationId, since) {
+      const { data, error } = await client
+        .from("conversations")
+        .select("assigned_member_id, assigned_at, assistants!inner(organization_id)")
+        .eq("assistants.organization_id", organizationId)
+        .gte("assigned_at", since)
+        .order("assigned_at", { ascending: false })
+        .limit(1000);
+      if (error && isSchemaLagError(error)) return [];
+      if (error) throw error;
+      return (data as Array<{ assigned_member_id: string | null; assigned_at: string | null }>)
+        .filter((row) => row.assigned_member_id && row.assigned_at)
+        .map((row) => ({ memberId: row.assigned_member_id!, assignedAt: row.assigned_at! }));
+    },
+
+    async listOperatorConversations(organizationId) {
+      // A wait that ran out keeps its stored state until the Conversation
+      // changes again, so only waits young enough to still be on are read:
+      // the longest timeout a channel may set is 60 minutes.
+      const freshWaits = new Date(Date.now() - (MAX_WAIT_TIMEOUT_MINUTES + 1) * 60_000).toISOString();
+      const [held, waiting] = await Promise.all([
+        client
+          .from("conversations")
+          .select("*, assistants!inner(organization_id)")
+          .eq("assistants.organization_id", organizationId)
+          .eq("operator_state", "held")
+          .order("updated_at", { ascending: false })
+          .limit(500),
+        client
+          .from("conversations")
+          .select("*, assistants!inner(organization_id)")
+          .eq("assistants.organization_id", organizationId)
+          .eq("operator_state", "waiting")
+          .gte("waiting_since", freshWaits)
+          .order("waiting_since", { ascending: true })
+          .limit(500),
+      ]);
+      for (const { error } of [held, waiting]) {
+        // One migration behind (#1082 not applied yet): nothing can be waiting.
+        if (error && isSchemaLagError(error)) return [];
+        if (error) throw error;
+      }
+      return [...(held.data ?? []), ...(waiting.data ?? [])].map((row) =>
+        toConversation(row as ConversationRow)
+      );
     },
 
     async setConversationLegalHold(id, legalHold) {
@@ -4537,6 +5380,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as MessageRow[]).map(toStoredMessage);
     },
 
+    async recordMessageModeration(organizationId, messageId, check) {
+      must(await client.rpc("record_message_moderation", { p_organization_id: organizationId, p_message_id: messageId, p_check: check }));
+    },
+
     async getMessage(id) {
       const data = must(await client
         .from("messages")
@@ -4558,6 +5405,39 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as MessageRow[])
         .map(toStoredMessage)
         .reverse();
+    },
+
+    async appendOperatorMessage(input) {
+      const now = new Date().toISOString();
+      const data = must(await client
+        .from("messages")
+        .insert({
+          id: shortId(),
+          conversation_id: input.conversationId,
+          role: input.role,
+          content: [{ type: "text", text: input.text }],
+          author_member_id: input.authorMemberId,
+          author_name: input.authorName,
+        })
+        .select()
+        .single());
+      await client
+        .from("conversations")
+        .update({ updated_at: now })
+        .eq("id", input.conversationId);
+      return toStoredMessage(data as MessageRow);
+    },
+
+    async listMessagesSince(conversationId, after) {
+      const data = must(await client
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .gte("created_at", after)
+        .order("created_at", { ascending: true })
+        .order("seq", { ascending: true })
+        .limit(100));
+      return (data as MessageRow[]).map(toStoredMessage);
     },
 
     async appendMessage(input) {
@@ -4730,7 +5610,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       must(await client
         .from("messages")
         .update({ feedback, feedback_reaction: reaction })
-        .eq("id", messageId));
+        .eq("id", messageId)
+        // Feedback rates an AI answer; an operator reply or a system line is
+        // not one (#1082), so a vote on it changes nothing.
+        .eq("role", "assistant"));
     },
 
     async listTraceRetentionPolicies() {
@@ -4802,6 +5685,35 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         }));
     },
 
+    async listRetentionPolicies(kind) {
+      const column = kind === "messages" ? "message_retention_days" : "improvement_retention_days";
+      const { data, error } = await client.from("organizations").select(`id, ${column}`);
+      // No column yet means no policy anywhere: nothing to sweep.
+      if (error && isSchemaLagError(error)) return [];
+      if (error) throw error;
+      return (data as unknown as Array<Record<string, unknown> & { id: string }>)
+        .filter((org) => typeof org[column] === "number")
+        .map((org) => ({ organizationId: org.id, retentionDays: org[column] as number }));
+    },
+
+    async deleteExpiredMessages(organizationId, cutoffIso, limit) {
+      const { data, error } = await sweepRpc(
+        client, "delete_expired_messages", organizationId, cutoffIso, limit
+      );
+      if (error && isSchemaLagError(error)) return 0;
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+
+    async deleteExpiredImprovements(organizationId, cutoffIso, limit) {
+      const { data, error } = await sweepRpc(
+        client, "delete_expired_improvements", organizationId, cutoffIso, limit
+      );
+      if (error && isSchemaLagError(error)) return 0;
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+
     async deleteExpiredConversations(organizationId, cutoffIso, limit) {
       const { data, error } = await sweepRpc(
         client, "delete_expired_conversations", organizationId, cutoffIso, limit
@@ -4848,8 +5760,26 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }
     },
 
+    async createImprovementValidation(organizationId, input) {
+      await requireValidationTargets(this, organizationId, input);
+      return supabaseTable(client, "improvementValidations").insert({ ...input, organizationId });
+    },
+    async getAssistantValidationSnapshot(assistantId) {
+      return must(await client.rpc("assistant_validation_snapshot", { target: assistantId })) as string;
+    },
+
     async listImprovementsPage(organizationId, input) {
       const { limit, beforeSeq, status } = normalizeImprovementPageInput(input);
+      const filters = improvementFilters(input);
+      if (filters) {
+        // One SQL predicate (`matching_improvements`) serves this page, the
+        // lane counts and the Rust port, so a filter never runs over a window.
+        const result = must(await client.rpc("query_improvements", {
+          org: organizationId, filters, page_limit: limit, before_seq: beforeSeq, lane: status,
+        }));
+        const rows = (result as Array<{ item: ImprovementRow & { message_count: number } }>).map(({ item }) => item);
+        return finalizeImprovementPage(rows.map((row) => ({ ...toImprovement(row), messageCount: Number(row.message_count) })), limit);
+      }
       let query = client
         .from("improvements")
         .select("*, improvement_messages(id.count())")
@@ -4875,7 +5805,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return finalizeImprovementPage(mapped, limit);
     },
 
-    async countImprovementsByStatus(organizationId) {
+    async countImprovementsByStatus(organizationId, query = {}) {
+      const filters = improvementFilters(query);
+      if (filters) {
+        const rows = must(await client.rpc("count_filtered_improvements", { org: organizationId, filters })) as Array<{ status: ImprovementStatus; total: number }>;
+        return Object.fromEntries(IMPROVEMENT_STATUS_VALUES.map((status) => [status, Number(rows.find((row) => row.status === status)?.total ?? 0)])) as Record<ImprovementStatus, number>;
+      }
       // Five indexed head counts in parallel rather than one grouped
       // aggregate: `count: "exact", head: true` is plain PostgREST, so this
       // read needs none of the aggregate configuration the embedded
@@ -4909,17 +5844,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         { org: organizationId }
       ));
       const id = shortId();
-      const data = must(await client
-        .from("improvements")
-        .insert({
-          id,
-          organization_id: organizationId,
-          seq: seq as number,
-          title: input.title,
-          created_by: input.createdBy ?? null,
-        })
-        .select()
-        .single());
+      const linked = input.messageId ? await this.getMessage(input.messageId) : null;
+      const conversation = linked ? await this.getConversation(linked.conversationId) : null;
+      const insert = (withEventData: boolean) => client.from("improvements").insert({
+        id, organization_id: organizationId, seq: seq as number, title: input.title,
+        description: input.description ?? "", created_by: input.createdBy ?? null,
+        ...(withEventData ? {
+          webhook_source: input.source ?? "manual",
+          webhook_assistant_id: input.assistantId ?? conversation?.assistantId ?? null,
+          // Message-derived titles stay inside Ciele; events use the public key.
+          webhook_title: input.messageId || input.source === "flow_action" || input.source === "escalation" ? `Improvement IMP-${seq}` : input.title,
+        } : {}),
+      }).select().single();
+      let result = await insert(true);
+      if (result.error && isSchemaLagError(result.error)) result = await insert(false);
+      const data = must(result);
       if (input.messageId) {
         must(await client
           .from("improvement_messages")
@@ -5287,7 +6226,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async listOrgKnowledgeSources(organizationId, filter) {
       // SQL filters/counts the match set and hydrates only the requested page.
       // Keep the old read during the deploy-before-migrate window.
-      const result = await client.rpc("get_org_knowledge_source_page", {
+      const params = {
         p_organization_id: organizationId,
         p_kinds: filter.kinds,
         p_status: filter.status || null,
@@ -5297,7 +6236,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_page_size: filter.pageSize ?? 25,
         p_sort: filter.sort ?? null,
         p_ascending: filter.ascending ?? false,
-      });
+      };
+      let result = await client.rpc("get_library_quality_page", { ...params, p_unused: filter.unused ?? false });
+      if (result.error && isSchemaLagError(result.error)) result = await client.rpc("get_org_knowledge_source_page", params);
       if (!result.error) return result.data as OrgKnowledgeSourcePage;
       if (!isSchemaLagError(result.error)) throw result.error;
 
@@ -5527,19 +6468,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // the frontmatter, and the chunk `exists()` that separates Ready from
       // Pending. Filtering a fetched page instead gives a footer count that
       // disagrees with the rows under it.
-      const result = await client.rpc("get_source_document_page", {
+      const params = {
         p_source_id: sourceId,
         p_page: page,
         p_page_size: pageSize,
         p_sort: options?.sort ?? null,
         p_ascending: ascending,
         p_status: options?.status ?? null,
-      });
+      };
+      let result = await client.rpc("get_source_document_quality_page", { ...params, p_trust: options?.trustTier ?? null });
+      const qualityAvailable = !result.error;
+      if (result.error && isSchemaLagError(result.error)) result = await client.rpc("get_source_document_page", params);
       if (!result.error) {
-        return result.data as {
-          items: SourceDocumentListItem[];
-          total: number;
-        };
+        return { ...(result.data as { items: SourceDocumentListItem[]; total: number }), qualityAvailable };
       }
       if (!isSchemaLagError(result.error)) throw result.error;
 
@@ -5594,6 +6535,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           };
         }),
         total: count ?? rows.length,
+        qualityAvailable: false,
       };
     },
 
@@ -5981,32 +6923,40 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async recordAiUsage(rows) {
       if (rows.length === 0) return;
+      const records = rows.map((r) => ({
+        organization_id: r.organizationId,
+        assistant_id: r.assistantId,
+        conversation_id: r.conversationId ?? null,
+        message_id: r.messageId ?? null,
+        stage: r.stage,
+        provider: r.provider,
+        model_id: r.modelId,
+        credential_kind: r.credentialKind ?? null,
+        input_tokens: r.inputTokens,
+        output_tokens: r.outputTokens,
+        cache_read_tokens: r.cacheReadTokens ?? 0,
+        cache_write_tokens: r.cacheWriteTokens ?? 0,
+        // Attribution (#848): absent optionals normalize to null, matching
+        // what the columns store, so the two implementations cannot disagree
+        // about `undefined` vs `null`.
+        member_id: r.spenders?.memberId ?? null,
+        teammate_id: r.spenders?.teammateId ?? null,
+        api_key_id: r.spenders?.apiKeyId ?? null,
+        routine_id: r.spenders?.routineId ?? null,
+        flow_id: r.spenders?.flowId ?? null,
+        surface: r.surface ?? null,
+        // Which pocket paid (#851). A row with no funding is a plan row, the
+        // column's default and the only kind an open-source build writes.
+        funding: r.funding ?? "plan",
+        credits_micro: r.creditsMicro ?? null,
+      }));
+      const { error } = await client.from("ai_usage").insert(records);
+      if (!error) return;
+      if (!isSchemaLagError(error)) throw error;
+      // One migration behind (20261028170000_ai_usage_cache_tokens): the
+      // cache columns are measurement, the spend is not, so keep the spend.
       must(await client.from("ai_usage").insert(
-        rows.map((r) => ({
-          organization_id: r.organizationId,
-          assistant_id: r.assistantId,
-          conversation_id: r.conversationId ?? null,
-          message_id: r.messageId ?? null,
-          stage: r.stage,
-          provider: r.provider,
-          model_id: r.modelId,
-          credential_kind: r.credentialKind ?? null,
-          input_tokens: r.inputTokens,
-          output_tokens: r.outputTokens,
-          // Attribution (#848): absent optionals normalize to null, matching
-          // what the columns store, so the two implementations cannot disagree
-          // about `undefined` vs `null`.
-          member_id: r.spenders?.memberId ?? null,
-          teammate_id: r.spenders?.teammateId ?? null,
-          api_key_id: r.spenders?.apiKeyId ?? null,
-          routine_id: r.spenders?.routineId ?? null,
-          flow_id: r.spenders?.flowId ?? null,
-          surface: r.surface ?? null,
-          // Which pocket paid (#851). A row with no funding is a plan row, the
-          // column's default and the only kind an open-source build writes.
-          funding: r.funding ?? "plan",
-          credits_micro: r.creditsMicro ?? null,
-        }))
+        records.map(({ cache_read_tokens: _r, cache_write_tokens: _w, ...rest }) => rest)
       ));
     },
 
@@ -6273,6 +7223,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         }),
       );
     },
+    async getModerationCounts(organizationId, from, to, assistantId) {
+      const result = await client.rpc("get_moderation_counts", { p_organization_id: organizationId, p_from: from, p_to: to, p_assistant_id: assistantId || null });
+      if (result.error && isSchemaLagError(result.error)) return null;
+      const data = must(result) as { visitors?: number; answers?: number };
+      return { visitors: Number(data.visitors ?? 0), answers: Number(data.answers ?? 0) };
+    },
+
     async getOrgDashboardFacts(organizationId, from, to) {
       const args = { p_organization_id: organizationId, p_from: from, p_to: to };
       // Four independent reads over the same window; none depends on another.
@@ -6359,7 +7316,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async recordRuntimeEvent(event) {
-      must(await client.from("runtime_events").insert({
+      const row = {
         organization_id: event.organizationId,
         assistant_id: event.assistantId ?? null,
         conversation_id: event.conversationId ?? null,
@@ -6381,9 +7338,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         page_count: event.pageCount ?? null,
         error_class: event.errorClass ?? null,
         error_message: event.errorMessage ?? null,
+        outcome: event.outcome ?? null,
         trace_id: event.traceId ?? null,
         span_id: event.spanId ?? null,
-      }));
+      };
+      const full = event.timings ? { ...row, timings: event.timings } : row;
+      const result = await client.from("runtime_events").insert(full);
+      if (!result.error) return;
+      if (!isSchemaLagError(result.error)) throw result.error;
+      // One migration behind (20261021120000 timings, 20261028171000 outcome),
+      // PostgREST refuses the whole row, so the event is written without the
+      // newer columns rather than lost (#1112).
+      const { outcome: _outcome, ...withoutOutcome } = row;
+      must(await client.from("runtime_events").insert(withoutOutcome));
     },
 
     async recordObjectAccess(event) {

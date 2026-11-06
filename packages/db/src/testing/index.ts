@@ -15,3 +15,5 @@
  */
 export { createSchemaLoadedPglite } from "./supabase-contract-harness";
 export { createPgliteSupabaseClient } from "./postgrest-shim";
+/** Operation-layer integration tests need the real Db seam across two Organizations. */
+export { createSupabaseContractContext } from "./supabase-contract-harness";

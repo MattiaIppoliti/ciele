@@ -16,11 +16,11 @@ Der Keyword Router bietet einen Offline- und einen Fehler-Fallback. Beide Router
 verwenden denselben Candidate Filter.
 
 Der gesperrte **Default behavior** Flow bleibt an letzter Stelle. Es verarbeitet
-eine berechtigte Nachricht, wenn kein früherer Flow ausgewählt wird.
+eine infrage kommende Nachricht, wenn kein früherer Flow den Vorrang erhält.
 
 ## Proaktive Flows
 
-Diese Trigger klassifizieren keine Nachricht:
+Diese Trigger klassifizieren eine Nachricht nicht:
 
 - **On page load**
 - **Time on page**
@@ -34,9 +34,30 @@ Siehe [Notifications](/flows/notifications).
 Ordnen Sie spezifische Nachrichten-Flows vor allgemeinen Nachrichten-Flows an.
 Die Reihenfolge steuert auch den integrierten Shortcut „Basic Interaction“.
 
-Ein früher übereinstimmender benutzerdefinierter Flow kann eine
-Höflichkeitsnachricht vor dem integrierten Basic Interaction Flow verarbeiten.
+Ein früher passender benutzerdefinierter Flow kann eine Höflichkeitsnachricht
+vor dem integrierten Basic Interaction Flow verarbeiten.
 
 Wenn [Study Mode](/assistants/tools-and-skills#enable-study-mode) aktiviert ist,
 wird eine Anfrage für eine Lernübung direkt an den Study Mode Flow
 weitergeleitet. Für diese Anfrage wird keine Intent-Klassifizierung ausgeführt.
+
+
+## Zeitplan mit Geschäftszeiten
+
+Die Bedingung **Schedule** bietet ein **Absolute window** oder ein **Business
+hours**. Wählen Sie für Geschäftszeiten einen benannten Organisationszeitplan
+aus und wählen Sie **During business hours** oder **Outside business hours**.
+Beide Optionen berücksichtigen die Feiertage und die Zeitzone des Zeitplans. Für
+ein absolutes Zeitfenster legen Sie den Start, optional das Ende und die
+Zeitzone fest. Eine neue Bedingung beginnt mit der Standardzeitzone der
+Organisation.
+
+Schedule ist eine harte Barriere vor der Intent Classification. Es wird nicht in
+den Classifier-Prompt eingegeben. Ein veröffentlichter Flow liest die
+Geschäftszeiten in Echtzeit aus, sodass ein bearbeiteter Feiertag ohne erneute
+Veröffentlichung wirksam wird. Der Editor meldet einen fehlenden Zeitplan. Zur
+Laufzeit ist ein fehlender Zeitplan unter Verwendung der vorhandenen
+Any/All-Regeln nicht auswertbar. Ein Zeitplan, der von einem Editor-Flow oder
+der letzten Veröffentlichung verwendet wird, kann nicht gelöscht werden. Die
+Ablehnung nennt den Flow. Proactive-Trigger-Flows haben nach wie vor keine
+Bedingungen.

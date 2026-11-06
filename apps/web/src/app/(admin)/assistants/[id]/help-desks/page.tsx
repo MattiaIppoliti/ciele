@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
-import { Phone } from "lucide-react";
 import { AssistantHelpDesks } from "@/components/assistant/assistant-help-desks";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { requirePageMember } from "@/lib/authz";
-import { canEdit } from "@/lib/rbac";
+import { requirePageMember, requireAssistantPageAccess } from "@/lib/authz";
+import { can } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
 
 export default async function HelpDesksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { role, db } = await requirePageMember();
+  const { db } = await requirePageMember();
+  const { access } = await requireAssistantPageAccess(id);
   const assistant = await getAssistantCached(id);
   if (!assistant) notFound();
   const desks = await db.listHelpDesks(assistant.organizationId);
@@ -16,7 +16,6 @@ export default async function HelpDesksPage({ params }: { params: Promise<{ id: 
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
-        icon={Phone}
         title="Help desks"
 
       />
@@ -24,7 +23,7 @@ export default async function HelpDesksPage({ params }: { params: Promise<{ id: 
         assistantId={id}
         settings={assistant.helpDeskSettings}
         desks={desks}
-        canEdit={canEdit(role)}
+        canEdit={can(access, "assistants:edit")}
       />
     </div>
   );

@@ -50,7 +50,7 @@ export function FeatureCard({ feature }: { feature: Feature }) {
           <MorphingDialogTrigger
             style={{ borderRadius: "15px" }}
             ariaLabel={`Learn more about ${feature.title}`}
-            className="bg-card flex h-full flex-col overflow-hidden text-left"
+            className="bg-card flex h-full w-full flex-col overflow-hidden text-left"
           >
             <div className="border-b">{feature.visual(false)}</div>
             <div className="flex grow flex-col p-5">

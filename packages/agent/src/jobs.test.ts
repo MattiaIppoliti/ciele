@@ -4,6 +4,7 @@ import type { BackgroundJob } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { enqueueIngestJob, runDueJobs } from "./jobs";
 import { ingestSource } from "./ingest";
+import { activeTurnClock, timedSync } from "./turn-clock";
 
 vi.mock("./ingest", () => ({
   ingestSource: vi.fn(),
@@ -61,6 +62,46 @@ beforeEach(() => {
 });
 
 describe("runDueJobs, ingest_source", () => {
+  it("records where an ingest job's time went as an ingest_job event (#1112)", async () => {
+    vi.mocked(ingestSource).mockImplementation(async (options) => {
+      await options.db.getSource("s1");
+      timedSync("parse", () => "hello".split(" "));
+      activeTurnClock()?.countConcepts(1);
+      return true;
+    });
+    const recordRuntimeEvent = vi.fn().mockResolvedValue(undefined);
+    const db = fakeDb({
+      claimBackgroundJobs: vi.fn().mockResolvedValueOnce([job()]) as Db["claimBackgroundJobs"],
+      recordRuntimeEvent,
+    });
+    await runDueJobs({ db }, { kinds: ["ingest_source"], workerId: "worker1" });
+    expect(recordRuntimeEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org1",
+        assistantId: "a1",
+        kind: "ingest_job",
+        status: "succeeded",
+        timings: expect.objectContaining({ concepts: 1, jobsInFlight: 1, overlap: 1 }),
+      })
+    );
+    const timings = recordRuntimeEvent.mock.calls[0]![0].timings;
+    expect(timings.dbMs).toBeGreaterThanOrEqual(0);
+    expect(timings.waitMs).toBeGreaterThanOrEqual(timings.parseMs);
+  });
+
+  it("records a failed ingest job as a failed ingest_job event", async () => {
+    vi.mocked(ingestSource).mockResolvedValue(false);
+    const recordRuntimeEvent = vi.fn().mockResolvedValue(undefined);
+    const db = fakeDb({
+      claimBackgroundJobs: vi.fn().mockResolvedValueOnce([job()]) as Db["claimBackgroundJobs"],
+      recordRuntimeEvent,
+    });
+    await runDueJobs({ db }, { kinds: ["ingest_source"], workerId: "worker1" });
+    expect(recordRuntimeEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "ingest_job", status: "failed", errorClass: expect.any(String) })
+    );
+  });
+
   it("marks a claimed job succeeded and a second run does not ingest it again", async () => {
     const db = fakeDb({
       claimBackgroundJobs: vi
@@ -508,6 +549,7 @@ describe("runDueJobs (generic ledger)", () => {
     const kinds = claim.mock.calls.map((call) => call[0].kind).sort();
     expect(kinds).toEqual([
       "answer_slack_mention",
+      "deliver_outbound_webhook",
       "deliver_review_request",
       "distill_agent_memory",
       "draft_goal_proposal",
@@ -516,9 +558,14 @@ describe("runDueJobs (generic ledger)", () => {
       // (#930). Like every other kind, the cron drain claims it unasked.
       "extract_document_memories",
       "ingest_source",
+      "notify_export_ready",
       "promote_memories",
+      // One bounded synthetic replay of an Improvement's question.
+      "replay_improvement",
       "resume_reviewed_conversation",
       "resume_webhook_conversation",
+      "score_assistant_answer",
+      "summarize_conversation",
       "sync_application_import",
     ]);
     expect(result).toEqual({

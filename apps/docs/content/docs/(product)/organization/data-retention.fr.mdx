@@ -1,69 +1,103 @@
 ---
 title: Conservation des données
-description: Définissez la durée de conservation des conversations et des traces de raisonnement, et conservez une conversation de plus.
+description: Définissez la durée de conservation des conversations, des messages, des améliorations et des enregistrements d'audit, et conservez une conversation de plus.
 ---
 
-Une organisation définit deux périodes de conservation dans **Settings**, dans
-l'onglet **General**. Les deux sont désactivées par défaut : rien n'est supprimé
-tant qu'un administrateur n'a pas sélectionné une fenêtre.
+Une organisation définit ses durées de conservation dans **Settings**, dans
+l’onglet **Data retention**. Chaque type de données dispose d’une période **Keep
+for** et d’un commutateur **Auto-delete**. **Auto-delete** est désactivé par
+défaut pour les conversations, les messages et les améliorations : rien n’est
+supprimé tant qu’un administrateur ne l’active pas.
 
-## Les deux fenêtres
+## Les types de données
 
-| Paramètre | Ce que le nettoyage nocturne effectue après la période définie |
+| Type de données | Ce que le nettoyage nocturne effectue après la période |
 | --- | --- |
-| **Reasoning trace retention** | Supprime le panneau Thinking des anciens messages. Les messages sont conservés. |
-| **Conversation retention** | Supprime l'ensemble de la conversation, transcription comprise. Il supprime également les mémoires à long terme concernant un Visiteur qui n'ont pas été mises à jour pendant la fenêtre. Il supprime également l'activité des Projects et des Tasks qui est antérieure à la fenêtre. |
+| **Conversations** | Supprime l'ensemble de la conversation et ses messages. Il supprime également les mémoires à long terme concernant un visiteur qui n’ont pas été mises à jour pendant la période. Il supprime également l’activité des Projects et des Tasks qui est antérieure à la période. |
+| **Messages** | Supprime les anciens messages des conversations qui sont conservées. La transcription dans **Inbox** indique que des messages antérieurs ont été supprimés. |
+| **Improvements** | Supprime les améliorations qui n’ont pas été mises à jour au cours de la période, quel que soit leur statut. |
+| **Audit records** | Supprime les entrées du journal d’audit qui sont plus anciennes que la période. Ce type est **Always on**. La période par défaut est de 180 jours. |
 
-Les deux fenêtres sont indépendantes. Une organisation peut définir l'une, les
-deux ou aucune de ces options. Par exemple, conservez les transcriptions pendant
-un an, mais supprimez les traces de raisonnement après 30 jours.
+Chaque période est comprise entre 1 mois et 5 ans. Un mois correspond à 30 jours
+et une année à 365 jours. Une période en dehors de ces limites génère une
+erreur, et **Save changes** reste indisponible.
 
-Un nettoyage s'exécute une fois par nuit. Il calcule la fenêtre à partir du
-dernier message de la conversation, et non du premier. Une conversation encore
-en cours d'utilisation n'est pas supprimée, quelle que soit la date à laquelle
-elle a commencé. Le nettoyage est définitif : une conversation supprimée n'est
-pas transférée dans une corbeille.
+Les types de données sont indépendants. Par exemple, conservez les conversations
+pendant deux ans, mais supprimez les messages après six mois.
 
-<Callout type="warn" title="Conversation retention deletes data">
-After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+## Comment les périodes sont mesurées
+
+- La période d'une conversation commence à son dernier message, et non à son
+  premier message. Avec une période de 30 jours, une conversation qui a débuté
+  il y a 3 mois et dont le dernier message a été reçu il y a 10 jours est
+  conservée pendant encore 20 jours.
+- La période d’un message commence au moment où le message est envoyé.
+- La période d’une amélioration commence à sa dernière mise à jour.
+
+## Ce que fait la suppression
+
+- Le nettoyage s'exécute une fois par nuit.
+- La suppression est définitive. Les données supprimées ne sont pas transférées
+  vers une corbeille et vous ne pouvez pas les récupérer.
+- Les données supprimées n’apparaissent plus dans **Inbox**, dans **Insights**,
+  dans les exportations, dans l’historique des conversations ni dans
+  **Improvements**. Le journal d’audit n’enregistre jamais le contenu des
+  messages ni des conversations.
+- Lorsque le nettoyage supprime un message, les améliorations qui lui sont liées
+  sont conservées. Elles n’affichent plus ce message.
+- Lorsque vous désactivez **Auto-delete**, le nettoyage s'arrête. Les données
+  précédemment supprimées par le nettoyage ne sont pas restaurées.
+
+<Callout type="warn" title="Retention deletes data">
+Export what you must keep before you turn on **Auto-delete** or shorten a period.
 </Callout>
 
-## Définir une fenêtre
+## Définir une période
 
 1. Ouvrez **Settings**.
-2. Restez sur l'onglet **General**.
-3. Sélectionnez une fenêtre sous **Reasoning trace retention** ou **Conversation
-   retention**.
-4. Sélectionnez **Save changes**.
+2. Sélectionnez l’onglet **Data retention**.
+3. Activez **Auto-delete** pour le type de données.
+4. Saisissez un nombre sous **Keep for** et sélectionnez **Days**, **Months** ou
+   **Years**.
+5. Sélectionnez **Save changes**.
 
-Si la nouvelle fenêtre est plus courte que la fenêtre actuelle, Ciele vous
-demande de confirmer. Le prochain nettoyage nocturne supprime les données les
-plus anciennes.
+Si la modification entraîne une suppression ou raccourcit une période, Ciele
+vous demande de confirmer. Le prochain nettoyage nocturne supprime les données
+les plus anciennes. Sélectionnez **Cancel** pour revenir aux paramètres
+enregistrés.
 
-Seul un membre autorisé à gérer les membres peut modifier ces paramètres.
+Seul un membre autorisé à gérer les membres peut modifier ces paramètres. Chaque
+modification apparaît dans le journal d’audit.
 
-## Mise en suspens pour raisons juridiques
+## Traces de raisonnement
 
-Une mise en suspens pour raisons juridiques (legal hold) exempte une
-conversation du nettoyage de conservation des conversations. Utilisez-la
-lorsqu'une obligation de conservation s'applique à une conversation, sans
-désactiver la conservation pour toutes les autres conversations.
+L’onglet **General** comporte une fenêtre supplémentaire, **Reasoning trace
+retention**. Après cette fenêtre, le nettoyage nocturne supprime le panneau
+Thinking des anciens messages. Les messages, eux, sont conservés.
+
+## Mise en suspens pour motif juridique
+
+Une mise en suspens légale (legal hold) exempte une conversation du nettoyage de
+conservation. Le nettoyage ne supprime ni la conversation ni ses messages.
+Utilisez une mise en suspens lorsqu’une obligation de conservation s’applique à
+une conversation, sans désactiver la conservation pour toutes les autres
+conversations.
 
 1. Ouvrez **Inbox** et sélectionnez la conversation.
-2. Ouvrez le panneau details.
+2. Ouvrez le panneau Details.
 3. Sélectionnez **Place legal hold** dans la carte **Retention**.
 
-La suspension reste en vigueur jusqu'à ce qu'un membre sélectionne **Release
-legal hold**. Chaque membre voit le statut de suspension. Seul un membre
-autorisé à gérer les membres peut placer ou lever une mise en attente.
+La suspension reste en place jusqu’à ce qu’un membre sélectionne **Release legal
+hold**. Chaque membre voit le statut de suspension. Seul un membre autorisé à
+gérer les membres peut placer ou lever une mise en attente.
 
-Une conversation mise en attente ne peut pas être supprimée. Cela s'applique à
-l'Inbox, à l'API, au nettoyage de rétention et à la suppression de l'assistant
+Une conversation mise en attente ne peut pas être supprimée. Cela s’applique à
+l’Inbox, à l’API, au nettoyage de rétention et à la suppression de l’assistant
 propriétaire de la conversation. Pour supprimer une conversation mise en attente
-ou son assistant, levez d'abord la mise en attente.
+ou son assistant, levez d’abord la mise en attente.
 
 ## Installations auto-hébergées
 
-Le nettoyage nocturne s'exécute à partir du planificateur intégré. Aucune
+Le nettoyage nocturne s’exécute à partir du planificateur intégré. Aucune
 configuration supplémentaire n'est nécessaire. Le nettoyage appelle
-`/api/cron/sweep-retention` avec l'identifiant `CRON_SECRET`.
+`/api/cron/sweep-retention` avec l’identifiant `CRON_SECRET`.

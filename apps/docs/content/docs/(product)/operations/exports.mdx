@@ -49,3 +49,25 @@ ciele conversations export <conversation-id> --out export.json
 ```
 
 The MCP `read_inbox` tool can also request an export. Its export action remains available in MCP read-only mode.
+
+## Schedule an Insights export
+
+In **New export**, enable scheduling after selecting the report name, filters, export type, and file type.
+
+Choose a weekly weekday or a monthly day, an hour in UTC, and recipients from the Organization's Members. The interface also shows your local time.
+
+Weekly reports cover the last seven complete UTC days. Monthly reports cover the previous calendar month. Day 31 uses the month's last day when needed.
+
+**Exports** lists schedules and their recipients. Editors can pause, resume, or delete a schedule. Deleting a schedule keeps previously generated files.
+
+Each due slot creates one normal export job. After downtime, the worker creates only the latest missed report. It does not replay every missed slot.
+
+Recipients receive an email when the file is ready. The email links to the console and requires sign-in. It contains no report data or attachment.
+
+Members who leave the Organization are removed from recipient lists. A schedule with no remaining recipients pauses automatically.
+
+A failed scheduled export raises an operational Alert. The next successful run resolves it. Email failures raise a separate Alert.
+
+The authenticated worker must drain exports at least every five minutes. The external Docker worker supports this schedule on Vercel Hobby.
+
+API clients manage schedules under `/api/v1/exports/schedules`. MCP exposes export-schedule actions through `manage_configuration`.

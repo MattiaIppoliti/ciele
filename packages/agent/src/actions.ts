@@ -499,8 +499,10 @@ const searchKnowledgeHandler: ActionHandler = async ({
       narrate,
       showPart,
       untrustedNonce,
+      skillIndex,
     }) =>
       buildToolset({
+        skillIndex,
         studyRequest: message,
         chooseStudyFormat,
         assistant,
@@ -543,7 +545,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
   // referring should keep the card, or the Member is told to go somewhere and
   // then shown no way to get there.
   if (outcome.terminal) {
-    return { parts: [...outcome.parts, ...referralParts] };
+    return { parts: [...outcome.parts, ...referralParts], ending: outcome.ending };
   }
 
   const parts = [...outcome.parts, ...referralParts];
@@ -562,7 +564,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
           },
         ]
       : undefined;
-  return { parts, effects };
+  return { parts, effects, ending: outcome.ending };
 };
 
 /** Flags the answer for the Improvements tracker, silent (no user-visible part). */
@@ -989,7 +991,7 @@ const basicReply: ActionHandler = async ({
   const trimmed = text.trim();
   if (!trimmed) return verbatim(DEFAULT_BASIC_REPLY);
   // Already streamed, so the part is persisted rather than re-emitted.
-  return { parts: [{ type: "text", action: "basic_reply", text: trimmed }] };
+  return { parts: [{ type: "text", action: "basic_reply", text: trimmed, generated: true }] };
 };
 
 /**

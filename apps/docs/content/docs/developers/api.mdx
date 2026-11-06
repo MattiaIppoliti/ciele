@@ -29,6 +29,10 @@ curl https://ciele.app/api/v1/whoami \
 
 For self-hosting, replace `https://ciele.app` with the public Ciele origin.
 
+The response includes `capabilities`: the capabilities of the key. A key can do only what its Role and its creator can both do.
+
+On an operation for one Assistant, the Role of the creator on that Assistant applies. If only that Assistant Role refuses the operation, the API returns `404`, the same as for an Assistant that does not exist.
+
 ## Response errors
 
 Errors use one JSON envelope:
@@ -73,7 +77,7 @@ These are examples. The [API reference](/api-reference) lists the complete, curr
 - Improvements: list, read, and update items.
 - Memories: inspect settings and perform scoped Memory erasure.
 - SSO: manage identity claims, connection settings, validation, and disconnection.
-- Help Desks: manage desks, escalation channels, ordering, and ServiceNow.
+- Help Desks: manage desks, escalation channels, ordering, and the ticketing target.
 - Teammates: manage AI Teammates and read your own Teammate conversations.
 - Projects: manage Projects, their milestones, and the Project documents that Teammates read.
 - Tasks: list, read, create, change, archive, and delete Tasks, comment on them, and manage task Labels.
@@ -84,12 +88,16 @@ These are examples. The [API reference](/api-reference) lists the complete, curr
   There is no endpoint to send a message: a message starts a chain of teammate
   replies, and that runs in the console.
 - Configuration: manage Skills, Assistant Goals, and operational Alerts.
-- Organization: manage settings, Members, Invites, and API keys.
+- Organization: manage settings, Members, Invites, and API keys. Limit a Member to selected Assistants.
 - Integrations: manage Assistant API integrations and model Provider Connections.
 - Usage: read the plan's meters and who spent a window's credits. Read-only.
   The spender breakdown keeps its dimensions apart. One answer names both the
   teammate that ran and the colleague who asked, so adding the dimensions
   together counts it twice. Buying credits has no endpoint: a purchase belongs
   on a screen where a person confirms an amount.
+- Audit log: read who changed what, from which surface, with the value before
+  and after for role, invitation, key, access and settings changes. Read-only.
+  Filter by action, actor and date. To read further back, send the
+  `createdAt` and `id` of the last entry you have as `before` and `beforeId`.
 
 Use the OpenAPI document for request fields, authentication, and documented response status codes.

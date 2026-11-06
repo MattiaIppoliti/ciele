@@ -35,7 +35,7 @@ const labelEntities = () => [
 
 export const listTaskLabelsOp = defineOperation({
   name: "taskLabels.list",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -45,7 +45,7 @@ export const listTaskLabelsOp = defineOperation({
 
 export const createTaskLabelOp = defineOperation({
   name: "taskLabels.create",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ name, color: z.enum(WORK_COLORS).default("gray") }),
   entities: labelEntities,
@@ -64,7 +64,7 @@ export const taskLabelPatchSchema = z.object({ name, color: z.enum(WORK_COLORS) 
 
 export const updateTaskLabelOp = defineOperation({
   name: "taskLabels.update",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id, patch: taskLabelPatchSchema }),
   entities: labelEntities,
@@ -77,7 +77,7 @@ export const updateTaskLabelOp = defineOperation({
 
 export const deleteTaskLabelOp = defineOperation({
   name: "taskLabels.delete",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "consequential",
   input: z.object({ id }),
   entities: labelEntities,

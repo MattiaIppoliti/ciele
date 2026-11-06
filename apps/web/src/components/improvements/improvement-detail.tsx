@@ -12,7 +12,7 @@ import type {
   ImprovementStatus,
   StoredMessage,
 } from "@agent-hub/core";
-import { messageText } from "@agent-hub/core";
+import { IMPROVEMENT_WORKFLOW, messageText } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 
 import { ExternalLink, Plus, Search, Trash2, X } from "lucide-react";
@@ -59,6 +59,7 @@ import {
 import { memberDisplayName } from "@/lib/members";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { toast } from "@/lib/toast";
+import { ImprovementValidationPanel } from "./improvement-validation";
 import { unsavedEdits } from "./improvement-edits";
 import { ImprovementTasks } from "./improvement-tasks";
 import type { ImprovementTaskRow } from "@/lib/work/improvement-tasks";
@@ -176,6 +177,11 @@ export function ImprovementDetail({
   const [title, setTitle] = useState(improvement.title);
   const [description, setDescription] = useState(improvement.description);
   const [status, setStatus] = useState(improvement.status);
+  const [serverStatus, setServerStatus] = useState(improvement.status);
+  if (serverStatus !== improvement.status) {
+    setServerStatus(improvement.status);
+    setStatus(improvement.status);
+  }
   const [priority, setPriority] = useState(improvement.priority);
   const [tags, setTags] = useState(improvement.tags);
   const [assigneeId, setAssigneeId] = useState(improvement.assigneeId);
@@ -425,6 +431,24 @@ export function ImprovementDetail({
     associations[Math.min(page, Math.max(0, associations.length - 1))];
   const sources = current ? messageSources(current.message.content) : [];
   const pri = priorityMeta(priority);
+  // The console stage and its one next step (Triage -> Fix -> Validate ->
+  // Resolved). The status picker and drag still move anywhere.
+  const workflow = IMPROVEMENT_WORKFLOW[status];
+  const nextStatus = workflow.next;
+  // The Assistant behind the evidence on screen, and the Visitor question that
+  // preceded the flagged answer, which seeds a replay.
+  const assistantId = current?.conversation.assistantId ?? null;
+  const flaggedIndex =
+    current?.transcript.findIndex((message) => message.id === current.messageId) ?? -1;
+  const evidenceQuestion =
+    current && flaggedIndex >= 0
+      ? messageText(
+          current.transcript
+            .slice(0, flaggedIndex)
+            .filter((message) => message.role === "user")
+            .at(-1)?.content ?? [],
+        )
+      : "";
 
   return (
     <div className="touch-scroll-clearance @container flex h-full flex-col overflow-y-auto">
@@ -504,12 +528,14 @@ export function ImprovementDetail({
           {canEdit && (
             <div className="flex items-center gap-2">
               <Button
-                variant={status === "done" ? "secondary" : "default"}
-                onClick={() => changeStatus("done")}
-                disabled={status === "done"}
+                variant="default"
+                onClick={() => {
+                  if (nextStatus) changeStatus(nextStatus);
+                }}
+                disabled={nextStatus === null}
               >
                 <Check className="size-4" />
-                <RollInText text={status === "done" ? "Done" : "Mark as Done"} />
+                <RollInText text={workflow.action ?? workflow.label} />
               </Button>
               <Hint label="Delete improvement">
                 <Button
@@ -533,6 +559,45 @@ export function ImprovementDetail({
       <div className="@5xl:grid-cols-[1fr_320px] grid flex-1 gap-6 border-t px-6 py-5">
         {/* Main column */}
         <div className="min-w-0 space-y-6">
+          <section
+            aria-label="Answer improvement workflow"
+            className="space-y-3 border-b pb-5"
+          >
+            <h2 className="text-sm font-semibold">
+              <RollInText text={`${workflow.label}: improve the customer answer`} />
+            </h2>
+            <p className="text-muted-foreground text-sm">{workflow.guidance}</p>
+            {assistantId ? (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  ["knowledge", "Correct knowledge"],
+                  ["flows", "Review Flows"],
+                  ["preview", "Test in Preview"],
+                  ["publish", "Review publication"],
+                ].map(([path, label]) => (
+                  <Link
+                    key={path}
+                    href={`/assistants/${assistantId}/${path}`}
+                    className="press-text hover:bg-muted rounded-md border px-3 py-2 text-xs font-medium"
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                Link an answer from the Inbox to open its Assistant&apos;s knowledge, Flows,
+                Preview and publication here.
+              </p>
+            )}
+            <p className="text-muted-foreground text-xs">
+              {assistantId
+                ? `These links open ${current?.conversation.assistantTitle}, the Assistant of the evidence below. `
+                : ""}
+              Knowledge changes are live. Publish configuration changes before you check the
+              customer widget.
+            </p>
+          </section>
           {/* Straight under the title and in the same hand: a description is
               the issue in prose, not a form field about it. */}
           <Textarea
@@ -542,10 +607,18 @@ export function ImprovementDetail({
             onBlur={saveDescription}
             disabled={!canEdit}
             aria-label="Description"
-            placeholder="Add a description, or what the fix should be…"
+            placeholder="What should the Assistant answer? Describe the gap, the correction, and how to check it…"
             className={INLINE_FIELD + " min-h-20 text-base md:text-sm"}
           />
 
+          <ImprovementValidationPanel
+            key={`${improvement.id}-${current?.messageId ?? "none"}`}
+            improvementId={improvement.id}
+            assistantId={assistantId}
+            question={evidenceQuestion}
+            canEdit={canEdit}
+            members={members}
+          />
           <SuggestedFix
             improvementId={improvement.id}
             proposal={proposal}
@@ -564,7 +637,7 @@ export function ImprovementDetail({
 
           <section>
             <div className="bg-muted/40 mb-3 flex items-center justify-between rounded-lg px-3 py-2">
-              <h2 className="font-semibold">Associated Messages</h2>
+              <h2 className="font-semibold">Answer evidence</h2>
               {associationTotal > 1 && (
                 <div className="flex items-center gap-2 text-sm">
                   <Button variant="ghost" size="icon-sm"

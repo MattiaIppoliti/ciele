@@ -80,6 +80,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@agent-hub/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@agent-hub/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -325,6 +328,9 @@ importers:
       '@chat-adapter/state-memory':
         specifier: ^4.41.1
         version: 4.41.1(ai@7.0.107(zod@4.4.3))(zod@4.4.3)
+      '@electric-sql/pglite-socket':
+        specifier: ^0.2.7
+        version: 0.2.7(@electric-sql/pglite-age@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_hashids@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_ivm@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_textsearch@0.0.6(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_uuidv7@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pgtap@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pgvector@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite@0.5.4)
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.3.2
@@ -412,6 +418,9 @@ importers:
       '@ai-sdk/typesafe-ai':
         specifier: ^3.0.4
         version: 3.0.4(zod@4.4.3)
+      '@modelcontextprotocol/client':
+        specifier: ^2.0.0
+        version: 2.0.0
       '@vercel/oidc':
         specifier: ^3.8.0
         version: 3.8.0
@@ -693,7 +702,7 @@ importers:
         specifier: ^0.5.4
         version: 0.5.4
       '@electric-sql/pglite-socket':
-        specifier: 0.2.7
+        specifier: ^0.2.7
         version: 0.2.7(@electric-sql/pglite-age@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_hashids@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_ivm@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_textsearch@0.0.6(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pg_uuidv7@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pgtap@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite-pgvector@0.0.5(@electric-sql/pglite@0.5.4))(@electric-sql/pglite@0.5.4)
       '@types/node':
         specifier: ^20.19.43

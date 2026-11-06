@@ -8,7 +8,7 @@ einem KI-Agenten zur Verfügung. Er verfügt über zwei Transportschichten, und
 beide registrieren dieselben Tools.
 
 - Der **hosted endpoint** ist `POST /api/mcp` in Ihrer Bereitstellung. Verwenden
-  Sie ihn für einen Client, der sich über HTTP verbindet.
+  Sie ihn für einen Client, der über HTTP eine Verbindung herstellt.
 - Der **local server** ist ein `stdio`-Prozess, den Sie nach dem Auschecken
   eines Repositorys starten.
 
@@ -37,18 +37,20 @@ Ein unbekannter oder fehlender Schlüssel wird mit `401` abgelehnt, bevor
 irgendein Tool aufgelistet wird.
 
 <Callout title="The key Role is the permission boundary">
-The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
+The permissions of the hosted endpoint are the Role of the key. The operations layer refuses a mutation that the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation.
+
+A self-hosted deployment can set `CIELE_MCP_READ_ONLY=1` on the application. Then the hosted endpoint refuses every mutation action for every key. For one read-only agent on a shared deployment, use `CIELE_MCP_READ_ONLY=1` on a stdio server.
 </Callout>
 
 ## Protokollrevisionen
 
 Der Server unterstützt die `2026-07-28`-Revision sowie die 2025-Revisionen. Es
-bestimmt die Revision anhand des ersten Austauschs, sodass ein Client, der noch
+ermittelt die Revision anhand des ersten Austauschs, sodass ein Client, der noch
 nicht auf `2026-07-28` umgestellt wurde, weiterhin funktioniert.
 
 Mit der Revision `2026-07-28` wurden Protokollsitzungen entfernt. Jede Anfrage
-ist in sich abgeschlossen, sodass der gehostete Endpoint kein Sticky Routing und
-keinen Session Store benötigt.
+ist in sich abgeschlossen, sodass der gehostete Endpoint weder Sticky Routing
+noch einen Session Store benötigt.
 
 ## Lokaler `stdio`-Server
 
@@ -77,8 +79,8 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 Die Read-only-Prüfung findet innerhalb des MCP-Prozesses statt. Bei einer
 abgelehnten Mutation wird keine API-Anfrage gestellt.
 
-<Callout type="warn" title="These variables apply to the local server only">
-A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
+<Callout type="warn" title="These variables on a deployment">
+A Ciele web container obeys `CIELE_MCP_READ_ONLY`. Then the hosted endpoint refuses mutation actions for every key. The container ignores `CIELE_MCP_MODERN_ONLY`, and the hosted endpoint always accepts 2025-revision clients.
 </Callout>
 
 <Callout title="Recommended first connection">
@@ -90,26 +92,26 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | Tool | Aktuelle Operationen |
 | --- | --- |
 | `ciele_identity` | Informationen zu Deployment, Organization und Role lesen. |
-| `manage_assistants` | Stellen Sie einem Assistenten eine Frage und listen Sie anschließend Assistenten auf, lesen Sie sie aus, erstellen, aktualisieren, duplizieren oder löschen Sie sie. |
-| `manage_flows` | Lesen Sie den Flow-Katalog, prüfen Sie einen Flow, ohne ihn zu speichern, lesen Sie die Ausführungen eines HTTP-Flows und listen Sie anschließend Flows auf, lesen, erstellen, aktualisieren, sortieren oder löschen Sie sie. |
+| `manage_assistants` | Stellen Sie einem Assistenten eine Frage und führen Sie anschließend folgende Aktionen durch: Assistants auflisten, lesen, erstellen, aktualisieren, duplizieren oder löschen. |
+| `manage_flows` | Lesen Sie den Flow-Katalog, prüfen Sie einen Flow, ohne ihn zu speichern, lesen Sie die Runs eines HTTP-Flows und führen Sie anschließend folgende Aktionen mit Flows durch: auflisten, lesen, erstellen, aktualisieren, neu anordnen oder löschen. |
 | `manage_knowledge` | Durchsuchen Sie das Wissen und verwalten Sie anschließend Collections, Sources und FAQs. |
 | `publish_assistant` | Status lesen, eine Veröffentlichung veröffentlichen, die Veröffentlichung aufheben oder eine Veröffentlichung wiederherstellen. |
 | `read_inbox` | Conversations auflisten, lesen, exportieren, anheften, kommentieren, bewerten oder löschen. Human Review Requests auflisten, lesen und entscheiden. |
 | `manage_improvements` | Improvements auflisten, lesen oder aktualisieren. |
 | `manage_memories` | Einstellungen prüfen und eine bereichsbezogene Löschung des Speichers durchführen. |
 | `manage_sso` | Verwalten Sie Identity Claims und die SSO-Verbindung der Organisation. |
-| `manage_help_desks` | Verwalten Sie Help Desks, Channels, Ordering und ServiceNow. |
+| `manage_help_desks` | Verwalten Sie Help Desks, Channels, die Reihenfolge sowie das Ticketing-Ziel. |
 | `manage_teammates` | Verwalten Sie AI Teammates, ihre Berechtigungen, ihre Routines und ihren Speicher. `provision` führt die vollständige Einrichtung in einem einzigen Schritt durch. |
-| `manage_projects` | Verwalten Sie Projects, deren Milestones und das Memory Document jedes Projekts. |
+| `manage_projects` | Verwalten Sie Projects, deren Milestones und das Memory Document jedes Projects. |
 | `manage_tasks` | Tasks auflisten, lesen, erstellen, ändern und löschen. Kommentieren Sie Tasks und verwalten Sie Task Labels. |
-| `manage_channels` | Lesen und gestalten Sie die Teammate-Kanäle, in denen Sie sich befinden. |
-| `manage_configuration` | Verwalten Sie Skills, die Auswahl der Assistant Skills, Goals und Alerts. |
-| `manage_organization` | Verwalten Sie die Einstellungen der Organisation, Members, Invites und API keys. Lesen Sie die Usage Meters und Spender des Plans. |
+| `manage_channels` | Lesen und gestalten Sie die Teammate-Kanäle, in denen Sie Mitglied sind. |
+| `manage_configuration` | Verwalten Sie Skills, die Auswahl der Assistant Skills, Goals, Alerts und Quick Texts. |
+| `manage_organization` | Verwalten Sie die Einstellungen der Organisation, Members, Roles und deren Capabilities, Invites sowie API keys. Lesen Sie die Usage Meters und Spender des Plans sowie das Audit Log. |
 | `manage_integrations` | Verwalten Sie Assistant-API-Integrationen und Modellanbieter. |
 
 Der Server registriert siebzehn Tools: ein Identity-Tool und sechzehn
-Domain-Tools. Jedes Domain-Tool verwendet ein `action`-Feld für seine
-Operationen.
+Domain-Tools. Jedes Domain-Tool verwendet für seine Operationen ein
+`action`-Feld.
 
 Der Read-only-Modus klassifiziert jede Aktion. Es erlaubt die Aktionen list,
 read, status, query, search und export, während es Mutationsvorgänge ablehnt.
@@ -127,14 +129,14 @@ keine Antwort. Ihr KI-Client verfasst die Antwort und nennt die Quellen.
 
 Mit `assistantId` verwendet die Suche nur die Quellen, die mit diesem
 Assistenten verknüpft sind. Ohne sie verwendet die Suche die gesamte Library der
-Organisation. Ein Viewer-Schlüssel kann suchen, und der Read-only-Modus erlaubt
-dies. Eine Suche erstellt keine Conversation, daher wird sie weder im Inbox noch
-in den Insights angezeigt. Jeder API-Schlüssel kann 60 Suchen pro Minute
+Organisation. Ein Viewer-Schlüssel kann suchen, und der schreibgeschützte Modus
+erlaubt dies. Eine Suche erstellt keine Conversation, daher wird sie weder im
+Inbox noch in Insights angezeigt. Jeder API-Schlüssel kann 60 Suchen pro Minute
 durchführen.
 
 ## Einen Assistenten fragen
 
-Die Aktion `ask` von `manage_assistants` sendet eine Frage an einen Assistant
+Die Aktion `ask` von `manage_assistants` sendet eine Frage an einen Assistenten
 und gibt dessen Antwort zusammen mit den von ihm zitierten Quellen zurück.
 Verwenden Sie sie, wenn der Client die Antwort von Ciele anzeigen muss, nicht
 seine eigene Antwort.
@@ -152,11 +154,11 @@ anderen ID startet die Frage eine neue Conversation.
 
 Jede Frage erzeugt eine Conversation. Insights zählt es nicht. Die Inbox zeigt
 es mit dem Label **API key** an, wenn Sie den Filter **Staff conversations** auf
-**Include staff** oder **Staff only** setzen. Die Frage verwendet einen Model
-Turn in den Provider Connections der Organisation. Aus diesem Grund lehnt der
-Read-only-Modus `ask` ab. Jeder API-Schlüssel kann innerhalb einer Minute 20
-Fragen stellen. Eine Antwort kann einige Zeit in Anspruch nehmen, da der
-Assistant möglicherweise mehr als einmal suchen muss.
+**Include staff** oder **Staff only** setzen. Die Frage verwendet einen
+Model-Turn in den Provider Connections der Organisation. Aus diesem Grund lehnt
+der schreibgeschützte Modus `ask` ab. Jeder API-Schlüssel kann innerhalb einer
+Minute 20 Fragen stellen. Eine Antwort kann einige Zeit in Anspruch nehmen, da
+der Assistant möglicherweise mehr als einmal suchen muss.
 
 Siehe [AI clients](/developers/ai-clients) für die Konfiguration jedes
 unterstützten Clients.
@@ -166,6 +168,6 @@ unterstützten Clients.
 Bitten Sie den Client, `ciele_identity` aufzurufen. Bestätigen Sie die erwartete
 Organization ID, Role, API-Version und Domain-Liste.
 
-Die Repository-Testsuite startet ebenfalls den tatsächlichen `stdio`-Prozess.
-Sie überprüft die Initialisierung, die Tool-Erkennung und einen
+Die Testsuite des Repositorys startet ebenfalls den tatsächlichen
+`stdio`-Prozess. Sie überprüft die Initialisierung, die Tool-Erkennung und einen
 authentifizierten API-Aufruf.

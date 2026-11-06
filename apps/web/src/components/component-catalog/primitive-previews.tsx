@@ -158,6 +158,8 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
+import { MARKDOWN_TOOLBAR_BASIC, MARKDOWN_TOOLBAR_COMPACT, MARKDOWN_TOOLBAR_FULL, MarkdownEditor } from "@/components/ui/markdown-editor";
+import { WorkspacePanel } from "@/components/ui/workspace-panel";
 import { SortableHandle, SortableItem, SortableList } from "@/components/ui/sortable-list";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableActions, TableBody, TableCard, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -173,7 +175,7 @@ import { Textarea } from "@/components/ui/textarea";
 /** Preview-only fixtures render the same controls the production app imports. */
 function Example({ title, children, wide = false }: { title: string; children: ReactNode; wide?: boolean }) {
   return <section className={wide ? "w-full space-y-3" : "w-full max-w-xl space-y-3"}>
-    <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+    <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
     {children}
   </section>;
 }
@@ -571,7 +573,7 @@ function FieldHeaderPreview() {
 
 function SectionHeadingPreview() {
   return <Stack>
-    <Example title="Console"><SectionHeading headingLevel={2} icon={Folder} title="Knowledge" description="Sources available to your assistant." /></Example>
+    <Example title="Console"><SectionHeading headingLevel={2} title="Knowledge" description="Sources available to your assistant." /></Example>
     <Example title="Marketing" wide><SectionHeading headingLevel={2} icon={Sparkles} title="Connected knowledge" description="Every answer starts with a source." variant="marketing" eyebrow="Assistant platform" /></Example>
     <Example title="Compact preview"><SectionHeading headingLevel={3} icon={Folder} title="Knowledge" description="Your connected sources." variant="mock" /></Example>
   </Stack>;
@@ -664,7 +666,7 @@ function RailPanelPreview() {
 }
 
 function NativeTablePreview() {
-  return <Stack><Example title="Header, rows and cells" wide><Table><caption className="mt-3 text-left text-xs text-muted-foreground">Assistants connected to this organization.</caption><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Documents</TableHead></TableRow></TableHeader><TableBody>{TABLE_ROWS.map((row) => <TableRow key={row.id}><TableCell>{row.name}</TableCell><TableCell>{row.status}</TableCell><TableCell className="text-right tabular-nums">{row.documents}</TableCell></TableRow>)}</TableBody></Table></Example></Stack>;
+  return <Stack><Example title="Header, rows and cells" wide><Table><caption className="px-4 py-3 text-left text-xs text-muted-foreground">Assistants connected to this organization.</caption><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Documents</TableHead></TableRow></TableHeader><TableBody>{TABLE_ROWS.map((row) => <TableRow key={row.id}><TableCell>{row.name}</TableCell><TableCell>{row.status}</TableCell><TableCell className="text-right tabular-nums">{row.documents}</TableCell></TableRow>)}</TableBody></Table></Example></Stack>;
 }
 
 function ColumnHeaderPreview() {
@@ -742,6 +744,30 @@ function BotIconPreview() {
   return <Stack><Example title="Local assistant glyph"><Button variant="outline" onClick={() => setPressed((value) => !value)}><AnimatedGlyph icon={BotIcon} size={20} />{pressed ? "Assistant selected" : "Assistant"}</Button></Example></Stack>;
 }
 
+function MarkdownToolbarPreview() {
+  const [basic, setBasic] = useState("Select a word, then press **Bold**.");
+  const [full, setFull] = useState("## Welcome\n\nAsk about *billing*, accounts or [the help center](https://ciele.app).");
+  const [compact, setCompact] = useState("- Draft the reply\n- Link the source");
+  return <Stack>
+    <Example title="Basic toolbar" wide><MarkdownEditor aria-label="Basic markdown sample" value={basic} onChange={setBasic} toolbar={MARKDOWN_TOOLBAR_BASIC} rows={3} /></Example>
+    <Example title="Full toolbar with history" wide><MarkdownEditor aria-label="Full markdown sample" value={full} onChange={setFull} toolbar={MARKDOWN_TOOLBAR_FULL} history rows={5} /></Example>
+    <Example title="Compact"><MarkdownEditor aria-label="Compact markdown sample" value={compact} onChange={setCompact} toolbar={MARKDOWN_TOOLBAR_COMPACT} rows={3} /></Example>
+  </Stack>;
+}
+
+const WORKSPACE_ROWS = ["Answer cites an outdated policy", "Refund question routed to sales", "Missing source on pricing answer"];
+
+function WorkspacePanelPreview() {
+  const [selected, setSelected] = useState<string | null>(WORKSPACE_ROWS[0]);
+  return <Stack><Example title="Docked beside its list" wide>
+    <div className="flex h-96 w-full flex-col overflow-hidden rounded-xl bg-background">
+      <WorkspacePanel open={selected !== null} onClose={() => setSelected(null)} label="Improvement" slot="catalog-workspace" detail={<div className="space-y-2 p-5"><h4 className="font-medium">{selected}</h4><p className="text-sm text-muted-foreground">Drag the edge to resize, use full screen, or press Esc to close.</p></div>}>
+        <ul className="space-y-1">{WORKSPACE_ROWS.map((row) => <li key={row}><button type="button" onClick={() => setSelected(row)} aria-current={selected === row ? "true" : undefined} className="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-alpha-light aria-[current=true]:bg-alpha-medium">{row}</button></li>)}</ul>
+      </WorkspacePanel>
+    </div>
+  </Example></Stack>;
+}
+
 function CodeBlockPreview() {
   return <Stack><Example title="Plain and tabbed examples" wide><CodeBlock code={'<Button variant="outline">Open</Button>'} language="tsx" /><CodeBlock tabs={[{ label: "TypeScript", language: "typescript", code: 'const title = "Support assistant";' }, { label: "JSON", language: "json", code: '{ "title": "Support assistant" }' }]} /></Example></Stack>;
 }
@@ -800,7 +826,7 @@ function MagneticPreview() {
 
 function MorphTextPreview() {
   const [research, setResearch] = useState(false);
-  return <Stack><Example title="Changing label"><MorphText text={research ? "Research assistant" : "Support assistant"} className="text-xl font-medium" /><Button variant="outline" onClick={() => setResearch((value) => !value)}>Change label</Button></Example></Stack>;
+  return <Stack><Example title="Changing label"><div><MorphText text={research ? "Research assistant" : "Support assistant"} className="text-xl font-medium" /></div><Button variant="outline" onClick={() => setResearch((value) => !value)}>Change label</Button></Example></Stack>;
 }
 
 function ArcPickerPreview() {
@@ -850,7 +876,7 @@ export default function PrimitivePreview({ slug }: { slug: string }) {
     case "sortable-lists": return <SortablePreview />;
     case "list-inputs": return <ListPreview />;
     case "avatars": return <AvatarPreview />;
-    case "icons": return <IconPreview />;
+    case "icons": return <Stack><IconPreview /><FeatherPreview /><FlowIconPreview /><SidebarIconPreview /><BotIconPreview /></Stack>;
     case "empty-states": return <EmptyPreview />;
     case "skeletons": return <SkeletonPreview />;
     case "copy-feedback": return <CopyPreview />;
@@ -892,10 +918,6 @@ export default function PrimitivePreview({ slug }: { slug: string }) {
     case "teammate-avatar": return <TeammateAvatarPreview />;
     case "group-avatar-cluster": return <GroupAvatarPreview />;
     case "assignees": return <AssigneesPreview />;
-    case "feather-icon": return <FeatherPreview />;
-    case "flow-button-icon": return <FlowIconPreview />;
-    case "sidebar-toggle-icon": return <SidebarIconPreview />;
-    case "bot-icon": return <BotIconPreview />;
     case "code-block": return <CodeBlockPreview />;
     case "agent-code": return <AgentCodePreview />;
     case "agent-code-block": return <AgentCodeBlockPreview />;
@@ -910,6 +932,8 @@ export default function PrimitivePreview({ slug }: { slug: string }) {
     case "appearance-settings": return <AppearancePreview />;
     case "slide-to-confirm": return <SlidePreview />;
     case "magnetic": return <MagneticPreview />;
+    case "markdown-toolbar": return <MarkdownToolbarPreview />;
+    case "workspace-panel": return <WorkspacePanelPreview />;
     default: throw new Error(`Unknown primitive preview: ${slug}`);
   }
 }

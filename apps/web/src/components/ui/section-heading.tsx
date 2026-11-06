@@ -4,8 +4,10 @@ import { RollInText } from "@/components/motion/roll-in-text";
 import { cn } from "@/lib/utils";
 
 /**
- * Operational headings stay static and compact. Public feature pages opt into
- * the decorative icon tile and title entrance.
+ * Operational headings stay static and compact, and a console page passes no
+ * icon: the title names the page and the sidebar row already shows its glyph.
+ * The one console exception is an entity with an icon of its own (a Project).
+ * Public feature pages opt into the decorative icon tile and title entrance.
  */
 export function SectionHeading({
   icon: Icon,
@@ -16,7 +18,7 @@ export function SectionHeading({
   headingLevel = 1,
   className,
 }: {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
   description?: ReactNode;
   eyebrow?: string;
@@ -27,6 +29,22 @@ export function SectionHeading({
   const marketing = variant === "marketing";
   const mock = variant === "mock";
   const Heading = headingLevel === 1 ? "h1" : headingLevel === 2 ? "h2" : "h3";
+
+  if (!marketing && !mock) {
+    // The console heading: the page title at display size, the description
+    // under it. An entity's own icon (a Project's), when passed, is scaled to
+    // the title's first line (sized in em, so it follows the clamp).
+    return (
+      <div className={cn("mb-8 min-w-0 text-left", className)}>
+        {eyebrow && <p className="text-muted-foreground mb-2 text-sm font-medium">{eyebrow}</p>}
+        <div className="text-display flex items-start gap-[0.25em]">
+          {Icon && <Icon aria-hidden strokeWidth={1.75} className="text-muted-foreground mt-[0.2em] size-[0.6em] shrink-0" />}
+          <Heading className="min-w-0">{title}</Heading>
+        </div>
+        {description && <p className="text-muted-foreground mt-3 max-w-[65ch] text-base leading-relaxed">{description}</p>}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -40,7 +58,7 @@ export function SectionHeading({
         className
       )}
     >
-      <div
+      {Icon && <div
         className={cn(
           "relative flex shrink-0 items-center justify-center",
           (marketing || mock) && "bg-card ring-foreground/10 overflow-hidden shadow-light ring-1",
@@ -73,7 +91,7 @@ export function SectionHeading({
           )}
           aria-hidden
         />
-      </div>
+      </div>}
 
       <div className="min-w-0">
         {eyebrow && (

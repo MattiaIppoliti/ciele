@@ -1,13 +1,14 @@
 import { z } from "zod";
 import type {
-  TeammateCapabilityCeiling,
+  TeammateActionCeiling,
   TeammateGrantDomain,
 } from "@agent-hub/core";
 import {
   TEAMMATE_CAPABILITY_CEILINGS,
   TEAMMATE_GRANT_DOMAINS,
 } from "@agent-hub/core";
-import { defineOperation } from "./operation";
+import { OperationError, contextAllows, defineOperation } from "./operation";
+import { grantedCapabilities } from "./teammate-actions";
 import { requireReadableTeammate } from "./teammate-access";
 
 /**
@@ -36,13 +37,13 @@ const ceilingSchema = z.enum(TEAMMATE_CAPABILITY_CEILINGS);
 export interface TeammateGovernance {
   teammateId: string;
   domains: TeammateGrantDomain[];
-  ceiling: TeammateCapabilityCeiling;
+  ceiling: TeammateActionCeiling;
   approvalBypass: boolean;
 }
 
 export const listTeammateGrantsOp = defineOperation({
   name: "teammates.grants.list",
-  capability: "member",
+  capability: "teammates:view",
   effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
@@ -53,7 +54,7 @@ export const listTeammateGrantsOp = defineOperation({
     return {
       teammateId: teammate.id,
       domains: grants.map((grant) => grant.domain),
-      ceiling: teammate.capabilityCeiling,
+      ceiling: teammate.actionCeiling,
       approvalBypass: teammate.approvalBypass,
     };
   },
@@ -63,7 +64,7 @@ export const setTeammateGrantsOp = defineOperation({
   name: "teammates.grants.set",
   // Admin, deliberately not the Editor capability the rest of the Teammate
   // takes. Renaming a colleague's agent and arming it are different acts.
-  capability: "manageMembers",
+  capability: "teammates:grants",
   effect: "consequential",
   input: z.object({
     id: z.string().min(1),
@@ -78,6 +79,16 @@ export const setTeammateGrantsOp = defineOperation({
   run: async (ctx, input): Promise<TeammateGovernance> => {
     const teammate = await requireReadableTeammate(ctx, input.id);
     const wanted = new Set(input.domains);
+    // A grant is a delegation: the Teammate may do no more than its granter.
+    const ceilingAfter = input.ceiling ?? teammate.actionCeiling;
+    const missing = [...new Set([...wanted].flatMap((domain) => grantedCapabilities(domain, ceilingAfter)))]
+      .filter((capability) => !contextAllows(ctx, capability as never));
+    if (ctx.role !== "owner" && missing.length) {
+      throw new OperationError(
+        "invalid_input",
+        `You cannot give a Teammate what your role does not allow: ${missing.join(", ")}`
+      );
+    }
     const held = await ctx.db.table("teammateGrants").list({ teammateId: input.id });
     const heldDomains = new Set(held.map((grant) => grant.domain));
 
@@ -101,15 +112,15 @@ export const setTeammateGrantsOp = defineOperation({
         )
     );
 
-    const ceiling = input.ceiling ?? teammate.capabilityCeiling;
+    const ceiling = input.ceiling ?? teammate.actionCeiling;
     const approvalBypass = input.approvalBypass ?? teammate.approvalBypass;
     if (
-      ceiling !== teammate.capabilityCeiling ||
+      ceiling !== teammate.actionCeiling ||
       approvalBypass !== teammate.approvalBypass
     ) {
       await ctx.db
         .table("teammates")
-        .update(input.id, { capabilityCeiling: ceiling, approvalBypass });
+        .update(input.id, { actionCeiling: ceiling, approvalBypass });
     }
     return {
       teammateId: input.id,

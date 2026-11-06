@@ -60,8 +60,21 @@ export async function POST(
         { error: "The escalation endpoint could not be reached." },
         { status: 502, headers: cors }
       );
+    case "ticket_invalid":
+      return Response.json({ ticketInvalid: outcome.message }, { status: 400, headers: cors });
+    case "ticket_pending":
+      return Response.json({ ticketPending: true }, { status: 202, headers: cors });
+    case "ticket_failed":
+      // The Widget reads `ticketFailed` to offer the desk's other channels.
+      return Response.json(
+        { error: "The ticket could not be filed.", ticketFailed: true },
+        { status: 502, headers: cors }
+      );
     case "ok":
-      return Response.json({ ok: true, email: outcome.email }, { headers: cors });
+      return Response.json(
+        { ok: true, email: outcome.email, waiting: outcome.waiting, ...(outcome.ticket ? { ticket: outcome.ticket } : {}) },
+        { headers: cors }
+      );
   }
 }
 

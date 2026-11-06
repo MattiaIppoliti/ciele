@@ -1,3 +1,4 @@
+import { effectiveAssistantCapabilities } from "@agent-hub/core";
 import { withRequestDiagnostics } from "@/lib/request-diagnostics";
 import { NextRequest } from "next/server";
 import { z } from "zod";
@@ -11,7 +12,7 @@ import { getSession, profileName } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { loadFlowBuilderCatalogue } from "@/lib/flow-builder-catalogue";
 import { webOperationPorts } from "@/lib/op-ports";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { getRuntimeDb } from "@/lib/runtime-db";
 import { getServiceRoleDb } from "@/lib/service-db";
 import { invalidatePublicationFromRoute } from "@/lib/widget-db";
@@ -73,10 +74,6 @@ export const POST = withRequestDiagnostics("/api/assistants/[id]/flows-agent/cha
   if (!session?.organization) {
     return new Response("Unauthorized", { status: 401 });
   }
-  if (!canEdit(session.role)) {
-    return new Response("Forbidden", { status: 403 });
-  }
-
   const { id: assistantId } = await params;
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return new Response("Bad request", { status: 400 });
@@ -90,11 +87,22 @@ export const POST = withRequestDiagnostics("/api/assistants/[id]/flows-agent/cha
   if (!assistant || assistant.organizationId !== session.organization.id) {
     return new Response("Not found", { status: 404 });
   }
+  // The Flows Agent edits this Assistant's Flows: the Member's Role on it decides.
+  const grant = session.role === "owner"
+    ? null
+    : await db.getMemberAssistantGrant(session.organization.id, session.userId, assistantId);
+  const capabilities = grant
+    ? effectiveAssistantCapabilities({ base: session.capabilities, isOwner: grant.role === "owner", scope: grant.scope, override: grant.override })
+    : session.capabilities;
+  if (!can({ role: session.role, capabilities }, "flows:edit")) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   const ctx = {
     organizationId: session.organization.id,
     userId: session.userId,
     role: session.role ?? "viewer",
+    capabilities,
     db,
     // The creation grant goes through the system Db (the grant table is
     // admin-only under RLS and this is an Editor's surface); everything else
@@ -129,6 +137,7 @@ export const POST = withRequestDiagnostics("/api/assistants/[id]/flows-agent/cha
         organizationId: session.organization.id,
         userId: session.userId,
         role: session.role,
+        capabilities: session.capabilities,
         actorEmail: session.email,
       }),
       loadFlowBuilderCatalogue(db, assistant, session.userId),

@@ -306,7 +306,7 @@ export interface TaskDetail {
 
 export const getTaskOp = defineOperation({
   name: "tasks.get",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ id }),
   entities: () => [],
@@ -340,7 +340,7 @@ export const getTaskOp = defineOperation({
 
 export const createTaskOp = defineOperation({
   name: "tasks.create",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: taskCreateSchema,
   entities: (input, result: Task) => [
@@ -499,7 +499,7 @@ async function moveTask(
 
 export const updateTaskOp = defineOperation({
   name: "tasks.update",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: taskUpdateSchema,
   entities: (input, result: Task) => [
@@ -634,7 +634,7 @@ export const updateTaskOp = defineOperation({
 
 export const bulkUpdateTasksOp = defineOperation({
   name: "tasks.bulkUpdate",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({
     ids: z.array(id).min(1).max(200),
@@ -682,7 +682,7 @@ async function scheduledCopyOf(ctx: OperationContext, task: Task): Promise<Task 
  */
 export const undoCompleteTaskOp = defineOperation({
   name: "tasks.undoComplete",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id, status: z.enum(TASK_STATUSES).exclude(["done"]) }),
   entities: (input, result: Task) => taskEntities(result.projectId, input.id),
@@ -708,7 +708,7 @@ export const undoCompleteTaskOp = defineOperation({
 
 export const archiveTaskOp = defineOperation({
   name: "tasks.archive",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id, archived: z.boolean() }),
   entities: (input, result: Task) => taskEntities(result.projectId, input.id),
@@ -745,7 +745,7 @@ export const archiveTaskOp = defineOperation({
 
 export const deleteTaskOp = defineOperation({
   name: "tasks.delete",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "consequential",
   input: z.object({ id }),
   entities: (input, result: { deleted: number; improvementId: string | null }) => [
@@ -799,7 +799,7 @@ function decodeCursor(cursor: string): string {
  */
 export const listTasksOp = defineOperation({
   name: "tasks.list",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({
     projectId: id.optional(),

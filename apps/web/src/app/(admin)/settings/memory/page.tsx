@@ -1,4 +1,3 @@
-import { ScanText } from "lucide-react";
 import { MemoryClient } from "@/components/settings/memory-client";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { requirePageMember } from "@/lib/authz";
@@ -31,7 +30,6 @@ export default async function MemorySettingsPage() {
 
   return (
     <SettingsPanel
-      icon={ScanText}
       title="What your teammates remember"
       description="Shared with your AI teammates."
     >

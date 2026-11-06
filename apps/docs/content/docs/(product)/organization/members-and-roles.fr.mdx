@@ -5,18 +5,82 @@ description: Contrôlez qui peut lire, modifier, publier et administrer une Orga
 
 ## Rôles
 
-| Role | Niveau d'autorisation actuel |
+Un rôle est un ensemble de capacités. Une capacité est une action qu’un membre
+peut effectuer, par exemple **Create and edit Flows** (`flows:edit`). Chaque
+organisation commence avec six rôles prédéfinis.
+
+| Role | Capacités par défaut |
 | --- | --- |
-| Viewer | Lit les données de l'organisation et du produit. |
-| Editor | Modifie le contenu et la configuration de l'Assistant. |
-| Admin | Publie les Assistants et gère les membres ainsi que les clés API. |
-| Owner | Modifie les rôles et gère les propriétaires. |
+| Viewer | Lit les données de l’organisation et du produit. |
+| Data Viewer | Lit les Insights et les Assistants que les Insights affichent. |
+| Support Agent | Dispose des mêmes droits de lecture qu’un Viewer. Prend également en charge les Conversations, répond aux Visiteurs, utilise les Quick Texts et assure la permanence des Help Desks en tant qu’opérateur. |
+| Editor | Modifie le contenu et la configuration de l’Assistant. |
+| Admin | Publie les Assistants et gère les membres, les Roles, les clés API et les intégrations. |
+| Owner | Dispose de toutes les capacités. Gère les propriétaires et les abonnements personnels à l'IA. |
 
-L'application applique des vérifications de capacités plus spécifiques à chaque
-opération individuelle.
+La navigation d’un Support Agent affiche uniquement **Inbox**, **Help Desks**,
+**My Tasks**, **Notifications** et **Settings**. Si un Support Agent ouvre une
+autre page via un lien direct, Ciele affiche un message relatif aux
+autorisations.
 
-La section **Roles** située en bas de **Settings > Members** présente un tableau
-indiquant ce que chaque rôle peut faire.
+## Modifier et créer des rôles
+
+Ouvrez **Settings > Roles**. La liste affiche chaque Role, son nombre de
+capabilities et les personnes qui le détiennent.
+
+Pour créer un rôle :
+
+1. Sélectionnez **New role**.
+2. Dans **Start from**, sélectionnez un Role à copier, ou sélectionnez
+   **Nothing**.
+3. Saisissez un nom et une description.
+4. Dans **Available on**, sélectionnez **Organization**, **Assistant**, ou les
+   deux.
+5. Sélectionnez les capacités. Cochez une case de groupe pour sélectionner
+   toutes les capacités de ce groupe. Utilisez le champ de recherche pour
+   trouver une capacité.
+6. Sélectionnez **Create role**.
+
+Lorsque vous sélectionnez une capacité, Ciele sélectionne également les
+capacités dont elle a besoin. Par exemple, **Create and edit Flows** nécessite
+**View Flows** et **View Assistants**. Une capacité dont une autre capacité
+sélectionnée a besoin reste sélectionnée. La ligne indique quelle fonctionnalité
+en a besoin. Désélectionnez d’abord cette fonctionnalité.
+
+Vous pouvez modifier tous les rôles prédéfinis, à l’exception du rôle Owner. Un
+Role prédéfini modifié affiche **Edited**. Sélectionnez **Reset to default**
+pour restaurer ses capacités par défaut.
+
+Les règles :
+
+- Vous ne pouvez pas attribuer à un Role une capacité que vous ne possédez pas
+  vous-même. Cela s’applique lorsque vous modifiez un Role, attribuez un Role à
+  un membre, invitez avec un Role ou créez une clé API.
+- Vous ne pouvez pas accorder à un Teammate l'accès à un espace que votre Role
+  ne peut pas utiliser.
+- Vous ne pouvez pas modifier le Role dont vous disposez. Un Owner peut modifier
+  tous les Roles, à l’exception du rôle Owner.
+- Vous ne pouvez pas supprimer un Role prédéfini. Vous ne pouvez pas supprimer
+  un Role personnalisé tant qu’un membre, une invitation ou une clé API active
+  le détient. Attribuez-leur d’abord un autre rôle.
+- Lorsque Ciele ajoute une fonctionnalité, les Roles prédéfinis que vous n’avez
+  pas modifiés en bénéficient si elle fait partie de leurs paramètres par
+  défaut. Les Roles modifiés et personnalisés ne l’obtiennent pas.
+
+Pour gérer les rôles, un membre doit disposer de la capacité **Manage Roles**.
+Les administrateurs en disposent par défaut. Toutes les modifications
+apparaissent dans l'audit log.
+
+## Rôles par défaut
+
+Deux Roles sont définis par défaut. Le **Organization default** est le premier
+Role dans le formulaire d’invitation. Le **Assistant default** est le premier
+rôle lorsque vous accordez à un membre l'accès à un Assistant. Au départ, il
+s’agit des rôles Editor et Viewer.
+
+Pour les modifier, ouvrez **Settings > Roles** et sélectionnez **Manage
+defaults**. Vous ne pouvez pas supprimer un Role par défaut. Sélectionnez
+d’abord un autre rôle par défaut.
 
 ## Inviter des membres
 
@@ -26,35 +90,90 @@ indiquant ce que chaque rôle peut faire.
 3. Sélectionnez le Role minimal nécessaire.
 4. Sélectionnez **Create invite**.
 
-Ciele crée un lien d'invitation pour chaque adresse. Vous pouvez inviter un
-maximum de 20 personnes à la fois. Envoyez chaque lien à la personne
-correspondante. Pour copier à nouveau un lien, sélectionnez **Copy invite link**
-dans la liste des membres.
+Ciele crée un lien d’invitation pour chaque adresse. Vous pouvez inviter jusqu’à
+20 personnes à la fois. Envoyez chaque lien à la personne correspondante. Pour
+copier à nouveau un lien, sélectionnez **Copy invite link** dans la liste des
+membres.
 
 Si vous saisissez une seule adresse ou aucune adresse, Ciele copie le lien dans
 votre presse-papiers.
 
-Si une adresse n'est pas correcte, Ciele affiche cette adresse et ne crée aucune
+Si une adresse n’est pas correcte, Ciele affiche cette adresse et ne crée aucune
 invitation.
 
 Ciele ne crée pas de deuxième invitation pour une adresse qui a déjà une
 invitation en cours ou qui appartient à un membre. Il affiche ces adresses après
-votre envoi. Si Ciele ne peut pas créer d'invitation, l'adresse reste dans le
+votre envoi. Si Ciele ne peut pas créer d’invitation, l’adresse reste dans le
 champ. Sélectionnez à nouveau **Create invite** pour réessayer ces adresses.
 
 ## Modifier un membre
 
-Un Admin peut gérer les membres situés en dessous du niveau Owner. Un Owner peut
-gérer tous les niveaux.
+Dans **Settings > Members**, sélectionnez un Role dans la colonne **Role**. La
+liste affiche les Roles que vous pouvez attribuer. Seul un Owner peut faire d’un
+membre un Owner ou modifier un Owner.
 
 Un membre ne peut pas modifier ni supprimer sa propre ligne dans la liste des
 membres. Utilisez un autre membre autorisé pour cette opération.
 
 ## Rôles des clés API
 
-Un Admin ou un Owner peut créer une clé API d'organisation. Le Role sélectionné
-ne peut pas être supérieur au Role du créateur.
+Un membre disposant de la capacité **Manage API keys** peut créer une clé API
+d’organisation. La clé peut être associée à n’importe quel Role, y compris un
+Role personnalisé. Le rôle ne peut pas disposer d'une capacité dont le créateur
+ne dispose pas.
+
+Une clé ne peut effectuer que ce que son Role et son créateur peuvent tous deux
+faire actuellement. Si le créateur perd une capacité, la clé la perd également.
 
 Révoquez une clé lorsque son client n'a plus besoin d'y accéder. Ciele conserve
-l'enregistrement révoqué à des fins d'audit. Un Admin ou un Owner peut supprimer
-une clé révoquée afin d'effacer son enregistrement.
+l’enregistrement révoqué à des fins d’audit. Vous pouvez supprimer une clé
+révoquée pour effacer son enregistrement.
+
+## Gérer l'accès à un Assistant
+
+Un Owner ou un Admin ouvre un Assistant, puis sélectionne **More options →
+Manage access**. La liste indique le Organization Role de chaque Member, ainsi
+que tout éventuel override. Sélectionnez **Denied** ou un Role, puis confirmez
+la modification. La liste affiche chaque Role disponible pour les Assistants, y
+compris les Roles personnalisés. Sélectionnez **Organization Role** pour
+supprimer le remplacement. Les Owners conservent toujours l’accès.
+
+Un Role sur un Assistant remplace le Organization Role sur cet Assistant. Il
+peut accorder plus ou moins de droits que le rôle d’organisation. Il s’applique
+uniquement aux fonctionnalités des Assistants, par exemple Flows, Knowledge et
+Inbox. Les capacités relatives à l’organisation, par exemple Members et les clés
+API, ne changent pas.
+
+Denied masque l’Assistant dans les listes, la recherche, Find et le Developer
+Panel. La même restriction s’applique à ses paramètres enfants et aux liens
+Knowledge. Les clés API d’un Member, ses Teammates et Ciele AI agissent dans le
+cadre des droits d’accès de ce Member. Les clés API conservent également leur
+propre plafond de Role. Un override n’augmente jamais ce plafond.
+
+Modifier l’accès a des conséquences importantes. Ciele AI demande votre
+approbation avant d’effectuer la modification. Les Teammates ordinaires ne
+peuvent pas modifier l’accès. Le Developer Panel affiche les commandes API, CLI
+et MCP pour ces opérations.
+
+## Limiter un membre à certains Assistants
+
+Dans l’onglet **Members**, la colonne **Assistants** indique ce à quoi chaque
+membre peut accéder. Sélectionnez **Manage assistants** sous un membre pour le
+modifier.
+
+- **All assistants** attribue au membre son rôle d'organisation sur chaque
+  Assistant, maintenant et à l'avenir. Vous pouvez toujours définir un
+  remplacement pour chaque Assistant.
+- **Only selected assistants** accorde au membre l’accès uniquement aux
+  Assistants que vous sélectionnez. Sélectionnez un Role pour chacun parmi les
+  Roles disponibles sur les Assistants. Le Role peut être supérieur ou inférieur
+  au Organization Role.
+
+Un membre disposant de **Only selected assistants** ne voit pas un nouvel
+Assistant tant que vous ne l’avez pas ajouté. Lorsqu’un membre crée un
+Assistant, il y obtient l’accès correspondant à son Organization Role. La
+restriction est identique à **Denied** pour chaque Assistant qui n’est pas
+sélectionné.
+
+Les Owners ont toujours accès à tous les Assistants. Chaque modification
+apparaît dans le journal d’audit.

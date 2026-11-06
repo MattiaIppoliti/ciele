@@ -1,4 +1,4 @@
-import { sealSecret } from "@agent-hub/core";
+import { defaultChannelAvailability, ticketingLegacyAlertKey, ticketingTargetIssue } from "@agent-hub/core";
 import type {
   HelpDesk,
   SupportChannel,
@@ -6,9 +6,12 @@ import type {
   SupportChannelInput,
   SupportChannelPatch,
   TicketingPlatform,
+  TicketingTarget,
 } from "@agent-hub/core";
 import { z } from "zod";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
+
+import { requireBusinessHours } from "./business-hours";
 
 const idSchema = z.string().min(1);
 
@@ -77,6 +80,7 @@ const supportChannelInputSchema = z.object({
     "external_link",
     "salesforce_chat",
     "api_endpoint",
+    "live_operator",
   ]),
   name: z.string().trim().min(1).max(200),
   config: z.custom<SupportChannelInput["config"]>(objectOrUndefined).optional(),
@@ -135,7 +139,7 @@ async function requireSupportChannel(
 
 export const listHelpDesksOp = defineOperation({
   name: "helpDesks.list",
-  capability: "member",
+  capability: "helpDesks:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -145,7 +149,7 @@ export const listHelpDesksOp = defineOperation({
 
 export const getHelpDeskOp = defineOperation({
   name: "helpDesks.get",
-  capability: "member",
+  capability: "helpDesks:view",
   effect: "read",
   input: z.object({ id: idSchema }),
   entities: () => [],
@@ -161,7 +165,7 @@ export const getHelpDeskOp = defineOperation({
 
 export const createHelpDeskOp = defineOperation({
   name: "helpDesks.create",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "write",
   input: helpDeskInputSchema,
   entities: () => [{ kind: "helpDeskList" as const }],
@@ -171,7 +175,7 @@ export const createHelpDeskOp = defineOperation({
 
 export const updateHelpDeskOp = defineOperation({
   name: "helpDesks.update",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "write",
   input: z.object({ id: idSchema, patch: helpDeskPatchSchema }),
   entities: ({ id }) => [
@@ -186,7 +190,7 @@ export const updateHelpDeskOp = defineOperation({
 
 export const deleteHelpDeskOp = defineOperation({
   name: "helpDesks.delete",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "helpDeskList" as const }],
@@ -198,19 +202,22 @@ export const deleteHelpDeskOp = defineOperation({
 
 export const createSupportChannelOp = defineOperation({
   name: "helpDesks.channels.create",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "write",
   input: z.object({ helpDeskId: idSchema, input: supportChannelInputSchema }),
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, { helpDeskId, input }) => {
     await requireHelpDesk(ctx, helpDeskId);
-    return publicSupportChannel(await ctx.db.createSupportChannel(helpDeskId, input));
+    const organization = (await ctx.db.listOrganizations()).find(row => row.id === ctx.organizationId);
+    const availability = input.availability ?? defaultChannelAvailability(organization?.defaultTimezone ?? "UTC");
+    if (availability.mode === "business_hours") await requireBusinessHours(ctx, availability.businessHoursId ?? "");
+    return publicSupportChannel(await ctx.db.createSupportChannel(helpDeskId, { ...input, availability }));
   },
 });
 
 export const updateSupportChannelOp = defineOperation({
   name: "helpDesks.channels.update",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "write",
   input: z.object({
     helpDeskId: idSchema,
@@ -220,13 +227,14 @@ export const updateSupportChannelOp = defineOperation({
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, { helpDeskId, channelId, patch }) => {
     await requireSupportChannel(ctx, helpDeskId, channelId);
+    if (patch.availability?.mode === "business_hours") await requireBusinessHours(ctx, patch.availability.businessHoursId ?? "");
     return publicSupportChannel(await ctx.db.updateSupportChannel(channelId, patch));
   },
 });
 
 export const deleteSupportChannelOp = defineOperation({
   name: "helpDesks.channels.delete",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "consequential",
   input: z.object({ helpDeskId: idSchema, channelId: idSchema }),
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
@@ -238,7 +246,7 @@ export const deleteSupportChannelOp = defineOperation({
 
 export const reorderSupportChannelsOp = defineOperation({
   name: "helpDesks.channels.reorder",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "write",
   input: z.object({
     helpDeskId: idSchema,
@@ -266,51 +274,81 @@ export const reorderSupportChannelsOp = defineOperation({
   },
 });
 
-const serviceNowSchema = z.object({
-  helpDeskId: idSchema,
-  name: z.string().trim().min(1).max(200),
-  baseUrl: z.string().url().refine(
-    (value) => new URL(value).protocol === "https:",
-    "ServiceNow base URL must use HTTPS"
-  ),
-  clientId: z.string().trim().min(1),
-  clientSecret: z.string().min(1),
-  username: z.string().trim().min(1),
-  password: z.string().min(1),
+/** The `PUT /help-desks/{id}/ticketing` body: the target without the desk id the path carries. */
+export const ticketingTargetBodySchema = z.object({
+  /** An Organization-owned Salesforce or ServiceNow Application Connection. */
+  connectionId: idSchema,
+  /** ServiceNow only: the table records go into; `incident` when blank. */
+  table: z.string().trim().max(80).optional(),
+  /** ServiceNow only: the column that receives the requester's email. */
+  requesterEmailField: z.string().trim().max(80).optional(),
 });
 
-export const connectServiceNowOp = defineOperation({
-  name: "helpDesks.ticketing.connectServiceNow",
-  capability: "edit",
+const ticketingTargetSchema = ticketingTargetBodySchema.extend({ helpDeskId: idSchema });
+
+/**
+ * Names the Application Connection a desk's "Create a ticket" channel files
+ * through (#1088, #1089). The provider comes from the Connection, and the
+ * Connection is looked up in the caller's Organization, so a foreign or
+ * Member-owned Connection is refused here rather than at a Visitor's
+ * escalation. No credential is taken: the Connection already holds one.
+ */
+export const setTicketingTargetOp = defineOperation({
+  name: "helpDesks.ticketing.setTarget",
+  capability: "helpDesks:edit",
   effect: "write",
-  input: serviceNowSchema,
+  input: ticketingTargetSchema,
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, input) => {
-    await requireHelpDesk(ctx, input.helpDeskId);
-    const desk = await ctx.db.setTicketingIntegration(input.helpDeskId, {
-      platform: "servicenow",
-      name: input.name,
-      config: {
-        baseUrl: input.baseUrl,
-        clientId: input.clientId,
-        clientSecret: sealSecret(input.clientSecret),
-        username: input.username,
-        password: sealSecret(input.password),
-      },
-    });
+    const existingDesk = await requireHelpDesk(ctx, input.helpDeskId);
+    if (existingDesk.ticketingTarget === undefined) {
+      throw new OperationError("invalid_input", "Ticketing setup is temporarily unavailable. Try again later.");
+    }
+    const connection =
+      (await ctx.db.listApplicationConnections(ctx.organizationId)).find(
+        (candidate) => candidate.id === input.connectionId
+      ) ?? null;
+    const provider = connection?.provider;
+    if (provider !== "salesforce" && provider !== "servicenow") {
+      throw new OperationError(
+        "invalid_input",
+        connection
+          ? "Choose a Salesforce or ServiceNow connection"
+          : "The connection no longer exists"
+      );
+    }
+    const target: TicketingTarget =
+      provider === "salesforce"
+        ? { provider, connectionId: input.connectionId }
+        : {
+            provider,
+            connectionId: input.connectionId,
+            table: input.table?.trim() || "incident",
+            ...(input.requesterEmailField?.trim()
+              ? { requesterEmailField: input.requesterEmailField.trim() }
+              : {}),
+          };
+    const issue = ticketingTargetIssue(target, connection, ctx.organizationId);
+    if (issue) throw new OperationError("invalid_input", issue);
+    const desk = await ctx.db.setTicketingTarget(input.helpDeskId, target);
+    // The desk now files somewhere: the retired-registration Alert is answered.
+    await ctx.db.resolveAlertsByKey(ctx.organizationId, ticketingLegacyAlertKey(desk.id));
     return publicHelpDesk(desk);
   },
 });
 
 export const disconnectTicketingIntegrationOp = defineOperation({
   name: "helpDesks.ticketing.disconnect",
-  capability: "edit",
+  capability: "helpDesks:edit",
   effect: "consequential",
   input: z.object({ helpDeskId: idSchema }),
   entities: ({ helpDeskId }) => [{ kind: "helpDesk" as const, id: helpDeskId }],
   run: async (ctx, { helpDeskId }) => {
     await requireHelpDesk(ctx, helpDeskId);
-    return publicHelpDesk(await ctx.db.clearTicketingIntegration(helpDeskId));
+    const desk = await ctx.db.clearTicketingIntegration(helpDeskId);
+    // The retired registration and its sealed secrets are gone with it.
+    await ctx.db.resolveAlertsByKey(ctx.organizationId, ticketingLegacyAlertKey(helpDeskId));
+    return publicHelpDesk(desk);
   },
 });
 

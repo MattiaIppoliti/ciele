@@ -17,7 +17,9 @@ let pg: PGlite;
 let orgId: string;
 let otherOrgId: string;
 let admin: string;
+let editor: string;
 let viewer: string;
+let supportAgent: string;
 let outsider: string;
 
 async function seedUser(org: string, email: string, role: string): Promise<string> {
@@ -66,7 +68,9 @@ beforeAll(async () => {
     [orgId, otherOrgId]
   );
   admin = await seedUser(orgId, "admin@hold-test.edu", "admin");
+  editor = await seedUser(orgId, "editor@hold-test.edu", "editor");
   viewer = await seedUser(orgId, "viewer@hold-test.edu", "viewer");
+  supportAgent = await seedUser(orgId, "agent@hold-test.edu", "support_agent");
   outsider = await seedUser(otherOrgId, "outsider@hold-test.edu", "admin");
   await pg.exec(`
     grant usage on schema public to authenticated;
@@ -168,5 +172,121 @@ describe("a Conversation under legal hold", () => {
     );
     expect((rows[0] as { deleted: number }).deleted).toBe(0);
     expect(await legalHold("visitor-thread")).toBe(true);
+  });
+});
+
+/**
+ * Who answers a Conversation (20261021100000_conversation_operators.sql,
+ * #1082). The operator columns are guarded by a trigger and the operator
+ * message insert by a policy; both ask `private.may_answer_conversation`,
+ * which is what a Viewer fails and an Editor passes.
+ */
+describe("taking a Conversation over", () => {
+  const takeOver = (userId: string) =>
+    `update public.conversations
+       set operator_state = 'held', operator_member_id = '${userId}', operator_name = 'Dana'
+     where id = 'visitor-thread' and operator_member_id is null
+     returning id`;
+
+  it("lets an Editor take it over", async () => {
+    const result = await actingAs(editor, takeOver(editor));
+    expect(result.rows).toHaveLength(1);
+  });
+
+  it("refuses a Viewer, who may read the Inbox but not answer in it", async () => {
+    await expect(actingAs(viewer, takeOver(viewer))).rejects.toThrow(/answer Visitors/);
+  });
+
+  it("lets the service role start a wait for the widget", async () => {
+    const { rows } = await asService(
+      `update public.conversations set operator_state = 'waiting', waiting_since = now()
+       where id = 'visitor-thread' returning id`
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it("refuses holding it in a colleague's name", async () => {
+    await expect(actingAs(editor, takeOver(admin))).rejects.toThrow(/only as themselves/);
+  });
+
+  it("refuses a Viewer rewriting the name the Widget shows", async () => {
+    await asService(
+      `update public.conversations set operator_state = 'held', operator_member_id = '${editor}', operator_name = 'Dana'
+       where id = 'visitor-thread'`
+    );
+    await expect(
+      actingAs(viewer, `update public.conversations set operator_name = 'Mallory' where id = 'visitor-thread'`)
+    ).rejects.toThrow(/answer Visitors/);
+    await expect(
+      actingAs(viewer, `update public.conversations set wait_timeout_minutes = 60 where id = 'visitor-thread'`)
+    ).rejects.toThrow(/answer Visitors/);
+  });
+
+  const insertOperatorMessage = (authorId: string, name = "Dana") =>
+    `insert into public.messages (id, conversation_id, role, content, author_member_id, author_name)
+     values ('${randomUUID()}', 'visitor-thread', 'operator', '[{"type":"text","text":"Hi"}]', '${authorId}', '${name}')
+     returning id`;
+
+  it("lets the holder write an operator reply under their stored name", async () => {
+    await actingAs(editor, takeOver(editor));
+    const result = await actingAs(editor, insertOperatorMessage(editor));
+    expect(result.rows).toHaveLength(1);
+  });
+
+  it("refuses a reply under another name, or from a Member who does not hold it", async () => {
+    await actingAs(editor, takeOver(editor));
+    await expect(actingAs(editor, insertOperatorMessage(editor, "The CEO"))).rejects.toThrow(/row-level security/);
+    await expect(actingAs(admin, insertOperatorMessage(admin))).rejects.toThrow(/row-level security/);
+  });
+
+  it("refuses an operator reply written in somebody else's name", async () => {
+    await expect(actingAs(editor, insertOperatorMessage(admin))).rejects.toThrow(/row-level security/);
+  });
+
+  it("refuses an operator reply from a Viewer", async () => {
+    await expect(actingAs(viewer, insertOperatorMessage(viewer))).rejects.toThrow(/row-level security/);
+  });
+
+  it("refuses a Member of another Organization", async () => {
+    await expect(actingAs(outsider, insertOperatorMessage(outsider))).rejects.toThrow(/row-level security/);
+  });
+});
+
+/**
+ * The Support Agent Role (20261021160000_support_agent_role.sql, #1086): it
+ * ranks as a Viewer in every ladder comparison and answers Visitors through
+ * the named check only.
+ */
+describe("a Support Agent", () => {
+  it("may take a Conversation over and reply as themselves", async () => {
+    const taken = await actingAs(
+      supportAgent,
+      `update public.conversations set operator_state = 'held', operator_member_id = '${supportAgent}', operator_name = 'Agent'
+       where id = 'visitor-thread' returning id`
+    );
+    expect(taken.rows).toHaveLength(1);
+    const reply = await actingAs(
+      supportAgent,
+      `insert into public.messages (id, conversation_id, role, content, author_member_id, author_name)
+       values ('${randomUUID()}', 'visitor-thread', 'operator', '[]', '${supportAgent}', 'Agent') returning id`
+    );
+    expect(reply.rows).toHaveLength(1);
+  });
+
+  it("ranks as a Viewer everywhere the ladder is asked", async () => {
+    const { rows } = await actingAs(
+      supportAgent,
+      `select private.has_org_role($1, 2) as editor, private.has_org_role($1, 1) as member`,
+      [orgId]
+    );
+    expect(rows[0]).toEqual({ editor: false, member: true });
+  });
+
+  it("cannot change an Assistant", async () => {
+    const result = await actingAs(
+      supportAgent,
+      `update public.assistants set title = 'Renamed' where id = 'hold-assistant' returning id`
+    );
+    expect(result.rows).toHaveLength(0);
   });
 });

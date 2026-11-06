@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { todayUtc, workDirectoryOp, type WorkDirectory } from "@ciele/ops";
 import { requirePageMember } from "@/lib/authz";
 import { runPageOperation } from "@/lib/operations";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { WorkDirectoryProvider } from "@/components/work/work-directory";
 
 /**
@@ -18,9 +18,10 @@ export interface WorkPageContext {
 }
 
 export async function workPageContext(): Promise<WorkPageContext> {
-  const { session, role } = await requirePageMember();
+  const { session, role, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
   const directory = await runPageOperation(workDirectoryOp, {});
-  return { directory, viewerId: session.userId, canEdit: canEdit(role), today: todayUtc() };
+  return { directory, viewerId: session.userId, canEdit: can(access, "projects:edit"), today: todayUtc() };
 }
 
 export function WorkShell({ context, children }: { context: WorkPageContext; children: ReactNode }) {

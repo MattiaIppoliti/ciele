@@ -16,6 +16,30 @@ export async function assistants(
 ): Promise<number> {
   const { client, rest, flags, emit, deps } = ctx;
   switch (verb) {
+    case "export": {
+      if (!rest[0]) return usage(deps, "assistants export <id>");
+      const bundle = await client.assistants.exportBundle(rest[0]);
+      emit(JSON.stringify(bundle, null, 2), bundle); return EXIT.ok;
+    }
+    case "import": {
+      if (!rest[0]) return usage(deps, "assistants import <file>");
+      const bundle: unknown = JSON.parse(readFileSync(rest[0], "utf8"));
+      const result = await client.assistants.importBundle(bundle);
+      emit(JSON.stringify(result, null, 2), result); return EXIT.ok;
+    }
+    case "access": {
+      if (!rest[0]) return usage(deps,"assistants access <id>");
+      const result = await client.assistants.access(rest[0]); emit(table(result.data,[{ key:"email",header:"Member" },{ key:"role",header:"Organization Role" }]),result); return EXIT.ok;
+    }
+    case "set-access": {
+      const role = str(flags.role);
+      if (!rest[0] || !rest[1] || !confirmed(flags) || (role !== "denied" && role !== "viewer" && role !== "editor" && role !== "admin")) return usage(deps,"assistants set-access <id> <userId> --role denied|viewer|editor|admin --yes");
+      await client.assistants.setAccess(rest[0],rest[1],role); emit("Assistant access updated",{ assistantId:rest[0],userId:rest[1],role }); return EXIT.ok;
+    }
+    case "clear-access": {
+      if (!rest[0] || !rest[1] || !confirmed(flags)) return usage(deps,"assistants clear-access <id> <userId> --yes");
+      await client.assistants.clearAccess(rest[0],rest[1]); emit("Organization Role restored",{ assistantId:rest[0],userId:rest[1] }); return EXIT.ok;
+    }
     case "list": {
       if (flags.all === true) {
         const all = [];

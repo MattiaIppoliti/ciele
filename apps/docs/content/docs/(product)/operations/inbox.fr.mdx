@@ -1,24 +1,24 @@
 ---
 title: Boîte de réception
-description: Inspectez les Conversations, les Sources, les traces d'exécution et les métadonnées de session.
+description: Inspectez les Conversations, les Sources, les traces d’exécution et les métadonnées de session.
 ---
 
-La boîte de réception stocke les tours de parole du Visiteur et de l'Assistant.
-Ouvrez une Conversation pour examiner la transcription exacte qui a été stockée.
+La Inbox conserve les tours de parole du Visiteur et de l’Assistant. Ouvrez une
+Conversation pour examiner la transcription exacte stockée.
 
 ## Liste des conversations
 
 Utilisez la recherche et les filtres disponibles pour affiner la liste. Chaque
-ligne indique l'activité récente et l'état actuel de la Conversation.
+ligne indique l’activité récente et l’état actuel de la Conversation.
 
 Une session qui ne contient que des Notifications proactives porte le marqueur
-**Notification only**. Elle devient une Conversation normale dès qu'un Visiteur
+**Notification only**. Elle devient une Conversation normale dès qu’un Visiteur
 répond.
 
 Faites glisser une ligne vers la gauche, ou sélectionnez son bouton **Actions**,
 pour afficher **Archive**, **Flag** et **Delete**. Un balayage complet archive
 la Conversation. Sélectionnez **Archived** pour la restaurer ou **Flagged** pour
-retrouver vos Conversations marquées. Les actions Archive et Flag n'affectent
+rechercher vos Conversations marquées. Les actions Archive et Flag n’affectent
 que votre propre liste. Elles ne modifient ni la transcription ni ses analyses.
 Delete demande une confirmation et supprime la transcription. Une Conversation
 soumise à une mise en suspens légale ne peut pas être supprimée.
@@ -27,26 +27,82 @@ soumise à une mise en suspens légale ne peut pas être supprimée.
 
 La vue détaillée peut afficher :
 
-- Messages du visiteur et de l'assistant
+- Messages du visiteur et de l’assistant
 - le Flow qui a géré un tour
 - citations de sources nommées
 - Commentaires du visiteur
-- état de remontée (escalation)
-- métadonnées de lancement et de l'appareil
-- le sujet SSO vérifié et la revendication d'identité configurée
-- informations de Thinking stockées lorsque le rôle du membre autorise l'accès
+- état de l’escalade
+- métadonnées de lancement et de l’appareil
+- le sujet SSO vérifié et la revendication d’identité configurée
+- informations de Thinking stockées lorsque le rôle du membre autorise l’accès
 
 Les actions Verbatim Message et les réponses Basic ne contiennent pas de trace
 Thinking. Les réponses de recherche dans la base de connaissances peuvent
 contenir des événements liés aux outils et à la progression.
 
-Les appels d'intégration d'API apparaissent également dans la trace. Leurs
+Les appels d’intégration d’API apparaissent également dans la trace. Leurs
 événements indiquent quel endpoint a pris en charge la réponse.
+
+## Prendre en charge une Conversation
+
+Vous pouvez répondre vous-même à un Visitor. Ouvrez la Conversation et
+sélectionnez **Take over**. Vous devez être un Editor, un Admin, un Owner ou un
+Support Agent.
+
+Lorsque vous menez une Conversation :
+
+- L’Assistant ne répond pas. Chaque message de visiteur est enregistré et
+  affiché dans l'Inbox, mais aucun Flow n'est exécuté et aucun modèle n'est
+  appelé.
+- Une zone de réponse s’affiche sous la transcription. Votre réponse est envoyée
+  au Widget ouvert, accompagnée de votre nom d’affichage. Le Visiteur n’a pas
+  besoin d’envoyer un message en premier.
+- Le Widget et l’Inbox affichent une ligne lorsque vous rejoignez une
+  conversation et lorsque vous la quittez.
+- Les autres membres voient qui détient la Conversation. Un seul Membre peut la
+  détenir à la fois.
+
+Sélectionnez **Release** pour rendre la Conversation à l'Assistant. Le prochain
+message du visiteur déclenche un tour normal. Un Admin ou un Owner peut libérer
+une Conversation qu’un collègue détient.
+
+Vos réponses sont des messages d'opérateur. Il ne s’agit pas de réponses
+générées par l’IA ; par conséquent, elles ne sont pas prises en compte dans les
+Insights, la vérification des réponses ni les retours. L’exportation JSON et la
+transcription imprimée les identifient avec l’expéditeur `Operator` et votre
+nom.
+
+Le Widget vérifie vos réponses toutes les quelques secondes pendant que vous
+détenez la Conversation. Il effectue également une vérification toutes les 15
+secondes pendant 5 minutes après l’envoi d’un message par le visiteur, afin de
+pouvoir indiquer que vous avez rejoint la conversation. Un Widget inactif
+n’envoie aucune requête supplémentaire.
+
+## Textes rapides
+
+Les Quick Texts sont des réponses prédéfinies pour la zone de réponse. Les
+Editors, les Admins et les Owners peuvent les créer, les modifier et les
+supprimer dans **Settings** > **Quick Texts**. Chaque Quick Text comporte un
+titre, un corps de texte et un dossier facultatif.
+
+Pour insérer un Quick Text, saisissez **/** dans la zone de réponse. Continuez à
+saisir du texte pour filtrer la liste par titre. Sélectionnez un Quick Text, ou
+appuyez sur Entrée, pour insérer son corps à l’endroit où vous avez saisi **/**.
+Vous pouvez modifier le texte avant de l’envoyer.
+
+Un corps peut utiliser les variables de modèle employées par les actions Flow,
+par exemple `{{user.name}}`. Ciele les remplit à partir de la Conversation à
+laquelle vous répondez. Une variable qui n’a pas de valeur devient un texte
+vide.
+
+Chaque membre autorisé à répondre peut utiliser tous les Quick Texts. Vous
+pouvez également gérer les Quick Texts à l'aide de l'API, de la commande CLI
+`ciele quick-texts` et de l'outil MCP `manage_configuration`.
 
 ## Produire un travail de qualité
 
-Utilisez l'action Improvement disponible lorsqu'une réponse doit être corrigée.
+Utilisez l’action Improvement disponible lorsqu’une réponse doit être corrigée.
 Le nouvel élément renvoie au message de la Conversation concernée.
 
 Utilisez [Exports](/operations/exports) lorsque vous avez besoin
-d'enregistrements structurés en dehors de l'Inbox.
+d’enregistrements structurés en dehors de l’Inbox.

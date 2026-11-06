@@ -33,6 +33,7 @@ import {
   writeColumnWidths,
 } from "./table-layout";
 import { useTaskMutations } from "./use-task-mutations";
+import { TaskContextMenu } from "./task-context-menu";
 import { useWorkDirectory } from "./work-directory";
 import { useWorkViewContext } from "./use-work-view-context";
 import { PillButton } from "./work-ui";
@@ -345,6 +346,14 @@ export function TaskTable({
             >
               {group.tasks.map((task, index) => (
                 <RollRow key={task.id} index={index}>
+                  <TaskContextMenu
+                    task={task}
+                    canEdit={editable}
+                    onUpdate={(patch) => mutations.update(task, patch)}
+                    onOpen={() => onOpenTask(task.id)}
+                    onArchive={() => mutations.archive([task.id])}
+                    onDelete={() => mutations.remove([task.id])}
+                  >
                   <tr className="group/tr" data-open={openTaskId === task.id || undefined}>
                     <td className={cn(TD, "sticky left-0 z-[2] pl-6", openTaskId === task.id && TINT_OPEN)}>
                       <button type="button" onClick={() => onOpenTask(task.id)} className="press-text flex w-full min-w-0 items-center gap-2 text-left">
@@ -363,6 +372,7 @@ export function TaskTable({
                       </td>
                     ))}
                   </tr>
+                  </TaskContextMenu>
                 </RollRow>
               ))}
             </GroupRows>

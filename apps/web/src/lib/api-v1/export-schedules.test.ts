@@ -1,0 +1,23 @@
+import { expect, it } from "vitest";
+import { apiKeySecretHint, generateApiKeySecret, hashApiKeySecret } from "@agent-hub/core";
+import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
+import { GET, POST } from "@/app/api/v1/exports/schedules/route";
+import { PATCH, DELETE } from "@/app/api/v1/exports/schedules/[id]/route";
+it("creates, lists, pauses and deletes through a pinned key without changing the saved filters", async () => {
+  const db = getMockDb(); const secret = generateApiKeySecret();
+  await db.createApiKey(DEMO_ORG.id, { name: "Schedule API", role: "editor", roleId: "builtin:editor", createdBy: DEMO_MEMBER.userId, secretHash: hashApiKeySecret(secret), secretHint: apiKeySecretHint(secret) });
+  const headers = { authorization: `Bearer ${secret}`, "content-type": "application/json" };
+  const input = { name: "Weekly report", kind: "insights_overview", format: "csv", filters: { feedback: "up" }, cadence: { kind: "weekly", weekday: 1 }, hour: 8, recipientMemberIds: [DEMO_MEMBER.userId] };
+  const rejected = await POST(new Request("http://local/api/v1/exports/schedules", { method: "POST", headers, body: JSON.stringify({ ...input, recipientMemberIds: ["foreign-member"] }) }));
+  expect(rejected.status).toBe(422);
+  const response = await POST(new Request("http://local/api/v1/exports/schedules", { method: "POST", headers, body: JSON.stringify(input) }));
+  expect(response.status).toBe(201); const created = await response.json();
+  const listed = await GET(new Request("http://local/api/v1/exports/schedules", { headers }));
+  expect((await listed.json()).items.some((row: { id: string }) => row.id === created.id)).toBe(true);
+  const params = { params: Promise.resolve({ id: created.id }) };
+  const paused = await PATCH(new Request(`http://local/api/v1/exports/schedules/${created.id}`, { method: "PATCH", headers, body: JSON.stringify({ enabled: false }) }), params);
+  expect(paused.status).toBe(200);
+  expect(await paused.json()).toMatchObject({ enabled: false, filters: { feedback: "up" }, cadence: input.cadence });
+  expect((await DELETE(new Request(`http://local/api/v1/exports/schedules/${created.id}`, { method: "DELETE", headers }), params)).status).toBe(204);
+  expect(await db.table("exportSchedules").get(created.id)).toBeNull();
+});

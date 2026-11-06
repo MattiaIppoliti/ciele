@@ -277,7 +277,7 @@ async function applyHttpFlowEffects(
   ctx: {
     db: Db;
     organizationId: string;
-    flow: Pick<Flow, "id" | "name">;
+    flow: Pick<Flow, "id" | "name" | "assistantId">;
     request: HttpFlowRequest;
   }
 ): Promise<void> {
@@ -286,6 +286,8 @@ async function applyHttpFlowEffects(
       if (effect.kind === "create_improvement") {
         await raiseImprovement(ctx.db, ctx.organizationId, {
           title: effect.title,
+          source: "flow_action",
+          assistantId: ctx.flow.assistantId,
           messageId: null,
         });
       } else if (effect.kind === "send_email") {

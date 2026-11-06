@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type {
   AiUsageStage,
+  TurnTimings,
   ExportJobFormat,
   ExportJobKind,
   FlowCondition,
@@ -9,11 +10,20 @@ import type {
 } from "@agent-hub/core";
 import {
   ASSISTANT_GOAL_CAP,
+  BUILTIN_ROLE_KEYS,
+  CAPABILITIES,
+  builtinRoleDefaults,
   IMPROVEMENT_STATUS_VALUES,
   MEMORIES_PER_SUBJECT_CAP,
+  OUTBOUND_WEBHOOK_EXAMPLES,
+  OUTBOUND_WEBHOOK_EVENTS,
+  isOutboundWebhookEvent,
+  isOutboundWebhookEventType,
   USAGE_OPERATIONS,
   USAGE_SURFACES,
   apiKeySecretHint,
+  defaultChannelAvailability,
+  sourceUsage,
   latencyBucketOf,
   buildPublicationConfig,
   generateApiKeySecret,
@@ -63,6 +73,12 @@ export interface DbContractContext {
   foreignOrganizationId: string;
   /** Existing Assistant owned by `foreignOrganizationId`. */
   foreignAssistantId: string;
+  /**
+   * The stored `timings` of an Organization's runtime events, oldest first.
+   * No `Db` method reads them back (the runbook's SQL does), so each adapter
+   * reads its own storage for the round-trip case.
+   */
+  listRuntimeEventTimings: (organizationId: string) => Promise<unknown[]>;
   /** Optional cleanup after the suite (drop seeded org, close clients). */
   teardown?: () => Promise<void> | void;
 }
@@ -94,6 +110,57 @@ export function describeDbContract(
 
     const newAssistant = () =>
       db.createAssistant(ctx.organizationId, { title: "Contract Fixture" });
+    describe("scheduled Insights exports", () => {
+      it("claims one latest slot atomically, rolls its date window, and queues ready mail", async () => {
+        const schedule = await db.table("exportSchedules").insert({ organizationId: ctx.organizationId, name: "Weekly contract", kind: "insights_overview", format: "csv", filters: { from: "2000-01-01", to: "2000-01-02", feedback: "up" }, cadence: { kind: "weekly", weekday: 1 }, hour: 8, recipientMemberIds: [ctx.userId], createdBy: ctx.userId });
+        await Promise.all([db.queueDueExportSchedules("2030-02-04T10:17:00Z", 100), db.queueDueExportSchedules("2030-02-04T10:18:00Z", 100)]);
+        const jobs = (await db.listExportJobs(ctx.organizationId)).filter(row => row.params.scheduleId === schedule.id);
+        expect(jobs).toHaveLength(1);
+        expect(jobs[0].params).toMatchObject({ from: "2030-01-28", to: "2030-02-03", feedback: "up", name: "Weekly contract" });
+        await db.table("exportSchedules").update(schedule.id, { enabled: false });
+        await db.queueDueExportSchedules("2031-02-04T10:17:00Z", 100);
+        expect((await db.listExportJobs(ctx.organizationId)).filter(row => row.params.scheduleId === schedule.id)).toHaveLength(1);
+        await db.table("exportSchedules").update(schedule.id, { enabled: true });
+        await db.queueDueExportSchedules("2031-02-04T10:17:00Z", 100);
+        expect((await db.listExportJobs(ctx.organizationId)).filter(row => row.params.scheduleId === schedule.id)).toHaveLength(2);
+        await db.updateExportJob(jobs[0].id, { status: "done", storagePath: "private/export.csv" });
+        const ready = await db.claimBackgroundJobs({ kind: "notify_export_ready", workerId: "export-contract", now: "2031-02-04T11:00:00Z", staleBefore: "2031-02-04T10:55:00Z", limit: 100 });
+        expect(ready.some(job => job.payload.jobId === jobs[0].id && job.organizationId === ctx.organizationId)).toBe(true);
+        await db.table("exportSchedules").delete(schedule.id);
+      });
+    });
+
+    describe("post-commit answer moderation", () => {
+      it("merges scores idempotently and raises only the first daily flag even after resolution", async () => {
+        const assistant = await newAssistant();
+        const conversation = await db.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: "moderation-contract" });
+        const message = await db.appendMessage({ conversationId: conversation.id, role: "assistant", content: [{ type: "text", text: "Answer" }], trace: { steps: [], searchCount: 0, guardrails: [{ id: "moderation", type: "moderation", name: "Input", outcome: "pass" }] } });
+        const check = { id: "moderation", type: "moderation" as const, name: "Answer", target: "answer" as const, outcome: "pass" as const, flagged: false, scores: [{ category: "hate", score: 0.1 }] };
+        await db.recordMessageModeration(ctx.organizationId, message.id, check);
+        await db.recordMessageModeration(ctx.organizationId, message.id, check);
+        expect((await db.getMessage(message.id))?.trace?.guardrails).toHaveLength(2);
+        expect((await db.getMessage(message.id))?.trace?.guardrails?.at(-1)?.scores).toEqual(check.scores);
+        await expect(db.recordMessageModeration(ctx.foreignOrganizationId, message.id, check)).rejects.toThrow();
+        await db.recordMessageModeration(ctx.organizationId, message.id, { ...check, outcome: "logged", flagged: true });
+        expect((await db.getConversation(conversation.id))?.metadata.flaggedAnswer).toBe(true);
+        const key = `answer-moderation:${assistant.id}:${message.createdAt.slice(0, 10)}`;
+        const alert = (await db.listAlerts(ctx.organizationId)).find(row => row.sourceKey === key);
+        expect(alert).toBeTruthy();
+        await db.resolveAlert(alert!.id);
+        const second = await db.appendMessage({ conversationId: conversation.id, role: "assistant", content: [{ type: "text", text: "Another answer" }] });
+        await db.recordMessageModeration(ctx.organizationId, second.id, { ...check, outcome: "logged", flagged: true });
+        const alerts = (await db.listAlerts(ctx.organizationId)).filter(row => row.sourceKey === key);
+        expect(alerts).toHaveLength(1);
+        expect(alerts[0].status).toBe("resolved");
+        const listed = await db.getInboxPage(ctx.organizationId, { assistantId: assistant.id, flaggedAnswer: true });
+        expect(listed.conversations.map(row => row.id)).toEqual([conversation.id]);
+        const inputFlag = await db.appendMessage({ conversationId: conversation.id, role: "assistant", content: [{ type: "text", text: "Guardrail reply" }], trace: { steps: [], searchCount: 0, guardrails: [{ ...check, target: "visitor", outcome: "logged", flagged: true }] } });
+        expect(inputFlag.id).toBeTruthy();
+        const counts = await db.getModerationCounts(ctx.organizationId, "2000-01-01T00:00:00Z", "2099-01-01T00:00:00Z", assistant.id);
+        expect(counts).toEqual({ visitors: 1, answers: 2 });
+      });
+    });
+
     describe("social message reactions", () => {
       it("replaces each actor's emoji without changing answer feedback", async () => {
         const assistant = await newAssistant();
@@ -156,12 +223,143 @@ export function describeDbContract(
       });
     });
 
+    describe("roles (#1164)", () => {
+      it("lists the six built-ins first, Owner holding every Capability", async () => {
+        const roles = await db.listOrgRoles(ctx.organizationId);
+        expect(roles.slice(0, 6).map((role) => role.key)).toEqual([...BUILTIN_ROLE_KEYS]);
+        const owner = roles[0]!;
+        expect(owner).toMatchObject({ name: "Owner", tier: "owner" });
+        expect(owner.capabilities).toEqual([...CAPABILITIES]);
+        expect(roles.find((role) => role.key === "editor")!.capabilities).toEqual(builtinRoleDefaults("editor"));
+        expect(roles.find((role) => role.key === "data_viewer")!.tier).toBe("viewer");
+        expect(owner.memberCount).toBeGreaterThanOrEqual(1);
+        expect(await db.listOrgRoles(ctx.foreignOrganizationId)).not.toContainEqual(expect.objectContaining({ id: owner.id }));
+      });
+
+      it("resolves the caller's grant to their Role's Capabilities", async () => {
+        const grant = await db.getMemberGrant(ctx.organizationId, ctx.userId);
+        expect(grant).toMatchObject({ role: "owner", roleName: "Owner" });
+        expect(grant?.capabilities).toEqual([...CAPABILITIES]);
+        expect(await db.getMemberGrant(ctx.organizationId, "00000000-0000-4000-8000-000000000000")).toBeNull();
+      });
+
+      it("creates a custom Role, derives its tier, moves holders when it changes, and deletes it once unheld", async () => {
+        const created = await db.createOrgRole(ctx.organizationId, {
+          name: "Contract triage",
+          description: "Pins and rates conversations.",
+          capabilities: ["inbox:triage", "inbox:view"],
+          organizationLevel: true,
+          assistantLevel: false,
+        });
+        expect(created).toMatchObject({ key: null, name: "Contract triage", tier: "viewer" });
+        // Catalogue order, whatever order it was written in.
+        expect(created.capabilities).toEqual(["inbox:view", "inbox:triage"]);
+        await expect(
+          db.createOrgRole(ctx.organizationId, { name: "contract TRIAGE", description: "", capabilities: [], organizationLevel: true, assistantLevel: false })
+        ).rejects.toThrow();
+        await expect(
+          db.createOrgRole(ctx.organizationId, { name: "Bad", description: "", capabilities: ["inbox:teleport"], organizationLevel: true, assistantLevel: false })
+        ).rejects.toThrow(/Unknown capability/);
+
+        const invite = await db.createInvite(ctx.organizationId, created.id, "triage@contract.example");
+        expect(invite).toMatchObject({ roleId: created.id, roleName: "Contract triage", role: "viewer" });
+        expect((await db.listOrgRoles(ctx.organizationId)).find((role) => role.id === created.id)?.inviteCount).toBe(1);
+
+        const raised = await db.updateOrgRole(ctx.organizationId, created.id, { capabilities: ["inbox:view", "flows:edit", "flows:view", "assistants:view"] });
+        expect(raised.tier).toBe("editor");
+        expect((await db.listInvites(ctx.organizationId)).find((item) => item.id === invite.id)?.role).toBe("editor");
+
+        await expect(db.deleteOrgRole(ctx.organizationId, created.id)).rejects.toThrow();
+        await db.revokeInvite(invite.id);
+        expect(await db.deleteOrgRole(ctx.organizationId, created.id)).toBe(true);
+        expect(await db.deleteOrgRole(ctx.organizationId, created.id)).toBe(false);
+      });
+
+      it("never deletes a built-in and keeps Owner as seeded", async () => {
+        const roles = await db.listOrgRoles(ctx.organizationId);
+        const viewer = roles.find((role) => role.key === "viewer")!;
+        expect(await db.deleteOrgRole(ctx.organizationId, viewer.id)).toBe(false);
+        const owner = roles.find((role) => role.key === "owner")!;
+        const after = await db.updateOrgRole(ctx.organizationId, owner.id, { name: "Boss", capabilities: [] });
+        expect(after).toMatchObject({ name: "Owner", tier: "owner" });
+        expect(after.capabilities).toEqual([...CAPABILITIES]);
+      });
+
+      it("starts with Editor as the invitation default and Viewer as the Assistant default, and moves them", async () => {
+        const roles = await db.listOrgRoles(ctx.organizationId);
+        expect(roles.filter((role) => role.memberDefault).map((role) => role.key)).toEqual(["editor"]);
+        expect(roles.filter((role) => role.assistantDefault).map((role) => role.key)).toEqual(["viewer"]);
+        const admin = roles.find((role) => role.key === "admin")!;
+        const owner = roles.find((role) => role.key === "owner")!;
+        await db.setRoleDefaults(ctx.organizationId, { memberRoleId: admin.id, assistantRoleId: admin.id });
+        const moved = await db.listOrgRoles(ctx.organizationId);
+        expect(moved.filter((role) => role.memberDefault).map((role) => role.key)).toEqual(["admin"]);
+        expect(moved.filter((role) => role.assistantDefault).map((role) => role.key)).toEqual(["admin"]);
+        await expect(db.setRoleDefaults(ctx.organizationId, { memberRoleId: owner.id })).rejects.toThrow();
+        await db.setRoleDefaults(ctx.organizationId, {
+          memberRoleId: roles.find((role) => role.key === "editor")!.id,
+          assistantRoleId: roles.find((role) => role.key === "viewer")!.id,
+        });
+      });
+
+      it("gives a Member a custom Role on one Assistant, and reads it back as their grant there", async () => {
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Role scoped" });
+        const flowsOnly = await db.createOrgRole(ctx.organizationId, {
+          name: "Contract flow editor",
+          description: "",
+          capabilities: ["assistants:view", "flows:view", "flows:edit"],
+          organizationLevel: false,
+          assistantLevel: true,
+        });
+        await db.setAssistantAccess(assistant.id, ctx.userId, "viewer", flowsOnly.id);
+        const entry = (await db.listAssistantAccess(assistant.id)).find((row) => row.userId === ctx.userId);
+        expect(entry).toMatchObject({ role: "editor", roleId: flowsOnly.id, roleName: "Contract flow editor" });
+        const grant = await db.getMemberAssistantGrant(ctx.organizationId, ctx.userId, assistant.id);
+        expect(grant?.override).toMatchObject({ role: "editor", capabilities: ["assistants:view", "flows:view", "flows:edit"] });
+        expect((await db.listOrgRoles(ctx.organizationId)).find((role) => role.id === flowsOnly.id)?.assistantGrantCount).toBe(1);
+        await expect(db.deleteOrgRole(ctx.organizationId, flowsOnly.id)).rejects.toThrow();
+        // A ladder name still lands on its built-in.
+        await db.setAssistantAccess(assistant.id, ctx.userId, "editor");
+        expect((await db.listMemberAssistantAccess(ctx.organizationId, ctx.userId)).find((row) => row.assistantId === assistant.id)?.roleId)
+          .toBe((await db.listOrgRoles(ctx.organizationId)).find((role) => role.key === "editor")!.id);
+        await db.clearAssistantAccess(assistant.id, ctx.userId);
+        expect((await db.getMemberAssistantGrant(ctx.organizationId, ctx.userId, assistant.id))?.override).toBeNull();
+        expect(await db.deleteOrgRole(ctx.organizationId, flowsOnly.id)).toBe(true);
+      });
+
+      it("gives an API key a custom Role", async () => {
+        const role = await db.createOrgRole(ctx.organizationId, {
+          name: "Contract reporting",
+          description: "",
+          capabilities: ["insights:view"],
+          organizationLevel: true,
+          assistantLevel: false,
+        });
+        const secret = generateApiKeySecret();
+        const key = await db.createApiKey(ctx.organizationId, {
+          name: "Reporting",
+          roleId: role.id,
+          role: role.tier,
+          secretHash: hashApiKeySecret(secret),
+          secretHint: apiKeySecretHint(secret),
+          createdBy: ctx.userId,
+        });
+        expect(key).toMatchObject({ roleId: role.id, roleName: "Contract reporting", role: "viewer" });
+        expect((await db.getApiKeyByHash(hashApiKeySecret(secret)))?.roleId).toBe(role.id);
+        await db.revokeApiKey(key.id);
+        // A revoked key no longer holds its Role.
+        expect(await db.deleteOrgRole(ctx.organizationId, role.id)).toBe(true);
+      });
+    });
+
     describe("organization API keys", () => {
       const newKeyInput = (name: string, role: "viewer" | "editor" | "admin") => {
         const secret = generateApiKeySecret();
         return {
           name,
           role,
+          // A built-in by name: the path an old writer takes (ADR-0028).
+          roleId: `builtin:${role}`,
           secretHash: hashApiKeySecret(secret),
           secretHint: apiKeySecretHint(secret),
           createdBy: ctx.userId,
@@ -236,6 +434,65 @@ export function describeDbContract(
         await db.revokeApiKey(created.id);
         const revoked = await db.getApiKeyByHash(input.secretHash);
         expect(revoked?.revokedAt).toBeTruthy();
+      });
+
+      it("refuses self-offboarding an absent Member without appending a success", async () => {
+        await expect(db.leaveOrganization(ctx.organizationId, ctx.missingOrganizationId, { organizationId: ctx.organizationId, operation: "members.leave", effect: "consequential", entities: [], memberId: ctx.missingOrganizationId, memberName: null, memberEmail: null, apiKeyId: null, teammateId: null, agentAuthor: null, surface: "console", outcome: "ok" })).rejects.toThrow();
+        expect(await db.listAuditEntries(ctx.organizationId, { memberId: ctx.missingOrganizationId })).toEqual([]);
+      });
+
+      it("records append-only audit facts and pins filtered reads and queued exports", async () => {
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+        const domain = `contract-${shortId()}`;
+        await pinned.recordAuditEntry({ organizationId: ctx.foreignOrganizationId, operation: `${domain}.update`, effect: "write", entities: [], memberId: ctx.userId, memberName: "Actor snapshot", memberEmail: "audit@example.test", apiKeyId: null, teammateId: null, agentAuthor: null, surface: "api", outcome: "ok" });
+        const rows = await pinned.listAuditEntries(ctx.foreignOrganizationId, { domain, memberId: ctx.userId });
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({ organizationId: ctx.organizationId, operation: `${domain}.update`, surface: "api", outcome: "ok" });
+        expect(await db.listAuditEntries(ctx.foreignOrganizationId, { domain })).toEqual([]);
+        const job = await pinned.createExportJob(ctx.foreignOrganizationId, { kind: "audit_log", format: "csv", params: { domain } });
+        expect(job.organizationId).toBe(ctx.organizationId);
+        expect(job.kind).toBe("audit_log");
+      });
+
+      it("replaces a Member's access rows in one call, and never limits an Owner", async () => {
+        const assistant = await newAssistant();
+        const me = (await db.listMembers(ctx.organizationId)).find((member) => member.userId === ctx.userId);
+        expect(me?.assistantScope).toBe("all");
+        await db.setMemberAssistantScope(ctx.organizationId, ctx.userId, "all", [
+          { assistantId: assistant.id, role: "viewer" },
+          { assistantId: ctx.foreignAssistantId, role: "admin" },
+        ]);
+        // The foreign Assistant is not this Organization's: it is skipped, not granted.
+        expect((await db.listMemberAssistantAccess(ctx.organizationId, ctx.userId)).map(({ assistantId, role }) => ({ assistantId, role }))).toEqual([
+          { assistantId: assistant.id, role: "viewer" },
+        ]);
+        await expect(
+          db.setMemberAssistantScope(ctx.organizationId, ctx.userId, "selected", [])
+        ).rejects.toThrow(/owner/);
+        await db.setMemberAssistantScope(ctx.organizationId, ctx.userId, "all", []);
+        expect(await db.listMemberAssistantAccess(ctx.organizationId, ctx.userId)).toEqual([]);
+      });
+
+      it("keeps an entry's described target and changes, and filters by operation and order", async () => {
+        const domain = `described-${shortId()}`;
+        const base = { organizationId: ctx.organizationId, effect: "write" as const, entities: [], memberId: ctx.userId, memberName: "Actor", memberEmail: "audit@example.test", apiKeyId: null, teammateId: null, agentAuthor: null, surface: "console" as const, outcome: "ok" };
+        await db.recordAuditEntry({ ...base, operation: `${domain}.update`, targetLabel: "viewer@example.test", targetDetail: "Viewer role", changes: { Role: { before: "Viewer", after: "Editor" } } });
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        await db.recordAuditEntry({ ...base, operation: `${domain}.delete` });
+        const [newest, older] = await db.listAuditEntries(ctx.organizationId, { domain });
+        expect(newest?.operation).toBe(`${domain}.delete`);
+        expect(newest?.changes).toEqual({});
+        expect(older).toMatchObject({
+          targetLabel: "viewer@example.test",
+          targetDetail: "Viewer role",
+          changes: { Role: { before: "Viewer", after: "Editor" } },
+        });
+        const oldestFirst = await db.listAuditEntries(ctx.organizationId, { domain, order: "oldest" });
+        expect(oldestFirst.map((row) => row.operation)).toEqual([`${domain}.update`, `${domain}.delete`]);
+        const after = await db.listAuditEntries(ctx.organizationId, { domain, order: "oldest", after: oldestFirst[0]!.createdAt, afterId: oldestFirst[0]!.id });
+        expect(after.map((row) => row.operation)).toEqual([`${domain}.delete`]);
+        const only = await db.listAuditEntries(ctx.organizationId, { domain, operations: [`${domain}.update`] });
+        expect(only.map((row) => row.operation)).toEqual([`${domain}.update`]);
       });
 
       it("org-pinned wrapper pins allow-listed reads and fails closed (#619)", async () => {
@@ -1967,6 +2224,217 @@ export function describeDbContract(
     });
 
     describe("conversations & messages", () => {
+      describe("human operators (#1082, #1083)", () => {
+        it("lets exactly one Member take a Conversation over", async () => {
+          const assistant = await newAssistant();
+          const conversation = await newConversation(assistant.id);
+          expect(conversation.operator?.state ?? "ai").toBe("ai");
+          const now = "2026-10-21T10:00:00.000Z";
+          const first = await db.takeOverConversation({
+            conversationId: conversation.id,
+            memberId: ctx.userId,
+            memberName: "Dana",
+            now,
+          });
+          expect(first?.operator).toMatchObject({
+            state: "held",
+            memberId: ctx.userId,
+            memberName: "Dana",
+          });
+          // The compare-and-set: a second take-over finds it held and loses.
+          const second = await db.takeOverConversation({
+            conversationId: conversation.id,
+            memberId: ctx.userId,
+            memberName: "Someone else",
+            now,
+          });
+          expect(second).toBeNull();
+          expect((await db.getConversation(conversation.id))?.operator?.memberName).toBe("Dana");
+        });
+
+        it("releases only for the holder, and the AI answers again", async () => {
+          const assistant = await newAssistant();
+          const conversation = await newConversation(assistant.id);
+          await db.takeOverConversation({
+            conversationId: conversation.id,
+            memberId: ctx.userId,
+            memberName: "Dana",
+            now: "2026-10-21T10:00:00.000Z",
+          });
+          expect(
+            await db.releaseConversation({
+              conversationId: conversation.id,
+              memberId: "00000000-0000-4000-8000-00000000dead",
+            })
+          ).toBeNull();
+          const released = await db.releaseConversation({
+            conversationId: conversation.id,
+            memberId: ctx.userId,
+          });
+          expect(released?.operator).toMatchObject({ state: "ai", memberId: null });
+          expect(
+            await db.releaseConversation({ conversationId: conversation.id, memberId: null })
+          ).toBeNull();
+        });
+
+        it("stores operator and system messages apart from AI answers", async () => {
+          const assistant = await newAssistant();
+          const conversation = await newConversation(assistant.id);
+          const line = await db.appendOperatorMessage({
+            conversationId: conversation.id,
+            role: "system",
+            text: "Dana joined the conversation",
+            authorMemberId: ctx.userId,
+            authorName: "Dana",
+          });
+          const reply = await db.appendOperatorMessage({
+            conversationId: conversation.id,
+            role: "operator",
+            text: "Hi, I can help with that.",
+            authorMemberId: ctx.userId,
+            authorName: "Dana",
+          });
+          expect(reply).toMatchObject({
+            role: "operator",
+            authorName: "Dana",
+            authorMemberId: ctx.userId,
+            content: [{ type: "text", text: "Hi, I can help with that." }],
+          });
+          const transcript = await db.listMessages(conversation.id);
+          expect(transcript.map((message) => message.role)).toEqual(["system", "operator"]);
+          expect((await db.listMessagesSince(conversation.id, line.createdAt)).map((m) => m.id)).toContain(reply.id);
+
+          // Feedback rates AI answers only.
+          await db.setMessageFeedback(reply.id, -1, "negative");
+          expect((await db.getMessage(reply.id))?.feedback).toBe(0);
+        });
+
+        it("starts a wait, refuses one on a held Conversation, and lists both states", async () => {
+          const assistant = await newAssistant();
+          const desk = await db.createHelpDesk(ctx.organizationId, { name: "Assignment contract" });
+          await db.table("helpDeskOperators").insert({ organizationId: ctx.organizationId, helpDeskId: desk.id, memberId: ctx.userId, capacity: 50 });
+          const presence = await db.table("operatorPresence").insert({ organizationId: ctx.organizationId, memberId: ctx.userId, status: "available" });
+          const waiting = await newConversation(assistant.id);
+          const held = await newConversation(assistant.id);
+          // Live, not fixed: the list skips waits older than the longest timeout.
+          const now = new Date().toISOString();
+          const started = await db.startConversationWait({
+            conversationId: waiting.id,
+            helpDeskId: desk.id,
+            channelId: "channel-1",
+            timeoutMinutes: 5,
+            now,
+          });
+          expect(started?.operator).toMatchObject({
+            state: "waiting",
+            waitingHelpDeskId: desk.id,
+            waitingChannelId: "channel-1",
+            waitTimeoutMinutes: 5,
+            assignedMemberId: null,
+          });
+          expect(Date.parse(started!.operator!.waitingSince!)).toBe(Date.parse(now));
+
+          await db.takeOverConversation({
+            conversationId: held.id,
+            memberId: ctx.userId,
+            memberName: "Dana",
+            now,
+          });
+          expect(
+            await db.startConversationWait({
+              conversationId: held.id,
+              helpDeskId: desk.id,
+              channelId: "channel-1",
+              timeoutMinutes: 5,
+              now,
+            })
+          ).toBeNull();
+
+          const assigned = await db.assignWaitingConversation({
+            conversationId: waiting.id,
+            memberId: ctx.userId,
+            now,
+          });
+          expect(assigned?.operator?.assignedMemberId).toBe(ctx.userId);
+          const notices = await db.table("memberNotifications").list({ conversationId: waiting.id });
+          expect(notices).toHaveLength(1);
+          expect(notices[0].id.length).toBeLessThanOrEqual(64);
+          expect(notices[0]).toMatchObject({ kind: "conversation_assigned", recipientId: ctx.userId, taskId: null, projectId: null });
+          await db.assignWaitingConversation({ conversationId: waiting.id, memberId: ctx.userId, now });
+          expect(await db.table("memberNotifications").list({ conversationId: waiting.id })).toHaveLength(1);
+          // First assignment wins (#1084): a racing second one does not land.
+          expect(
+            await db.assignWaitingConversation({ conversationId: waiting.id, memberId: "00000000-0000-4000-8000-00000000beef", now })
+          ).toBeNull();
+          expect(
+            await db.assignWaitingConversation({ conversationId: held.id, memberId: ctx.userId, now })
+          ).toBeNull();
+
+          const listed = (await db.listOperatorConversations(ctx.organizationId)).map((c) => c.id);
+          expect(listed).toEqual(expect.arrayContaining([waiting.id, held.id]));
+          expect(await db.listOperatorConversations(ctx.missingOrganizationId)).toEqual([]);
+
+          // The assignment is history the tie-break reads (#1084).
+          const assignments = await db.listOperatorAssignments(ctx.organizationId, "2026-01-01T00:00:00.000Z");
+          expect(assignments).toContainEqual({ memberId: ctx.userId, assignedAt: expect.any(String) });
+          expect(await db.listOperatorAssignments(ctx.missingOrganizationId, "2026-10-01T00:00:00.000Z")).toEqual([]);
+
+          // Taking a waiting Conversation over ends the wait.
+          const taken = await db.takeOverConversation({
+            conversationId: waiting.id,
+            memberId: ctx.userId,
+            memberName: "Dana",
+            now,
+          });
+          expect(taken?.operator).toMatchObject({ state: "held", waitingSince: null });
+          await db.table("operatorPresence").delete(presence.id);
+        });
+
+        it("stores Organization Quick Texts with an optional folder (#1085)", async () => {
+          const quickText = await db.table("quickTexts").insert({
+            organizationId: ctx.organizationId,
+            title: "Greeting",
+            body: "Hi {{user.name}}, I can help with that.",
+          });
+          expect(quickText).toMatchObject({ folder: null, createdBy: null, title: "Greeting" });
+          const moved = await db.table("quickTexts").update(quickText.id, { folder: "Openers" });
+          expect(moved.folder).toBe("Openers");
+          expect(
+            (await db.table("quickTexts").list({ organizationId: ctx.organizationId })).map((row) => row.id)
+          ).toContain(quickText.id);
+          await db.table("quickTexts").delete(quickText.id);
+          expect(await db.table("quickTexts").get(quickText.id)).toBeNull();
+        });
+
+        it("stores desk operators with a default capacity and a Member's presence (#1084)", async () => {
+          const desk = await db.createHelpDesk(ctx.organizationId, { name: "Operators desk" });
+          const operator = await db.table("helpDeskOperators").insert({
+            organizationId: ctx.organizationId,
+            helpDeskId: desk.id,
+            memberId: ctx.userId,
+          });
+          expect(operator.capacity).toBe(3);
+          const updated = await db.table("helpDeskOperators").update(operator.id, { capacity: 5 });
+          expect(updated.capacity).toBe(5);
+          expect(
+            (await db.table("helpDeskOperators").list({ helpDeskId: desk.id })).map((row) => row.memberId)
+          ).toEqual([ctx.userId]);
+
+          const presence = await db.table("operatorPresence").insert({
+            organizationId: ctx.organizationId,
+            memberId: ctx.userId,
+            status: "available",
+          });
+          const renewedAt = new Date(Date.parse(presence.updatedAt) + 30_000).toISOString();
+          expect(await db.renewOperatorPresence({ organizationId: ctx.organizationId, memberId: ctx.userId, now: renewedAt })).toBe(true);
+          expect(await db.renewOperatorPresence({ organizationId: ctx.organizationId, memberId: ctx.userId, now: new Date(Date.parse(renewedAt) + 120_000).toISOString() })).toBe(false);
+          expect((await db.table("operatorPresence").update(presence.id, { status: "away" })).status).toBe("away");
+          expect(await db.renewOperatorPresence({ organizationId: ctx.organizationId, memberId: ctx.userId, now: new Date().toISOString() })).toBe(false);
+          await db.table("operatorPresence").delete(presence.id);
+          await db.table("helpDeskOperators").delete(operator.id);
+        });
+      });
+
       it("leases one idempotent conversation turn to one worker", async () => {
         const assistant = await newAssistant();
         const conversation = await newConversation(assistant.id);
@@ -2772,6 +3240,80 @@ export function describeDbContract(
         expect(await db.getConversation(older.id)).toBeNull();
         expect(await db.getConversation(newer.id)).not.toBeNull();
       });
+
+      it("deletes expired messages from conversations that stay, and keeps linked improvements", async () => {
+        const assistant = await newAssistant();
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-message-retention",
+        });
+        const message = await db.appendMessage({
+          conversationId: conversation.id,
+          role: "assistant",
+          content: [{ type: "text", text: "an old answer" }],
+        });
+        const improvement = await db.createImprovement(ctx.organizationId, {
+          title: "Old answer was wrong",
+          messageId: message.id,
+        });
+        const held = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-message-hold",
+        });
+        await db.appendMessage({
+          conversationId: held.id,
+          role: "user",
+          content: [{ type: "text", text: "kept under hold" }],
+        });
+        await db.setConversationLegalHold(held.id, true);
+        const futureCutoff = new Date(Date.now() + 86_400_000).toISOString();
+        try {
+          await db.updateOrganization(ctx.organizationId, { messageRetentionDays: 30 });
+          expect(await db.listRetentionPolicies("messages")).toContainEqual({
+            organizationId: ctx.organizationId,
+            retentionDays: 30,
+          });
+          expect(await db.deleteExpiredMessages(ctx.foreignOrganizationId, futureCutoff)).toBe(0);
+          expect(await db.listMessages(conversation.id)).toHaveLength(1);
+
+          expect(await db.deleteExpiredMessages(ctx.organizationId, futureCutoff)).toBeGreaterThanOrEqual(1);
+          const kept = await db.getConversation(conversation.id);
+          expect(kept).not.toBeNull();
+          expect(kept?.messagesDeletedThrough).toBeTruthy();
+          expect(await db.listMessages(conversation.id)).toEqual([]);
+          expect(await db.listMessages(held.id)).toHaveLength(1);
+          // The Improvement stays, without the deleted message.
+          const items = await db.listImprovements(ctx.organizationId);
+          const survivor = items.find((item) => item.id === improvement.id);
+          expect(survivor).toBeDefined();
+          expect(survivor?.messageCount).toBe(0);
+          expect(await db.deleteExpiredMessages(ctx.organizationId, futureCutoff)).toBe(0);
+        } finally {
+          await db.setConversationLegalHold(held.id, false);
+          await db.updateOrganization(ctx.organizationId, { messageRetentionDays: null });
+        }
+        expect(await db.listRetentionPolicies("messages")).toEqual([]);
+      });
+
+      it("deletes improvements not updated within their window, whatever their status", async () => {
+        const improvement = await db.createImprovement(ctx.organizationId, {
+          title: "Stale improvement",
+        });
+        await db.updateImprovement(improvement.id, { status: "done" });
+        const futureCutoff = new Date(Date.now() + 86_400_000).toISOString();
+        const pastCutoff = new Date(Date.now() - 86_400_000).toISOString();
+        expect(await db.deleteExpiredImprovements(ctx.foreignOrganizationId, futureCutoff)).toBe(0);
+        await db.deleteExpiredImprovements(ctx.organizationId, pastCutoff);
+        expect(
+          (await db.listImprovements(ctx.organizationId)).some((item) => item.id === improvement.id)
+        ).toBe(true);
+        expect(await db.deleteExpiredImprovements(ctx.organizationId, futureCutoff)).toBeGreaterThanOrEqual(1);
+        expect(
+          (await db.listImprovements(ctx.organizationId)).some((item) => item.id === improvement.id)
+        ).toBe(false);
+      });
     });
 
     describe("improvements", () => {
@@ -2813,6 +3355,50 @@ export function describeDbContract(
         await db.updateImprovement(archived.id, { assigneeId: ctx.userId, status: "archived" });
         const assigned = await db.listImprovementsAssignedTo(ctx.organizationId, ctx.userId);
         expect(assigned.map((item) => item.id)).toEqual([mine.id]);
+      });
+
+      it("keeps validation evidence versioned and refuses foreign targets", async () => {
+        const assistant = await newAssistant();
+        const improvement = await db.createImprovement(ctx.organizationId, { title: "Validation contract" });
+        const snapshot = await db.getAssistantValidationSnapshot(assistant.id);
+        const publication = await db.createPublication(assistant.id, buildPublicationConfig(assistant, [], []));
+        expect(await db.getAssistantValidationSnapshot(assistant.id)).not.toBe(snapshot);
+        const input = { improvementId: improvement.id, assistantId: assistant.id, validatorId: ctx.userId, kind: "manual" as const, status: "pass" as const, expectedBehavior: "Correct answer", changedResources: "FAQ", detail: "Checked the widget", publicationId: publication.id, snapshot: await db.getAssistantValidationSnapshot(assistant.id), cases: [], results: [], completedAt: new Date().toISOString() };
+        const row = await db.createImprovementValidation(ctx.organizationId, input);
+        expect((await db.table("improvementValidations").get(row.id))?.detail).toBe("Checked the widget");
+        await expect(db.createImprovementValidation(ctx.foreignOrganizationId, input)).rejects.toThrow();
+      });
+
+      it("filters older Improvements and counts the same full scope", async () => {
+        const project = await db.table("projects").insert({ organizationId: ctx.organizationId, name: "Answer corrections", description: "", key: "ANSW" });
+        const older = await db.createImprovement(ctx.organizationId, { title: "Old shipping gap" });
+        await db.updateImprovement(older.id, { projectId: project.id, assigneeId: ctx.userId, priority: "high" });
+        const recent = await db.createImprovement(ctx.organizationId, { title: "Recent unrelated gap" });
+        const filters = { projectId: project.id, assigneeId: ctx.userId, priority: "high" as const, search: "shipping" };
+        const page = await db.listImprovementsPage(ctx.organizationId, { limit: 1, ...filters });
+        expect(page.items.map((item) => item.id)).toEqual([older.id]);
+        const counts = await db.countImprovementsByStatus(ctx.organizationId, filters);
+        expect(counts).toEqual({ to_do: 1, in_progress: 0, in_review: 0, done: 0, archived: 0 });
+        // The key is searchable, and `assigneeId: null` is unassigned work.
+        const byKey = await db.listImprovementsPage(ctx.organizationId, { limit: 100, search: `imp-${older.seq}` });
+        expect(byKey.items.map((item) => item.id)).toContain(older.id);
+        const unassigned = await db.listImprovementsPage(ctx.organizationId, { limit: 100, assigneeId: null });
+        expect(unassigned.items.map((item) => item.id)).toContain(recent.id);
+        expect(unassigned.items.map((item) => item.id)).not.toContain(older.id);
+        expect(await db.listImprovementsPage(ctx.foreignOrganizationId, { limit: 1, ...filters })).toEqual({ items: [], nextCursor: null });
+      });
+
+      it("filters Improvements by the Assistant their evidence came from", async () => {
+        const assistant = await newAssistant();
+        const conversation = await db.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: "improvement-assistant-filter" });
+        const message = await db.appendMessage({ conversationId: conversation.id, role: "assistant", content: [{ type: "text", text: "A weak answer" }] });
+        const linked = await db.createImprovement(ctx.organizationId, { title: "Evidence gap", messageId: message.id });
+        const unlinked = await db.createImprovement(ctx.organizationId, { title: "No evidence gap" });
+        const page = await db.listImprovementsPage(ctx.organizationId, { limit: 100, assistantId: assistant.id });
+        expect(page.items.map((item) => item.id)).toEqual([linked.id]);
+        expect(page.items[0]?.messageCount).toBe(1);
+        expect(page.items.map((item) => item.id)).not.toContain(unlinked.id);
+        expect((await db.countImprovementsByStatus(ctx.organizationId, { assistantId: assistant.id })).to_do).toBe(1);
       });
 
       it("pages Improvements by their monotonic sequence", async () => {
@@ -6338,6 +6924,7 @@ export function describeDbContract(
     describe("export jobs", () => {
       it("accepts every export kind and file type (type ↔ constraint drift guard)", async () => {
         const kinds: Record<ExportJobKind, true> = {
+          audit_log: true,
           insights_overview: true,
           insights_datapoints: true,
           insights_languages: true,
@@ -6534,6 +7121,7 @@ export function describeDbContract(
           memory_extract: true,
           agent_memory: true,
           decide: true,
+          escalation_summary: true,
         };
         const stages = Object.keys(allStages) as AiUsageStage[];
         await db.recordAiUsage(
@@ -6615,6 +7203,36 @@ export function describeDbContract(
           calls: 1,
           inputTokens: 552,
           outputTokens: 82,
+        });
+      });
+
+      it("accepts prompt-cache counts without adding them to the input total", async () => {
+        // Cache reads and writes are already inside inputTokens; the columns
+        // measure the cache and must never inflate what the spend reads see.
+        const now = Date.now();
+        const from = new Date(now - 60 * 60 * 1000).toISOString();
+        const to = new Date(now + 60 * 60 * 1000).toISOString();
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "anthropic",
+            modelId: "claude-sonnet-5",
+            credentialKind: "platform",
+            inputTokens: 5000,
+            outputTokens: 300,
+            cacheReadTokens: 4000,
+            cacheWriteTokens: 200,
+            spenders: { flowId: "flow-cache-measure" },
+            surface: "widget",
+          },
+        ]);
+        const rows = await db.getOrgUsageSpenders(ctx.organizationId, from, to);
+        expect(rows.find((r) => r.spenders.flowId === "flow-cache-measure")).toMatchObject({
+          calls: 1,
+          inputTokens: 5000,
+          outputTokens: 300,
         });
       });
 
@@ -7306,6 +7924,65 @@ export function describeDbContract(
         });
       });
 
+      it("stores a runtime event's timings exactly as given (#1112)", async () => {
+        const turn = {
+          firstTokenMs: 812,
+          queueMs: 0,
+          modelMs: 2400,
+          modelMsByStage: { classify: 300, generate: 2100 },
+          modelCallTimings: [{ stage: "classify", ms: 300 }, { stage: "generate", ms: 2100 }],
+          embedMs: 90,
+          rerankMs: 120,
+          decideMs: 0,
+          dbMs: 210,
+          retrievalMs: 64,
+          toolMs: 700,
+          tools: { searchKnowledge: { calls: 2, ms: 700 } },
+          toolCallTimings: [{ tool: "searchKnowledge", ms: 400 }, { tool: "searchKnowledge", ms: 300 }],
+          waitMs: 2950,
+          modelCalls: 3,
+          cpuMs: 41,
+          overlap: 2,
+          jobsInFlight: 1,
+          trigger: "live",
+        } satisfies TurnTimings;
+        const ingest = {
+          parseMs: 12,
+          chunkMs: 3,
+          embedMs: 450,
+          dbMs: 80,
+          waitMs: 545,
+          concepts: 4,
+          cpuMs: 30,
+          overlap: 1,
+          jobsInFlight: 1,
+        };
+        const before = await ctx.listRuntimeEventTimings(ctx.organizationId);
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "chat_turn",
+          status: "succeeded",
+          timings: turn,
+        });
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "ingest_job",
+          status: "succeeded",
+          timings: ingest,
+        });
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "crawl",
+          status: "succeeded",
+        });
+        expect(
+          (await ctx.listRuntimeEventTimings(ctx.organizationId)).slice(before.length)
+        ).toEqual([turn, ingest]);
+      });
+
       it("reports nothing for a crawl that failed or returned no pages", async () => {
         const pagesOf = async () =>
           (await db.getOrgUsageDaily(ctx.organizationId, 1))
@@ -7885,6 +8562,316 @@ export function describeDbContract(
       });
     });
 
+    describe("Source usage", () => {
+      it("matches the pure oracle and excludes Member and notification answers", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name: "Usage fixture" });
+        const source = await db.createSource({ collectionId: collection.id, name: "Cited", kind: "faq", config: {} });
+        const unused = await db.createSource({ collectionId: collection.id, name: "Cited unused", kind: "faq", config: {} });
+        const visitor = await db.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: "source-usage" });
+        const member = await db.createConversation({ assistantId: assistant.id, subjectType: "member", subjectId: ctx.userId });
+        const content = [{ type: "sources", sources: [{ sourceId: source.id }, { sourceId: source.id }] }];
+        const answer = await db.appendMessage({ conversationId: visitor.id, role: "assistant", content });
+        await db.setMessageFeedback(answer.id, -1);
+        await db.appendMessage({ conversationId: member.id, role: "assistant", content });
+        await db.appendMessage({ conversationId: visitor.id, role: "assistant", content: [...content, { type: "notification" }] });
+        const now = new Date(Date.now() + 1000);
+        const messages = [...await db.listMessages(visitor.id), ...await db.listMessages(member.id)];
+        const expected = sourceUsage({ sourceIds: [source.id], conversations: [visitor, member], messages, assistants: [assistant], now });
+        const actual = await createOrgPinnedDb(systemDb, ctx.organizationId).getSourceUsage(ctx.foreignOrganizationId, now.toISOString());
+        expect(actual.filter(row => row.sourceId === source.id)).toEqual(expected);
+        expect(expected[0]).toMatchObject({ cited30: 1, negative30: 1, unused90: false });
+        const listed = await db.listOrgKnowledgeSources(ctx.organizationId, { kinds: ["faq"], query: "Cited", sort: "cited30", pageSize: 1 });
+        expect(listed).toMatchObject({ qualityAvailable: true, total: 2, items: [{ id: source.id, usage: { cited30: 1 } }] });
+        const unusedPage = await db.listOrgKnowledgeSources(ctx.organizationId, { kinds: ["faq"], query: "Cited", unused: true });
+        expect(unusedPage.items.map(row => row.id)).toEqual([unused.id]);
+      });
+    });
+
+    describe("Document review and FAQ history", () => {
+      it("carries reviews through identical crawl and sync text, then drops them on a changed body", async () => {
+        for (const kind of ["website", "application"] as const) {
+          const assistant = await newAssistant();
+          const collection = await db.createCollection(assistant.id, { name: "Review cutover" });
+          const source = await db.createSource({ collectionId: collection.id, name: "Page", kind, config: {} });
+          const document = await db.createConcept({ collectionId: collection.id, sourceId: source.id, path: "page.md", frontmatter: { type: "Document", title: "Page" }, body: "Current text" });
+          const reviewed = await db.setDocumentReview(ctx.organizationId, { documentId: document.id, memberId: ctx.userId, reviewed: true });
+          const sameGeneration = crypto.randomUUID();
+          const same = await db.createConcept({ collectionId: collection.id, sourceId: source.id, generationId: sameGeneration, path: document.path, frontmatter: { type: "Document", title: "Page" }, body: document.body });
+          await db.commitSourceKnowledgeGeneration({ sourceId: source.id, expectedActiveGenerationId: source.activeGenerationId, generationId: sameGeneration });
+          expect((await db.getConcept(same.id))?.frontmatter.verified).toEqual(reviewed.frontmatter.verified);
+          const changedGeneration = crypto.randomUUID();
+          const changed = await db.createConcept({ collectionId: collection.id, sourceId: source.id, generationId: changedGeneration, path: document.path, frontmatter: { type: "Document", title: "Page" }, body: "Changed text" });
+          await db.commitSourceKnowledgeGeneration({ sourceId: source.id, expectedActiveGenerationId: sameGeneration, generationId: changedGeneration });
+          expect((await db.getConcept(changed.id))?.frontmatter.verified).toBeUndefined();
+        }
+      });
+
+      it("records explicit editing actors independently of identical carried stamps", async () => {
+        const assistant=await newAssistant();
+        const collection=await db.createCollection(assistant.id,{ name:"Explicit FAQ actors" });
+        const source=await db.createSource({ collectionId:collection.id,name:"Question",kind:"faq",config:{} });
+        const frontmatter={ type:"FAQ" as const,title:"Question",generated:{ by:"agent/content-writer",at:"2026-10-22T12:00:00.000Z" } };
+        const document=await db.createConcept({ collectionId:collection.id,sourceId:source.id,path:"faq/actor.md",frontmatter,body:"Original" });
+        await db.updateConcept(document.id,{ frontmatter,body:"One" },{ actor:"agent/content-writer" });
+        await db.updateConcept(document.id,{ frontmatter,body:"Two" },{ actor:"agent/content-writer" });
+        const history=await db.table("faqHistory").list({ sourceId:source.id });
+        expect(history).toHaveLength(2);
+        expect(history.every(row => row.actor==="agent/content-writer")).toBe(true);
+      });
+
+      it("records a forced identical restore and removes its reviews", async () => {
+        const assistant=await newAssistant();
+        const collection=await db.createCollection(assistant.id,{ name:"Identical restore fixture" });
+        const source=await db.createSource({ collectionId:collection.id,name:"Question",kind:"faq",config:{} });
+        const document=await db.createConcept({ collectionId:collection.id,sourceId:source.id,path:"faq/restore-same.md",frontmatter:{ type:"FAQ",title:"Question" },body:"Same answer" });
+        const reviewed=await db.setDocumentReview(ctx.organizationId,{ documentId:document.id,memberId:ctx.userId,reviewed:true });
+        await db.updateConcept(document.id,{ frontmatter:reviewed.frontmatter,body:reviewed.body },{ actor:"human:"+ctx.userId });
+        expect(await db.table("faqHistory").list({ sourceId:source.id })).toHaveLength(0);
+        const restored=await db.updateConcept(document.id,{ frontmatter:reviewed.frontmatter,body:reviewed.body },{ actor:"human:"+ctx.userId,forceVersion:true });
+        expect(restored.frontmatter.verified).toBeUndefined();
+        expect(await db.table("faqHistory").list({ sourceId:source.id })).toMatchObject([{ question:"Question",answer:"Same answer",actor:"human:"+ctx.userId }]);
+      });
+
+      it("keeps other reviews, invalidates changed FAQ text and retains previous versions", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name: "Review fixture" });
+        const source = await db.createSource({ collectionId: collection.id, name: "Old question", kind: "faq", config: {} });
+        const concept = await db.createConcept({ collectionId: collection.id, sourceId: source.id, path: "faq/review.md", frontmatter: { type: "FAQ", title: "Old question", verified: [{ by: "human:other" }, { by: "checker/1" }] }, body: "Old answer" });
+        const pinned = createOrgPinnedDb(systemDb, ctx.organizationId);
+        await pinned.setDocumentReview(ctx.foreignOrganizationId, { documentId: concept.id, memberId: ctx.userId, reviewed: true });
+        expect((await db.getConcept(concept.id))?.frontmatter.verified).toHaveLength(3);
+        expect((await db.listSourceDocuments(source.id, { trustTier: "human-reviewed" })).items).toMatchObject([{ id: concept.id, trustTier: "human-reviewed" }]);
+        await pinned.setDocumentReview(ctx.foreignOrganizationId, { documentId: concept.id, memberId: ctx.userId, reviewed: false });
+        expect((await db.getConcept(concept.id))?.frontmatter.verified).toHaveLength(2);
+        const previous = await db.getConcept(concept.id);
+        if (!previous) throw new Error("Missing Document");
+        await db.updateConcept(concept.id, { frontmatter: { ...previous.frontmatter, title: "New question", generated: { by: "human:" + ctx.userId } }, body: "New answer" });
+        expect((await db.getConcept(concept.id))?.frontmatter.verified).toBeUndefined();
+        expect((await db.listSourceDocuments(source.id, { trustTier: "human-reviewed" })).total).toBe(0);
+        expect((await db.listSourceDocuments(source.id, { trustTier: "unverified" })).total).toBe(1);
+        const history = await db.table("faqHistory").list({ organizationId: ctx.organizationId, sourceId: source.id });
+        expect(history).toMatchObject([{ question: "Old question", answer: "Old answer", actor: "human:" + ctx.userId }]);
+        expect(await createOrgPinnedDb(systemDb, ctx.foreignOrganizationId).table("faqHistory").get(history[0].id)).toBeNull();
+        await db.deleteSource(source.id);
+        expect(await db.table("faqHistory").list({ sourceId: source.id })).toEqual([]);
+      });
+    });
+
+    describe("shared Business hours", () => {
+      it("keeps one default, preserves JSON windows and holidays, and pins Organization writes", async () => {
+        const input = { name: "Office", timezone: "Europe/Rome", hours: defaultChannelAvailability().hours, holidays: [{ id: "holiday", name: "Winter", startDate: "2026-12-24", endDate: "2026-12-26", yearly: true }], isDefault: false };
+        const pinned = createOrgPinnedDb(ctx.systemDb ?? db, ctx.organizationId);
+        const first = await pinned.saveBusinessHours(ctx.foreignOrganizationId, null, input);
+        expect(first).toMatchObject({ ...input, organizationId: ctx.organizationId, isDefault: true });
+        const second = await db.saveBusinessHours(ctx.organizationId, null, { ...input, name: "Evening", isDefault: true });
+        expect((await db.table("businessHours").list({ organizationId: ctx.organizationId })).filter(row => row.isDefault).map(row => row.id)).toEqual([second.id]);
+        expect(await createOrgPinnedDb(ctx.systemDb ?? db, ctx.foreignOrganizationId).table("businessHours").get(first.id)).toBeNull();
+        await pinned.setDefaultTimezone(ctx.foreignOrganizationId, "Pacific/Auckland");
+        expect((await db.listOrganizations()).find(row => row.id === ctx.organizationId)?.defaultTimezone).toBe("Pacific/Auckland");
+        await db.deleteBusinessHours(ctx.organizationId, second.id);
+        expect((await db.table("businessHours").get(first.id))?.isDefault).toBe(true);
+        await db.deleteBusinessHours(ctx.organizationId, first.id);
+        await db.setDefaultTimezone(ctx.organizationId, "UTC");
+      });
+      it("names referencing channels and both editor/latest published Flows when refusing deletion", async () => {
+        const schedule = await db.saveBusinessHours(ctx.organizationId, null, { name: "Reference fixture", timezone: "UTC", hours: defaultChannelAvailability().hours, holidays: [], isDefault: false });
+        const desk = await db.createHelpDesk(ctx.organizationId, { name: "Reference Desk" });
+        const channel = await db.createSupportChannel(desk.id, { name: "Office Email", kind: "email", availability: { ...defaultChannelAvailability(), mode: "business_hours", businessHoursId: schedule.id } });
+        await expect(db.deleteBusinessHours(ctx.organizationId, schedule.id)).rejects.toThrow("Office Email");
+        await db.deleteSupportChannel(channel.id);
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Hours fixture" });
+        const flow = await db.createFlow(assistant.id, { name: "After hours", conditions: [{ id: "hours", kind: "schedule", mode: "business_hours", businessHoursId: schedule.id, direction: "outside" }] });
+        await expect(db.deleteBusinessHours(ctx.organizationId, schedule.id)).rejects.toThrow("After hours");
+        await db.createPublication(assistant.id, buildPublicationConfig(assistant, [flow], []));
+        await db.deleteFlow(flow.id);
+        await expect(db.deleteBusinessHours(ctx.organizationId, schedule.id)).rejects.toThrow("Published Flow After hours");
+        await db.createPublication(assistant.id, buildPublicationConfig(assistant, [], []));
+        await db.deleteBusinessHours(ctx.organizationId, schedule.id);
+      });
+    });
+
+    describe("remote MCP connections", () => {
+      it("separates credentials, fences policy refreshes and pins the Organization", async () => {
+        const connection = await db.createMcpServerConnection(ctx.organizationId, { name: "Contract MCP", url: "https://example.com/mcp", tools: [], encryptedToken: "sealed-mcp-contract-token" });
+        expect(connection.revision).toBe(1);
+        expect(JSON.stringify(await db.table("mcpServerConnections").get(connection.id))).not.toContain("sealed-mcp-contract-token");
+        expect(await (ctx.systemDb ?? db).getMcpServerToken(connection.id)).toBe("sealed-mcp-contract-token");
+        const pinned = createOrgPinnedDb(ctx.systemDb ?? db, ctx.organizationId);
+        expect(() => pinned.getMcpServerToken(connection.id)).toThrow(OrgPinnedDbError);
+        const foreign = createOrgPinnedDb(ctx.systemDb ?? db, ctx.foreignOrganizationId);
+        expect(await foreign.table("mcpServerConnections").get(connection.id)).toBeNull();
+        const winner = await db.compareAndSetMcpTools(ctx.organizationId, connection.id, 1, []);
+        expect(winner?.revision).toBe(2);
+        expect(await db.compareAndSetMcpTools(ctx.organizationId, connection.id, 1, [])).toBeNull();
+        await db.table("mcpServerConnections").delete(connection.id);
+        expect(await (ctx.systemDb ?? db).getMcpServerToken(connection.id)).toBeNull();
+      });
+    });
+
+    describe("outbound webhook delivery ledger", () => {
+      it("emits every declared event with metadata only and deduplicates repeated state writes", async () => {
+        const subscription = await db.createOutboundWebhookSubscription(ctx.organizationId, {
+          name: "All events", url: "https://example.com/all-events",
+          eventTypes: Object.keys(OUTBOUND_WEBHOOK_EVENTS).filter(isOutboundWebhookEventType), encryptedSecret: "sealed-test-secret",
+        });
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Webhook Assistant" });
+        const conversation = await db.createConversation({ assistantId: assistant.id, subjectType: "visitor", subjectId: "private@example.com", title: "Private visitor message 731942" });
+        await db.appendMessage({ conversationId: conversation.id, role: "user", content: [{ type: "text", text: "Private visitor message 731942" }] });
+        const answer = await db.appendMessage({ conversationId: conversation.id, role: "assistant", content: [{ type: "text", text: "Private answer 731942" }] });
+        const desk = await db.createHelpDesk(ctx.organizationId, { name: "Webhook Desk" });
+        const channel = await db.createSupportChannel(desk.id, { kind: "email", name: "Email" });
+        await db.updateConversationMetadata(conversation.id, {
+          escalated: true, escalationHelpDeskId: desk.id, escalationChannelId: channel.id,
+          escalationInboxUrl: `https://ciele.app/inbox?conversation=${conversation.id}`,
+        });
+        await db.updateConversationMetadata(conversation.id, { escalated: true });
+        await db.setMessageFeedback(answer.id, -1);
+        await db.setMessageFeedback(answer.id, -1);
+        const improvement = await db.createImprovement(ctx.organizationId, { title: "Private visitor message 731942", messageId: answer.id, source: "escalation" });
+        const alert = await db.raiseAlert(ctx.organizationId, { type: "integration", title: "Receiver error", detail: "Private visitor detail 731942", sourceKey: `outbound-contract:${subscription.id}` });
+        await db.raiseAlert(ctx.organizationId, { type: "integration", title: "Receiver error", detail: "Private visitor detail 731942", sourceKey: `outbound-contract:${subscription.id}` });
+        await db.resolveAlert(alert.id, ctx.userId);
+        await db.resolveAlert(alert.id, ctx.userId);
+        await db.createPublication(assistant.id, buildPublicationConfig(assistant, [], [], []), ctx.userId);
+        const deliveries = await db.table("webhookDeliveries").list({ subscriptionId: subscription.id });
+        expect(deliveries.map((row) => row.event.type).sort()).toEqual(Object.keys(OUTBOUND_WEBHOOK_EVENTS).sort());
+        for (const delivery of deliveries) {
+          expect(isOutboundWebhookEvent(delivery.event)).toBe(true);
+          expect(delivery.event.organizationId).toBe(ctx.organizationId);
+        }
+        expect(JSON.stringify(deliveries)).not.toMatch(/731942|private@example.com/);
+        expect(deliveries.find((row) => row.event.type === "improvement.created")?.event.data).toMatchObject({ id: improvement.id, title: `Improvement IMP-${improvement.seq}`, source: "escalation", assistantId: assistant.id });
+        expect(deliveries.find((row) => row.event.type === "publication.created")?.event.data).toMatchObject({ publishedBy: ctx.userId });
+        await db.table("outboundWebhookSubscriptions").delete(subscription.id);
+      });
+
+      it("stores secrets separately and queues one fenced job per selected subscription and event", async () => {
+        const subscription = await db.createOutboundWebhookSubscription(ctx.organizationId, {
+          name: "Contract receiver", url: "https://example.com/events", eventTypes: ["conversation.escalated"], encryptedSecret: "sealed-test-secret",
+        });
+        expect(subscription).not.toHaveProperty("encryptedSecret");
+        expect(await db.table("outboundWebhookSubscriptions").get(subscription.id)).not.toHaveProperty("encryptedSecret");
+        expect(await systemDb.getOutboundWebhookSecret(subscription.id)).toBe("sealed-test-secret");
+        const paused = await db.createOutboundWebhookSubscription(ctx.organizationId, {
+          name: "Paused", url: "https://example.com/paused", eventTypes: ["conversation.escalated"], encryptedSecret: "sealed-paused-secret",
+        });
+        await db.table("outboundWebhookSubscriptions").update(paused.id, { paused: true });
+        const otherEvent = await db.createOutboundWebhookSubscription(ctx.organizationId, {
+          name: "Other event", url: "https://example.com/alerts", eventTypes: ["alert.raised"], encryptedSecret: "sealed-other-secret",
+        });
+        const event = {
+          id: shortId(), type: "conversation.escalated" as const, createdAt: new Date().toISOString(),
+          organizationId: ctx.organizationId, data: OUTBOUND_WEBHOOK_EXAMPLES["conversation.escalated"],
+        };
+        await systemDb.queueOutboundWebhookEvent(ctx.organizationId, event);
+        await systemDb.queueOutboundWebhookEvent(ctx.organizationId, event);
+        const deliveries = await db.table("webhookDeliveries").list({ subscriptionId: subscription.id });
+        expect(deliveries).toHaveLength(1);
+        expect(deliveries[0]).toMatchObject({ event, attempts: 0, status: "queued", lastStatusCode: null });
+        expect(await db.table("webhookDeliveries").list({ subscriptionId: paused.id })).toEqual([]);
+        expect(await db.table("webhookDeliveries").list({ subscriptionId: otherEvent.id })).toEqual([]);
+        const jobs = await systemDb.claimBackgroundJobs({ kind: "deliver_outbound_webhook", workerId: "webhook-contract", now: new Date(Date.now() + 1000).toISOString(), staleBefore: "2000-01-01T00:00:00Z", limit: 100 });
+        const matching = jobs.filter((job) => job.payload.deliveryId === deliveries[0].id);
+        expect(matching).toHaveLength(1);
+        const job = matching[0];
+        if (!job.leaseToken) throw new Error("Missing webhook lease");
+        const attempt = { deliveryId: deliveries[0].id, jobId: job.id, leaseToken: job.leaseToken, now: new Date().toISOString(), status: "delivered" as const, statusCode: 202 };
+        expect(await systemDb.recordWebhookDeliveryAttempt({ ...attempt, leaseToken: "00000000-0000-0000-0000-000000000000" })).toBe(false);
+        expect(await systemDb.recordWebhookDeliveryAttempt(attempt)).toBe(true);
+        expect(await db.table("webhookDeliveries").get(deliveries[0].id)).toMatchObject({ attempts: 1, status: "delivered", lastStatusCode: 202 });
+        const pinned = createOrgPinnedDb(systemDb, ctx.foreignOrganizationId);
+        expect(await pinned.table("outboundWebhookSubscriptions").get(subscription.id)).toBeNull();
+        expect(await pinned.table("webhookDeliveries").get(deliveries[0].id)).toBeNull();
+      });
+    });
+
+    describe("help desk ticketing target and ticket claims (#1088)", () => {
+      it("sets a target, replaces it, and clears it with the retired registration", async () => {
+        const desk = await db.createHelpDesk(ctx.organizationId, { name: "Target Desk" });
+        expect(desk.ticketingTarget).toBeNull();
+
+        const salesforce = await db.setTicketingTarget(desk.id, {
+          provider: "salesforce",
+          connectionId: "conn-sf",
+        });
+        expect(salesforce.ticketingTarget).toEqual({ provider: "salesforce", connectionId: "conn-sf" });
+
+        const target = {
+          provider: "servicenow" as const,
+          connectionId: "conn-sn",
+          table: "incident",
+          requesterEmailField: "u_email",
+        };
+        await db.setTicketingTarget(desk.id, target);
+        expect((await db.getHelpDesk(desk.id))?.ticketingTarget).toEqual(target);
+
+        const cleared = await db.clearTicketingIntegration(desk.id);
+        expect(cleared.ticketingTarget).toBeNull();
+        expect(cleared.ticketingIntegration).toBeNull();
+      });
+
+      it("claims a key once and never repeats an uncertain or failed provider write", async () => {
+        const desk = await db.createHelpDesk(ctx.organizationId, { name: "Claim Desk" });
+        const channel = await db.createSupportChannel(desk.id, {
+          kind: "ticket",
+          name: "Open a ticket",
+        });
+        const input = {
+          organizationId: ctx.organizationId,
+          idempotencyKey: "escalation/a1/op-1",
+          helpDeskId: desk.id,
+          channelId: channel.id,
+          conversationId: null,
+          provider: "salesforce" as const,
+        };
+
+        expect(await db.getEscalationTicket(ctx.organizationId, input.idempotencyKey)).toBeNull();
+        const first = await db.claimEscalationTicket(input);
+        expect(await db.getEscalationTicket(ctx.organizationId, input.idempotencyKey)).toEqual(first.ticket);
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+        expect(await pinned.getEscalationTicket(ctx.foreignOrganizationId, input.idempotencyKey)).toEqual(first.ticket);
+        const foreignPinned = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+        expect(await foreignPinned.getEscalationTicket(ctx.organizationId, input.idempotencyKey)).toBeNull();
+        expect(await db.getEscalationTicket(ctx.foreignOrganizationId, input.idempotencyKey)).toBeNull();
+        expect(first.claimed).toBe(true);
+        expect(first.ticket).toMatchObject({ status: "pending", ticket: null, conversationId: null });
+
+        // A retry while the first attempt is in flight does not file again.
+        const concurrent = await db.claimEscalationTicket(input);
+        expect(concurrent).toMatchObject({ claimed: false, ticket: { id: first.ticket.id } });
+
+        const filed = {
+          provider: "salesforce" as const,
+          id: "500x",
+          number: "00001026",
+          url: "https://acme.my.salesforce.com/lightning/r/Case/500x/view",
+        };
+        await db.settleEscalationTicket(first.ticket.id, { status: "filed", ticket: filed });
+        const retry = await db.claimEscalationTicket(input);
+        expect(retry.claimed).toBe(false);
+        expect(retry.ticket).toMatchObject({ status: "filed", ticket: filed });
+        expect(await db.getEscalationTicket(ctx.organizationId, input.idempotencyKey)).toMatchObject({ status: "filed", ticket: filed });
+
+        // A provider may have written before the response was lost: never repeat it.
+        const other = { ...input, idempotencyKey: "escalation/a1/op-2" };
+        const failing = await db.claimEscalationTicket(other);
+        await db.settleEscalationTicket(failing.ticket.id, { status: "failed", error: "Salesforce said no" });
+        const retaken = await db.claimEscalationTicket(other);
+        expect(retaken.claimed).toBe(false);
+        expect(retaken.ticket).toMatchObject({ id: failing.ticket.id, status: "failed", error: "Salesforce said no" });
+
+        // A process crash leaves an uncertain claim, not permission to repeat the POST.
+        const uncertainInput = { ...input, idempotencyKey: "escalation/a1/op-uncertain" };
+        await db.claimEscalationTicket(uncertainInput);
+        expect((await db.claimEscalationTicket(uncertainInput)).claimed).toBe(false);
+
+        // Settling only closes a pending claim: a filed row is never rewritten.
+        await db.settleEscalationTicket(first.ticket.id, { status: "failed", error: "late" });
+        expect((await db.claimEscalationTicket(input)).ticket.status).toBe("filed");
+      });
+    });
+
     describe("widget SSO connection (sealed secret, one per org)", () => {
       it("upserts, reads back, validates, redacts to public, and clears", async () => {
         expect(await db.getSsoConnection(ctx.organizationId)).toBeNull();
@@ -8408,16 +9395,16 @@ export function describeDbContract(
         // The two defaults that decide what a brand-new Teammate may do. Both
         // are deliberately the conservative half: it may write inside a domain
         // somebody granted it, and it may not approve its own knowledge edits.
-        expect(teammate.capabilityCeiling).toBe("edit");
+        expect(teammate.actionCeiling).toBe("edit");
         expect(teammate.approvalBypass).toBe(false);
       });
 
       it("carries the ceiling and the bypass through a governance patch", async () => {
         const teammate = await newTeammate();
         const lowered = await teammates().update(teammate.id, {
-          capabilityCeiling: "member",
+          actionCeiling: "member",
         });
-        expect(lowered.capabilityCeiling).toBe("member");
+        expect(lowered.actionCeiling).toBe("member");
         // Untouched by a patch that does not name it: the bypass is a separate
         // decision from the ceiling, and lowering one must not clear the other.
         expect(lowered.approvalBypass).toBe(false);
@@ -8426,7 +9413,7 @@ export function describeDbContract(
           approvalBypass: true,
         });
         expect(trusted.approvalBypass).toBe(true);
-        expect(trusted.capabilityCeiling).toBe("member");
+        expect(trusted.actionCeiling).toBe("member");
       });
 
       it("grants: the row is the grant, and revoking deletes it", async () => {
@@ -8769,6 +9756,9 @@ export function describeDbContract(
         const channel = await newChannel();
         const teammate = await newTeammateFor();
         const member = await seatMember(channel.id);
+        // Distinct created_at timestamps in every adapter: pglite's clock
+        // ticks in milliseconds, so back-to-back seats can tie.
+        await new Promise((resolve) => setTimeout(resolve, 5));
         const agent = await seats().insert({
           organizationId: ctx.organizationId,
           channelId: channel.id,

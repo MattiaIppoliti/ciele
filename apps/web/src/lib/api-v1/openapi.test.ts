@@ -1,3 +1,4 @@
+import { capabilityTier, type CapabilityRequirement } from "@agent-hub/core";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -141,7 +142,7 @@ describe("OpenAPI contract (#626)", () => {
       for (const operation of Object.values(methods) as Array<{
         responses: Record<string, { content?: Record<string, object> }>;
       }>) {
-        const success = operation.responses["200"] ?? operation.responses["201"] ?? operation.responses["204"];
+        const success = operation.responses["200"] ?? operation.responses["201"] ?? operation.responses["202"] ?? operation.responses["204"];
         if (operation.responses["204"]) expect(success.content).toBeUndefined();
         else expect(success.content).toBeTruthy();
       }
@@ -219,7 +220,9 @@ function isOperation(value: unknown): value is OpLike {
 const OP_CAPABILITY = new Map<string, string>(
   Object.entries(ops)
     .filter(([, value]) => isOperation(value))
-    .map(([exported, value]) => [exported, (value as OpLike).capability])
+    // The registry's badge is the tier (the lowest built-in Role that reaches
+    // it), so the truth it is held to is the tier of the declared Capability.
+    .map(([exported, value]) => [exported, capabilityTier((value as OpLike).capability as CapabilityRequirement)])
 );
 
 /** The ops referenced inside one exported method, not the whole file. */

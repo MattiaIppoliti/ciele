@@ -31,6 +31,7 @@ import {
   settingsTabFromPath,
 } from "@/components/settings/settings-nav";
 import type { ApiV1Domain } from "@/lib/api-v1/meta";
+import { capabilitiesAllow, type CapabilityRequirement, type Role } from "@agent-hub/core";
 import { DOMAIN_PRESENTATION } from "@/lib/developer-panel/domains";
 
 /** Minimal assistant shape shared by the scope switcher and Find menu. */
@@ -80,6 +81,11 @@ export interface GlobalNavItem {
   /** Hidden from anyone who cannot administer the Organization. */
   adminOnly?: boolean;
   /**
+   * The Capability its page needs to open (ADR-0028). Hidden without it, and a
+   * direct URL shows the permission page. Absent means any Member.
+   */
+  capability?: CapabilityRequirement;
+  /**
    * /api/v1 domains this page can be driven through, newest-first in the order
    * the Developer Panel (#754) should section them. Present means the page gets
    * a Developer Panel button; absent means it deliberately has none, and its
@@ -90,7 +96,7 @@ export interface GlobalNavItem {
 
 export const GLOBAL_NAV: GlobalNavItem[] = [
   {
-    id: "assistants",
+    id: "assistants", capability: "assistants:view",
     label: "Assistants",
     icon: LayoutGrid,
     href: "/",
@@ -99,7 +105,7 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     apiDomains: ["assistants"],
   },
   {
-    id: "help-desks",
+    id: "help-desks", capability: "helpDesks:view",
     label: "Help Desks",
     icon: UsersRound,
     href: "/help-desks",
@@ -109,7 +115,7 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   // Conversation's transcript, and the panel shows how to list or decide one.
   // Its decision page, `/reviews/<id>`, belongs here for the same reason.
   {
-    id: "inbox",
+    id: "inbox", capability: "inbox:view",
     label: "Inbox",
     icon: Mailbox,
     href: "/inbox",
@@ -118,7 +124,7 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   },
   // The org's internal AI colleagues (#768).
   {
-    id: "teammates",
+    id: "teammates", capability: "teammates:view",
     label: "Teammates",
     // The cursor-click glyph, which the animated-icon registry maps from
     // `MousePointerClick`: a Teammate is a colleague you talk to, not a robot.
@@ -131,18 +137,18 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     apiDomains: ["teammates", "channels", "projects"],
   },
   {
-    id: "improvements",
+    id: "improvements", capability: "improvements:view",
     label: "Improvements",
     icon: FlaskConical,
     href: "/improvements",
     apiDomains: ["improvements"],
   },
-  { id: "insights", label: "Insights", icon: ChartLine, href: "/insights" },
-  { id: "eval", label: "Eval", icon: Telescope, href: "/eval" },
+  { id: "insights", capability: "insights:view", label: "Insights", icon: ChartLine, href: "/insights", apiDomains: ["exports"] },
+  { id: "eval", capability: "assistants:view", label: "Eval", icon: Telescope, href: "/eval" },
   // The org-level knowledge hub, shown as "Library" so it never reads as the
   // per-Assistant SETUP → Knowledge section (PRD #726).
   {
-    id: "library",
+    id: "library", capability: "knowledge:view",
     label: "Library",
     icon: BookText,
     href: "/library",
@@ -152,7 +158,7 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   // Every work entry claims both work domains (#1051): the task views list
   // Tasks inside Projects, and a Project page is its Tasks.
   {
-    id: "my-tasks",
+    id: "my-tasks", capability: "projects:view",
     label: "My Tasks",
     icon: CircleCheckBig,
     href: "/my-tasks",
@@ -167,21 +173,21 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     href: "/notifications",
   },
   {
-    id: "projects",
+    id: "projects", capability: "projects:view",
     label: "Projects",
     icon: FolderKanban,
     href: "/projects",
     apiDomains: ["tasks", "projects"],
   },
   {
-    id: "tasks",
+    id: "tasks", capability: "projects:view",
     label: "All tasks",
     icon: ListChecks,
     href: "/tasks",
     apiDomains: ["tasks", "projects"],
   },
   {
-    id: "alerts",
+    id: "alerts", capability: "alerts:view",
     label: "Alerts",
     icon: Cctv,
     href: "/alerts",
@@ -201,6 +207,62 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     adminOnly: true,
   },
 ];
+
+/**
+ * What a Support Agent works with (#1086): the Inbox, the Help Desks they
+ * staff, their own notifications and tasks, and their own settings. Every
+ * other entry configures Assistants, knowledge, Flows or the Organization, so
+ * it is hidden from them.
+ */
+const SUPPORT_AGENT_NAV: ReadonlySet<NavId> = new Set<NavId>([
+  "inbox",
+  "help-desks",
+  "my-tasks",
+  "notifications",
+  // Not drawn for them (the entry is admin-only), but it is what lets
+  // `supportAgentMayOpen` keep their personal settings reachable.
+  "settings",
+]);
+
+/** Who is looking: their ladder tier and their Capabilities. */
+export interface NavAccess {
+  role: Role | null | undefined;
+  capabilities: readonly string[];
+}
+
+/**
+ * Whether a Member sees this nav entry: they hold its Capability, and a
+ * Support Agent's console stays the narrow one #1086 drew.
+ */
+export function navVisibleTo(access: NavAccess, item: GlobalNavItem): boolean {
+  if (item.capability && !capabilitiesAllow(access.capabilities, item.capability)) return false;
+  return access.role !== "support_agent" || SUPPORT_AGENT_NAV.has(item.id);
+}
+
+/**
+ * Whether a Member may open this console path at all. A direct URL to a page
+ * their Role does not reach shows the permission page instead (ADR-0028).
+ */
+export function mayOpenPath(access: NavAccess, pathname: string): boolean {
+  if (access.role === "support_agent" && !supportAgentMayOpen(pathname)) return false;
+  if (pathname === "/" || assistantIdFromPath(pathname)) {
+    return capabilitiesAllow(access.capabilities, "assistants:view");
+  }
+  const item = navItemForPath(pathname);
+  return !item?.capability || capabilitiesAllow(access.capabilities, item.capability);
+}
+
+/**
+ * Whether a Support Agent may open this console path. A direct URL to a
+ * hidden entry shows the permission page instead of the page (#1086); the
+ * Reviews decision page rides with the Inbox it belongs to.
+ */
+export function supportAgentMayOpen(pathname: string): boolean {
+  if (pathname === "/" || assistantIdFromPath(pathname)) return false;
+  const item = navItemForPath(pathname);
+  if (item) return SUPPORT_AGENT_NAV.has(item.id);
+  return isUnder(pathname, "/settings");
+}
 
 /** The entry with this id. Every id has one, which `nav.test.ts` pins. */
 export function navItem(id: NavId): GlobalNavItem {
@@ -370,6 +432,7 @@ export const ASSISTANT_SECTIONS: ReadonlySet<string> = new Set(
  */
 export function apiDomainsForPath(pathname: string): ApiV1Domain[] {
   if (pathname.startsWith("/setup/")) return [];
+  if (pathname.startsWith("/insights") && !pathname.startsWith("/insights/exports")) return [];
   // Settings is a dialog over tab routes, so its claims live with its own tab
   // list rather than on the sidebar's single Settings entry.
   const settingsTab = settingsTabFromPath(pathname);

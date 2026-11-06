@@ -33,7 +33,7 @@ export default async function ApplicationConnectPage({ params, searchParams }: {
     const next = `/application-connect/${provider}?${continuation}`;
     redirect(`/login?${new URLSearchParams({ next })}`);
   }
-  if (!session.organization || !canAuthorizeApplicationProvider(provider, session.role)) notFound();
+  if (!session.organization || !canAuthorizeApplicationProvider(provider, session)) notFound();
 
   if (connectionId) {
     const connection = await (await getDb()).getSafeApplicationConnection(connectionId);
@@ -41,7 +41,7 @@ export default async function ApplicationConnectPage({ params, searchParams }: {
       !connection ||
       connection.organizationId !== session.organization.id ||
       connection.provider !== provider ||
-      !canReconnectApplicationConnection(connection, session.userId, session.role)
+      !canReconnectApplicationConnection(connection, session.userId, session)
     ) notFound();
   }
 

@@ -31,7 +31,9 @@ interface TurnAnswer {
  * have rendered. What differs is only who reads it.
  */
 export async function answerConversationTurn(input: ConversationTurnInput): Promise<TurnAnswer> {
-  const body = await streamConversationTurn(input);
+  // A machine caller holding the socket, not a person watching text arrive
+  // (#1112); a caller that knows better says so.
+  const body = await streamConversationTurn({ turnTrigger: "api", ...input });
   let view: TurnView = { ...EMPTY_TURN_TRACE, parts: [], streamingText: null };
   let conversationId: string | null = null;
   let messageId: string | null = null;

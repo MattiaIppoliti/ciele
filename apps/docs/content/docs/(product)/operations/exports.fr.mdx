@@ -3,7 +3,7 @@ title: Exportations
 description: Créez et téléchargez des rapports Insights et des exportations de conversations.
 ---
 
-Ciele propose deux types d'exportation. Un export Insights est un fichier de
+Ciele propose deux types d’exportation. Un export Insights est un fichier de
 rapport contenant vos mesures Insights. Un export de Conversations contient les
 enregistrements complets des Conversations sélectionnées.
 
@@ -13,30 +13,30 @@ enregistrements complets des Conversations sélectionnées.
 2. Sélectionnez **Exports**.
 3. Sélectionnez **New export**.
 4. Saisissez un nom dans **Export name**.
-5. Définissez les filtres pour le rapport : la plage de dates, l'Assistant,
+5. Définissez les filtres pour le rapport : la plage de dates, l’Assistant,
    **Aggregated**, **Feedback** et **Escalated**.
 6. Sélectionnez le type d'exportation.
 7. Sélectionnez le type de fichier : **CSV**, **JSON** ou **XLSX**.
 8. Sélectionnez **Create**.
 
-Ciele génère le fichier en tant que tâche en arrière-plan. L'exportation
+Ciele génère le fichier en tant que tâche en arrière-plan. L’exportation
 apparaît dans la liste avec son nom, son type et son type de fichier. Lorsque le
 statut est **Ready**, sélectionnez **Download**.
 
 Les filtres sont identiques à ceux de la page Insights. Un export et la page
 Insights affichent les mêmes chiffres pour les mêmes filtres.
 
-## Types d'exportation des Insights
+## Types d’exportation des Insights
 
 - **Aggregated insights** : chaque série de graphiques, avec une ligne pour
   chaque jour, chaque semaine ou chaque mois.
-- **Datapoints** : les indicateurs principaux pour la période, avec une ligne
-  pour chaque indicateur. Une mesure sans données pour la plage concernée
-  présente une cellule vide.
+- **Datapoints** : les mesures principales pour la plage, avec une ligne pour
+  chaque mesure. Une mesure sans données pour la plage concernée présente une
+  cellule vide.
 - **Languages** : le nombre de Conversations pour chaque langue dans laquelle
   les Visiteurs ont écrit.
 
-**Shortcut button clicks** s'affiche dans la liste, mais vous ne pouvez pas le
+**Shortcut button clicks** apparaît dans la liste, mais vous ne pouvez pas le
 sélectionner. Ciele n'enregistre pas encore ces clics.
 
 ## Téléchargements
@@ -44,26 +44,67 @@ sélectionner. Ciele n'enregistre pas encore ces clics.
 Ciele vérifie votre accès chaque fois que vous téléchargez un fichier. Ciele
 enregistre également chaque téléchargement.
 
-## Contenu de l'exportation des conversations
+## Contenu de l’exportation des conversations
 
-Chaque enregistrement de Conversation utilise le format d'exportation actuel à
-29 champs. L'enregistrement comprend des informations sur la conversation,
-l'Assistant, le visiteur, la session et le résultat.
+Chaque enregistrement de Conversation utilise le format d’exportation actuel à
+29 champs. L'enregistrement comprend des informations relatives à la
+conversation, à l'Assistant, au visiteur, à la session et au résultat.
 
 Les détails du raisonnement dépendent de l'API-key ou du Role du membre. Un Role
 de niveau inférieur ne peut pas demander le raisonnement masqué via une option
-d'exportation.
+d’exportation.
 
-## Accès à l'API et à la CLI
+## Accès à l’API et à la CLI
 
-L'API accepte les Conversation IDs sélectionnés à l'adresse
+L’API accepte les identifiants de conversation sélectionnés à l’adresse
 `POST /api/v1/conversations/export`.
 
-La CLI peut écrire la même structure d'enregistrement dans un fichier :
+La CLI peut écrire la même structure d’enregistrement dans un fichier :
 
 ```bash
 ciele conversations export <conversation-id> --out export.json
 ```
 
-L'outil MCP `read_inbox` peut également demander un export. Son action
-d'exportation reste disponible en mode lecture seule MCP.
+L’outil MCP `read_inbox` peut également demander un export. Son action
+d’exportation reste disponible en mode lecture seule MCP.
+
+## Planifier une exportation d’Insights
+
+Dans **New export**, activez la planification après avoir sélectionné le nom du
+rapport, les filtres, le type d’exportation et le type de fichier.
+
+Choisissez un jour de la semaine pour une planification hebdomadaire ou un jour
+du mois pour une planification mensuelle, une heure en UTC, ainsi que des
+destinataires parmi les membres de l’organisation. L’interface affiche également
+votre heure locale.
+
+Les rapports hebdomadaires couvrent les sept derniers jours complets en UTC. Les
+rapports mensuels couvrent le mois civil précédent. Le jour 31 désigne le
+dernier jour du mois lorsque cela est nécessaire.
+
+**Exports** répertorie les plannings et leurs destinataires. Les éditeurs
+peuvent suspendre, reprendre ou supprimer un programme. La suppression d’un
+schedule conserve les fichiers générés précédemment.
+
+Chaque créneau prévu crée une tâche d’exportation normale. Après une période
+d’indisponibilité, le worker crée uniquement le dernier rapport manqué. Il ne
+relance pas chaque créneau manqué.
+
+Les destinataires reçoivent un e-mail lorsque le fichier est prêt. L’e-mail
+renvoie à la console et nécessite une connexion. Il ne contient ni données de
+rapport ni pièce jointe.
+
+Les membres qui quittent l’Organisation sont supprimés des listes de
+destinataires. Un programme ne comptant plus aucun destinataire se met
+automatiquement en pause.
+
+Un échec d’exportation planifiée déclenche une alerte opérationnelle. La
+prochaine exécution réussie la résout. Les échecs d’envoi d’e-mails déclenchent
+une alerte distincte.
+
+Le worker authentifié doit vider les exportations au moins toutes les cinq
+minutes. Le worker Docker externe prend en charge ce calendrier sur Vercel
+Hobby.
+
+Les clients API gèrent les planifications sous `/api/v1/exports/schedules`. MCP
+expose les actions export-schedule via `manage_configuration`.

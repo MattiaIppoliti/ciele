@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { failureCountOf } from "./goal-improvement";
-import { buildPublicationConfig } from "@agent-hub/core";
+import { defaultChannelAvailability, buildPublicationConfig } from "@agent-hub/core";
 import { getMockDb, DEMO_ORG } from "@agent-hub/db";
 import { runDueGoalEvals } from "./goal-runner";
 
@@ -200,4 +200,19 @@ describe("runDueGoalEvals", () => {
     const second = await runDueGoalEvals({ db });
     expect(second.processed).toBe(0);
   });
+});
+
+
+it("uses a live holiday for standing-goal checks of a published Flow", async () => {
+  const assistant = await db.createAssistant(DEMO_ORG.id, { title: "Goal hours" });
+  const schedule = await db.saveBusinessHours(DEMO_ORG.id, null, { name: "Goal calendar", timezone: "UTC", hours: defaultChannelAvailability().hours, holidays: [], isDefault: false });
+  const office = await db.createFlow(assistant.id, { name: "Office", description: "office opening", actions: ["custom_message"], customMessage: "OPEN", conditions: [{ id: "gate", kind: "schedule", mode: "business_hours", businessHoursId: schedule.id, direction: "during" }] });
+  const fallback = await db.createFlow(assistant.id, { name: "Fallback", actions: ["custom_message"], customMessage: "CLOSED" });
+  const publication = await db.createPublication(assistant.id, buildPublicationConfig(assistant, [office, { ...fallback, isDefault: true }], []));
+  const today = new Date().toISOString().slice(0, 10);
+  await db.saveBusinessHours(DEMO_ORG.id, schedule.id, { ...schedule, holidays: [{ id: "today", name: "Closure", startDate: today, endDate: today, yearly: false }] });
+  const goal = await db.createAssistantGoal(assistant.id, { question: "office opening", expectations: { mustContain: ["CLOSED"] } });
+  await runDueGoalEvals({ db });
+  expect((await db.table("assistantGoals").get(goal.id))?.lastResult).toBe("pass");
+  expect((await db.getLatestPublication(assistant.id))?.id).toBe(publication.id);
 });

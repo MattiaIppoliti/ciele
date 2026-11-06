@@ -1,6 +1,6 @@
 import { InboxClient } from "@/components/inbox/inbox-client";
 import { requirePageMember } from "@/lib/authz";
-import { canEdit, canManageMembers, canViewReasoning } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import {
   inboxQueryFromFilters,
   inboxUrlStateFromSearchParams,
@@ -13,7 +13,8 @@ export default async function InboxPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { organizationId, role, db, reads } = await requirePageMember();
+  const { organizationId, role, db, reads, session, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
   const params = await searchParams;
   const requested =
     typeof params.conversation === "string" ? params.conversation : null;
@@ -50,11 +51,13 @@ export default async function InboxPage({
       initialFilters={initialFilters}
       initialSearch={q}
       assistants={assistants.map((a) => ({ id: a.id, title: a.title }))}
-      canEdit={canEdit(role)}
-      canViewReasoning={canViewReasoning(role)}
+      canEdit={can(access, "inbox:triage")}
+      canViewReasoning={can(access, "inbox:reasoning")}
       // Legal hold suspends a committed deletion; same rung as the retention
       // setting it overrides (#801, CYB-12).
-      canManageRetention={canManageMembers(role)}
+      canManageRetention={can(access, "inbox:legalHold")}
+      canOperate={can(access, "inbox:operate")}
+      currentUserId={session.userId}
     />
   );
 }

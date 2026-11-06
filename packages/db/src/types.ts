@@ -15,6 +15,9 @@
 
 import type { AssistantAvailabilityCheck, AssistantAvailabilityFact, AssistantAvailabilityTarget } from "@agent-hub/core";
 import type {
+  MemberGrant,
+  OrgRole,
+  OrgRoleInput,
   MessageReaction,
   AiUsageInput,
   Alert,
@@ -31,6 +34,8 @@ import type {
   ApplicationSource,
   ApplicationSyncRun,
   Assistant,
+  AssistantAccessEntry,
+  AssistantAccessRole,
   AssistantGoal,
   AssistantInput,
   AssistantPatch,
@@ -68,6 +73,8 @@ import type {
   ImprovementAssociation,
   ImprovementAssociationPage,
   ImprovementListItem,
+  ImprovementQuery,
+  ImprovementValidation,
   ImprovementMessageLink,
   ImprovementPatch,
   ImprovementProposal,
@@ -149,6 +156,10 @@ import type {
   SupportChannelPatch,
   TeammateRoutine,
   TicketingPlatform,
+  TicketingProvider,
+  TicketingTarget,
+  EscalationTicket,
+  FiledTicket,
   TrustSignal,
   TrustTier,
   UsageDailyRow,
@@ -161,6 +172,74 @@ import type {
 import type { DbTableAccessor, DbTableName } from "./table-access";
 
 export interface Db {
+  listAssistantAccess(assistantId: string): Promise<AssistantAccessEntry[]>;
+  /** `denied`, or a Role on the Assistant: `roleId` when given, else the built-in of `role`. */
+  setAssistantAccess(
+    assistantId: string,
+    userId: string,
+    role: AssistantAccessRole,
+    roleId?: string | null
+  ): Promise<void>;
+  /**
+   * What decides one Member's Capabilities on one Assistant (ADR-0028): their
+   * Assistant scope and the override row, with its Role's Capabilities. Null
+   * when they are not a member.
+   */
+  getMemberAssistantGrant(
+    organizationId: string,
+    userId: string,
+    assistantId: string
+  ): Promise<{
+    /** The Member's own Organization tier: an Owner is never limited on an Assistant. */
+    role: Role;
+    scope: import("@agent-hub/core").MemberAssistantScope;
+    override: import("@agent-hub/core").AssistantRoleOverride | null;
+  } | null>;
+  /** Back to "System Role" (removes the override row). */
+  clearAssistantAccess(assistantId: string, userId: string): Promise<void>;
+  /** One Member's override rows across the Organization's Assistants. */
+  listMemberAssistantAccess(organizationId: string, userId: string): Promise<import("@agent-hub/core").MemberAssistantAccess[]>;
+  /**
+   * Replace one Member's scope and every override row in one transaction
+   * (Settings > Members > Assistants). An Owner cannot be limited.
+   */
+  setMemberAssistantScope(
+    organizationId: string,
+    userId: string,
+    scope: import("@agent-hub/core").MemberAssistantScope,
+    access: import("@agent-hub/core").MemberAssistantAccess[]
+  ): Promise<void>;
+
+  /** Self-offboarding records its outcome while the membership still authorizes it. */
+  leaveOrganization(organizationId: string, userId: string, entry: Omit<import("@agent-hub/core").AuditLogEntry, "id" | "createdAt">): Promise<{ auditRecorded: boolean }>;
+  recordAuditEntry(entry: Omit<import("@agent-hub/core").AuditLogEntry, "id" | "createdAt">): Promise<void>;
+  listAuditEntries(organizationId: string, filter: import("@agent-hub/core").AuditLogFilter): Promise<import("@agent-hub/core").AuditLogEntry[]>;
+
+  /** Save a whole schedule and switch the Organization default atomically. */
+  getSourceUsage(organizationId: string, now: string): Promise<import("@agent-hub/core").SourceUsageStats[]>;
+  setDocumentReview(organizationId: string, input: { documentId: string; memberId: string; reviewed: boolean }): Promise<Concept>;
+  saveBusinessHours(organizationId: string, id: string | null, input: import("@agent-hub/core").BusinessHoursInput): Promise<import("@agent-hub/core").BusinessHours>;
+  deleteBusinessHours(organizationId: string, id: string): Promise<void>;
+  setDefaultTimezone(organizationId: string, timezone: string): Promise<void>;
+
+  createMcpServerConnection(organizationId: string, input: { name: string; url: string; tools: import("@agent-hub/core").RemoteMcpTool[]; encryptedToken: string | null }): Promise<import("@agent-hub/core").McpServerConnection>;
+  compareAndSetMcpTools(organizationId: string, serverId: string, revision: number, tools: import("@agent-hub/core").RemoteMcpTool[]): Promise<import("@agent-hub/core").McpServerConnection | null>;
+  /** Service-only credential read; never part of a connection or Publication. */
+  getMcpServerToken(serverId: string): Promise<string | null>;
+  /** Atomically stores public configuration and its sealed service-only signing secret. */
+  createOutboundWebhookSubscription(organizationId: string, input: {
+    name: string; url: string; eventTypes: import("@agent-hub/core").OutboundWebhookEventType[]; encryptedSecret: string;
+  }): Promise<import("@agent-hub/core").OutboundWebhookSubscription>;
+  /** Service-only credential read; public subscription reads never contain a secret. */
+  getOutboundWebhookSecret(subscriptionId: string): Promise<string | null>;
+  /** Atomically queues deliveries and ledger jobs; repeated event ids do not duplicate either. */
+  queueOutboundWebhookEvent(organizationId: string, event: import("@agent-hub/core").OutboundWebhookEvent, subscriptionId?: string): Promise<void>;
+  /** A delivery attempt is fenced by its job lease. */
+  recordWebhookDeliveryAttempt(input: {
+    deliveryId: string; jobId: string; leaseToken: string; now: string;
+    status: "queued" | "delivered" | "failed"; statusCode: number | null;
+  }): Promise<boolean>;
+
   listPublishedAvailabilityTargets(organizationId: string | null, limit?: number): Promise<AssistantAvailabilityTarget[]>;
   recordAssistantAvailability(checks: AssistantAvailabilityCheck[]): Promise<void>;
   getAssistantAvailability(organizationId: string, from: string, to: string): Promise<AssistantAvailabilityFact[]>;
@@ -195,16 +274,37 @@ export interface Db {
    * pay a query that scales with org size.
    */
   getMemberRole(organizationId: string, userId: string): Promise<Role | null>;
+  /**
+   * One member's Role with its Capabilities (ADR-0028), or null when they are
+   * not a member. What every auth seam resolves a caller to. One migration
+   * behind it answers the ladder Role's built-in defaults, `roleId` null.
+   */
+  getMemberGrant(organizationId: string, userId: string): Promise<MemberGrant | null>;
+  /** Gives the Member the Role `roleId` (an `org_roles` id of this Organization). */
   updateMemberRole(
     organizationId: string,
     userId: string,
-    role: Role
+    roleId: string
   ): Promise<void>;
+
+  // Roles (#1164, ADR-0028). The database derives each Role's tier, keeps
+  // Owner locked, refuses unknown and Owner-only Capabilities and refuses a
+  // caller who would hand on what they do not hold; the operations say why
+  // first, in words.
+  /** Built-ins first in their fixed order, then custom Roles by name. */
+  listOrgRoles(organizationId: string): Promise<OrgRole[]>;
+  createOrgRole(organizationId: string, input: OrgRoleInput): Promise<OrgRole>;
+  updateOrgRole(organizationId: string, roleId: string, patch: Partial<OrgRoleInput>): Promise<OrgRole>;
+  /** Deletes a custom Role nobody holds; false when nothing was deleted. */
+  deleteOrgRole(organizationId: string, roleId: string): Promise<boolean>;
+  /** Moves the invitation default and/or the Assistant default to a Role. */
+  setRoleDefaults(organizationId: string, defaults: { memberRoleId?: string; assistantRoleId?: string }): Promise<void>;
   removeMember(organizationId: string, userId: string): Promise<void>;
   listInvites(organizationId: string): Promise<Invite[]>;
+  /** An invitation to join with the Role `roleId`. */
   createInvite(
     organizationId: string,
-    role: Role,
+    roleId: string,
     email?: string
   ): Promise<Invite>;
   revokeInvite(inviteId: string): Promise<void>;
@@ -302,7 +402,34 @@ export interface Db {
     helpDeskId: string,
     input: { platform: TicketingPlatform; name: string; config: ServiceNowConfig }
   ): Promise<HelpDesk>;
+  /** Clears the desk's ticketing: the target and any retired registration. */
   clearTicketingIntegration(helpDeskId: string): Promise<HelpDesk>;
+  /** Names the Application Connection the desk's ticket channel files through (#1088). */
+  setTicketingTarget(helpDeskId: string, target: TicketingTarget): Promise<HelpDesk>;
+  /** Reads an existing submission without claiming or validating a new draft. */
+  getEscalationTicket(organizationId: string, idempotencyKey: string): Promise<EscalationTicket | null>;
+  /**
+   * Claims one ticket-channel submission by its idempotency key before the
+   * provider call (#1088). `claimed` is true when this caller should file:
+   * a new key only. Every existing key comes back unclaimed, including a
+   * failed or pending attempt: the provider may have written before its
+   * response was lost. A retry reads the outcome and never repeats the POST.
+   */
+  claimEscalationTicket(
+    input: {
+      organizationId: string;
+      idempotencyKey: string;
+      helpDeskId: string;
+      channelId: string;
+      conversationId: string | null;
+      provider: TicketingProvider;
+    }
+  ): Promise<{ ticket: EscalationTicket; claimed: boolean }>;
+  /** Closes a claimed submission: filed with its record, or failed with the reason. */
+  settleEscalationTicket(
+    id: string,
+    outcome: { status: "filed"; ticket: FiledTicket } | { status: "failed"; error: string }
+  ): Promise<void>;
 
   // Widget SSO connections (one per organization). `encryptedSecret` is sealed
   // by the caller before `setSsoConnection` and returned only by the
@@ -406,6 +533,7 @@ export interface Db {
    * in (PRD #726), deterministic per organization, created on first use (the
    * backfill migration seeds it for orgs that existed then).
    */
+  getOrgLibraryCollection(organizationId: string): Promise<KnowledgeCollection | null>;
   getOrCreateOrgLibraryCollection(
     organizationId: string
   ): Promise<KnowledgeCollection>;
@@ -766,6 +894,8 @@ export interface Db {
   }>;
 
   // --- Report exports (durable, off the request path) -----------------------
+  /** System tick: atomically claims each latest due slot and queues its export. */
+  queueDueExportSchedules(now: string, limit: number): Promise<number>;
   createExportJob(
     organizationId: string,
     input: {
@@ -947,7 +1077,8 @@ export interface Db {
   }): Promise<Concept>;
   updateConcept(
     id: string,
-    patch: { frontmatter?: ConceptFrontmatter; body?: string }
+    patch: { frontmatter?: ConceptFrontmatter; body?: string },
+    edit?: { actor: string; forceVersion?: boolean }
   ): Promise<Concept>;
   deleteConcept(id: string): Promise<void>;
   deleteChunksByConcept(conceptId: string): Promise<void>;
@@ -994,7 +1125,7 @@ export interface Db {
   searchCollectionChunks(
     organizationId: string,
     collectionIds: string[],
-    query: { embedding: number[] | null; text: string; limit?: number; embeddingSpace?: string | null }
+    query: { faqOnly?: boolean; embedding: number[] | null; text: string; limit?: number; embeddingSpace?: string | null }
   ): Promise<KnowledgeSearchResult[]>;
 
   /**
@@ -1077,9 +1208,10 @@ export interface Db {
       /** Which column the reader clicked; `createdAt` is the default. */
       sort?: SourceDocumentSort;
       /** The Status header's filter: the same three states the badge shows. */
+      trustTier?: import("@agent-hub/core").OkfTrustTier;
       status?: SourceDocumentStatus;
     }
-  ): Promise<{ items: SourceDocumentListItem[]; total: number }>;
+  ): Promise<{ items: SourceDocumentListItem[]; total: number; qualityAvailable?: boolean }>;
   /**
    * The active Document at one page identity, `(source_id, path)`, or null.
    *
@@ -1097,7 +1229,8 @@ export interface Db {
   // Publications
   createPublication(
     assistantId: string,
-    config: PublicationConfig
+    config: PublicationConfig,
+    createdBy?: string | null
   ): Promise<Publication>;
   listPublications(assistantId: string): Promise<Publication[]>;
   /** Unpublish: remove every Publication so the widget goes offline until the next publish. */
@@ -1219,6 +1352,64 @@ export interface Db {
    * honouring one must not mean turning retention off for the organization.
    */
   setConversationLegalHold(id: string, legalHold: boolean): Promise<void>;
+  /**
+   * A Member takes a Conversation over from the Inbox (#1082). Compare-and-set
+   * on "nobody holds it": returns the updated Conversation, or null when
+   * another Member got there first (or the id is unknown). Ends a wait.
+   */
+  takeOverConversation(input: {
+    conversationId: string;
+    memberId: string;
+    memberName: string;
+    now: string;
+  }): Promise<Conversation | null>;
+  /**
+   * Hands a held Conversation back to the AI. Only the holder's release
+   * lands when `memberId` is given; null releases whoever holds it (an admin
+   * override). Returns null when nothing was released.
+   */
+  releaseConversation(input: {
+    conversationId: string;
+    memberId: string | null;
+  }): Promise<Conversation | null>;
+  /**
+   * Puts a Conversation in the Live operator waiting state (#1083). Refused
+   * (null) while a Member holds it. `assignedMemberId` is the operator chosen
+   * for it (#1084), or null to leave it in the shared queue.
+   */
+  startConversationWait(input: {
+    conversationId: string;
+    helpDeskId: string;
+    channelId: string;
+    timeoutMinutes: number;
+    now: string;
+    assignedMemberId?: string | null;
+  }): Promise<Conversation | null>;
+  /**
+   * Assigns a still-waiting Conversation to an operator (#1084); null when it
+   * is no longer waiting.
+   */
+  /** Renews an existing, live Available lease without reviving Away. */
+  renewOperatorPresence(input: { organizationId: string; memberId: string; now: string }): Promise<boolean>;
+  assignWaitingConversation(input: {
+    conversationId: string;
+    memberId: string;
+    now: string;
+  }): Promise<Conversation | null>;
+  /**
+   * Assistant Conversations of this Organization whose stored state is
+   * `waiting` or `held`. Whether a wait is still on is derived by the caller
+   * (`effectiveOperatorState`), the database does not know the time.
+   */
+  listOperatorConversations(organizationId: string): Promise<Conversation[]>;
+  /**
+   * Assignments made since `since` (ISO), newest first: the input of the
+   * least-recently-assigned tie-break (#1084).
+   */
+  listOperatorAssignments(
+    organizationId: string,
+    since: string
+  ): Promise<Array<{ memberId: string; assignedAt: string }>>;
   /** Shallow-merges the patch into the conversation's metadata. */
   updateConversationMetadata(
     id: string,
@@ -1336,6 +1527,8 @@ export interface Db {
   }): Promise<boolean>;
   deleteConversation(id: string): Promise<void>;
   listMessages(conversationId: string): Promise<StoredMessage[]>;
+  /** System-only post-commit scoring; merges the trace and first daily Alert atomically. */
+  recordMessageModeration(organizationId: string, messageId: string, check: import("@agent-hub/core").GuardrailTraceEntry): Promise<void>;
   getMessage(id: string): Promise<StoredMessage | null>;
   /** Recent conversation messages, returned oldest-first for model history. */
   listRecentMessages(
@@ -1359,6 +1552,25 @@ export interface Db {
     /** Serializable effects atomically enqueued with an assistant message. */
     deferredEffects?: unknown[];
   }): Promise<StoredMessage>;
+  /**
+   * A Member's reply to the Visitor (`operator`) or a line about the
+   * Conversation (`system`, "Dana joined the conversation"), #1082. Never an
+   * AI answer, so it carries no flow, trace or deferred effects.
+   */
+  appendOperatorMessage(input: {
+    conversationId: string;
+    role: "operator" | "system";
+    text: string;
+    authorMemberId: string;
+    authorName: string;
+  }): Promise<StoredMessage>;
+  /**
+   * Messages written at or after `after` (an ISO timestamp), oldest first:
+   * what the Widget and the Inbox poll for while a Conversation is held or
+   * waiting. Inclusive, so a same-millisecond write is never skipped; callers
+   * de-duplicate by id.
+   */
+  listMessagesSince(conversationId: string, after: string): Promise<StoredMessage[]>;
   claimTurnEffects(input: {
     messageId?: string | null;
     workerId: string;
@@ -1411,6 +1623,26 @@ export interface Db {
     Array<{ organizationId: string; retentionDays: number }>
   >;
   /**
+   * Every organization that opted into a message or Improvement retention
+   * window (Settings > Data retention). Cross-org, the nightly sweep's read;
+   * organizations that keep forever are absent.
+   */
+  listRetentionPolicies(
+    kind: "messages" | "improvements"
+  ): Promise<Array<{ organizationId: string; retentionDays: number }>>;
+  /**
+   * Deletes this organization's messages created before the cutoff from
+   * Conversations that stay, skipping legal holds, and stamps each touched
+   * Conversation's `messagesDeletedThrough`. At most `limit` per call, oldest
+   * first; call again while it returns `limit`.
+   */
+  deleteExpiredMessages(organizationId: string, cutoffIso: string, limit?: number): Promise<number>;
+  /**
+   * Deletes this organization's Improvements not updated since the cutoff,
+   * whatever their status. At most `limit` per call, oldest first.
+   */
+  deleteExpiredImprovements(organizationId: string, cutoffIso: string, limit?: number): Promise<number>;
+  /**
    * Deletes this organization's Conversations older than the cutoff, messages
    * and links included, skipping any under legal hold. Idempotent, a deleted
    * conversation never matches again. Returns how many were removed.
@@ -1445,6 +1677,19 @@ export interface Db {
     filters: InsightsFilter
   ): Promise<InsightsOverview>;
 
+  /**
+   * Appends one validation record to an Improvement: a Member's widget check,
+   * or a pending replay whose background job is queued in the same write.
+   * Refuses an Improvement, Assistant or Publication outside the Organization.
+   */
+  createImprovementValidation(organizationId: string, input: Omit<ImprovementValidation, "id" | "createdAt" | "organizationId">): Promise<ImprovementValidation>;
+  /**
+   * A fingerprint of the Assistant's latest Publication and its linked
+   * Sources and Concepts. A validation recorded under another fingerprint is
+   * stale.
+   */
+  getAssistantValidationSnapshot(assistantId: string): Promise<string>;
+
   // Improvements (AI-answer-quality tracker)
   listImprovements(organizationId: string): Promise<ImprovementListItem[]>;
   /**
@@ -1454,7 +1699,7 @@ export interface Db {
    */
   listImprovementsPage(
     organizationId: string,
-    input: { limit: number; cursor?: string | null; status?: ImprovementStatus }
+    input: { limit: number; cursor?: string | null; status?: ImprovementStatus } & ImprovementQuery
   ): Promise<{ items: ImprovementListItem[]; nextCursor: string | null }>;
   /**
    * The Improvements assigned to one Member, archived ones left out: the half
@@ -1464,12 +1709,17 @@ export interface Db {
   listImprovementsAssignedTo(organizationId: string, assigneeId: string): Promise<Improvement[]>;
   /** Authoritative lane sizes, every status present even when zero. */
   countImprovementsByStatus(
-    organizationId: string
+    organizationId: string,
+    filters?: ImprovementQuery
   ): Promise<Record<ImprovementStatus, number>>;
   getImprovement(id: string): Promise<Improvement | null>;
   createImprovement(
     organizationId: string,
-    input: { title: string; createdBy?: string | null; messageId?: string | null }
+    input: {
+      title: string; description?: string; createdBy?: string | null; messageId?: string | null;
+      source?: import("@agent-hub/core").OutboundWebhookData<"improvement.created">["source"];
+      assistantId?: string | null;
+    }
   ): Promise<Improvement>;
   updateImprovement(id: string, patch: ImprovementPatch): Promise<Improvement>;
   deleteImprovement(id: string): Promise<void>;
@@ -1745,6 +1995,7 @@ export interface Db {
    * Conversations, each grouped by UTC day at a grain every Dashboard filter
    * selects whole rows of. `computeUsageDashboard` does the pivots.
    */
+  getModerationCounts(organizationId: string, from: string, to: string, assistantId?: string): Promise<import("@agent-hub/core").ModerationCounts | null>;
   getOrgDashboardFacts(
     organizationId: string,
     from: string,

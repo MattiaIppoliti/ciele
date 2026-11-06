@@ -1,5 +1,7 @@
 //! `improvements.list` and `improvements.listPage`, the ports of the board
-//! reads in `packages/ops/src/improvements.ts` (#1122).
+//! reads in `packages/ops/src/improvements.ts` (#1122). `listPage` carries the
+//! board's storage filters and per-stage counts
+//! (docs/design/answer-improvement-workflow.md).
 //!
 //! The row is built field by field rather than through `to_jsonb`, because
 //! `toImprovement` picks its fields too: a column added later must not start
@@ -46,56 +48,135 @@ pub async fn list(conn: &mut PgConnection, claims: &Claims) -> Result<Value, Api
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PageInput {
     limit: i64,
     cursor: Option<String>,
     #[serde(default, deserialize_with = "present")]
     status: Option<String>,
+    #[serde(default, deserialize_with = "present")]
+    search: Option<String>,
+    #[serde(default, deserialize_with = "present")]
+    priority: Option<String>,
+    /// `Some(None)` is an explicit `null`: unassigned work.
+    #[serde(default, deserialize_with = "present")]
+    assignee_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "present")]
+    project_id: Option<String>,
+    #[serde(default, deserialize_with = "present")]
+    assistant_id: Option<String>,
 }
 
-/// One board lane, or every lane, `limit` at a time, newest key first. The
-/// cursor is the last item's `seq` as a string.
+const PRIORITIES: [&str; 4] = ["high", "medium", "low", "none"];
+
+/// `improvementFilters` in `packages/db/src/improvement-pagination.ts`: the
+/// keys that narrow the read, absent and blank ones dropped, or `None` when
+/// nothing does. The keys are the ones `public.matching_improvements` reads.
+fn filters(input: &PageInput) -> Option<Value> {
+    let mut filters = serde_json::Map::new();
+    if let Some(search) = input.search.as_deref().map(js_trim)
+        && !search.is_empty()
+    {
+        filters.insert("search".into(), json!(search));
+    }
+    if let Some(priority) = &input.priority {
+        filters.insert("priority".into(), json!(priority));
+    }
+    if let Some(assignee) = &input.assignee_id {
+        filters.insert("assigneeId".into(), json!(assignee));
+    }
+    if let Some(project) = &input.project_id {
+        filters.insert("projectId".into(), json!(project));
+    }
+    if let Some(assistant) = &input.assistant_id {
+        filters.insert("assistantId".into(), json!(assistant));
+    }
+    (!filters.is_empty()).then_some(Value::Object(filters))
+}
+
+/// zod's refusals for the filter keys of `listImprovementsPageOp`.
+fn check_filters(input: &PageInput) -> Result<(), ApiError> {
+    if let Some(search) = &input.search {
+        bounded(search, 0, 300)?;
+    }
+    if let Some(priority) = &input.priority
+        && !PRIORITIES.contains(&priority.as_str())
+    {
+        return Err(ApiError::invalid_input("Invalid improvement priority"));
+    }
+    for id in [
+        input.assignee_id.as_ref().and_then(Option::as_ref),
+        input.project_id.as_ref(),
+        input.assistant_id.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        bounded(id, 1, usize::MAX)?;
+    }
+    Ok(())
+}
+
+/// One board lane, or every lane, `limit` at a time, newest key first, and
+/// every lane's size under the same filters. The cursor is the last item's
+/// `seq` as a string. A filtered read goes through `public.matching_improvements`,
+/// the predicate both TypeScript adapters use; an unfiltered one keeps the
+/// plain table read.
 pub async fn list_page(
     conn: &mut PgConnection,
     claims: &Claims,
     input: Value,
 ) -> Result<Value, ApiError> {
-    let PageInput {
-        limit,
-        cursor,
-        status,
-    } = parse(input)?;
-    if let Some(status) = &status
+    let input: PageInput = parse(input)?;
+    if let Some(status) = &input.status
         && !STATUSES.contains(&status.as_str())
     {
         return Err(ApiError::invalid_input("Invalid improvement status"));
     }
     // zod: `limit` an integer from 1 to 100, `cursor` non-empty when present.
-    if !(1..=100).contains(&limit) {
+    if !(1..=100).contains(&input.limit) {
         return Err(ApiError::invalid_input("limit must be 1 to 100"));
     }
-    if cursor.as_deref() == Some("") {
+    if input.cursor.as_deref() == Some("") {
         return Err(ApiError::invalid_input("cursor must not be empty"));
     }
-    let before_seq = cursor.as_deref().and_then(js_number_to_safe_integer);
+    check_filters(&input)?;
+    let before_seq = input.cursor.as_deref().and_then(js_number_to_safe_integer);
+    let filters = filters(&input);
+    let source = if filters.is_some() {
+        "public.matching_improvements($1::uuid, $5::jsonb)"
+    } else {
+        "(select * from public.improvements where organization_id = $1::uuid)"
+    };
     let sql = format!(
-        "select coalesce(jsonb_agg(item order by seq desc), '[]'::jsonb) from ( \
-           select {LIST_ITEM_JSON} as item, i.seq from public.improvements i \
-           where i.organization_id = $1::uuid \
-             and ($2::bigint is null or i.seq < $2) \
-             and ($3::text is null or i.status = $3) \
-           order by i.seq desc limit $4 \
-         ) page"
+        "select jsonb_build_object( \
+           'items', (select coalesce(jsonb_agg(item order by seq desc), '[]'::jsonb) from ( \
+              select {LIST_ITEM_JSON} as item, i.seq from {source} i \
+              where ($2::bigint is null or i.seq < $2) \
+                and ($3::text is null or i.status = $3) \
+              order by i.seq desc limit $4) page), \
+           'counts', (select {COUNTS_JSON} from {source} i))"
     );
-    let rows: Value = sqlx::query_scalar(&sql)
+    let answer: Value = sqlx::query_scalar(&sql)
         .bind(&claims.org)
         .bind(before_seq)
-        .bind(status)
-        .bind(limit + 1)
+        .bind(&input.status)
+        .bind(input.limit + 1)
+        .bind(filters)
         .fetch_one(&mut *conn)
         .await?;
-    Ok(finalize_page(rows, limit as usize))
+    let mut page = finalize_page(answer["items"].clone(), input.limit as usize);
+    page["counts"] = answer["counts"].clone();
+    Ok(page)
 }
+
+/// `countImprovementsByStatus`: every status present, zero included.
+pub(crate) const COUNTS_JSON: &str = "jsonb_build_object( \
+       'to_do', count(*) filter (where i.status = 'to_do'), \
+       'in_progress', count(*) filter (where i.status = 'in_progress'), \
+       'in_review', count(*) filter (where i.status = 'in_review'), \
+       'done', count(*) filter (where i.status = 'done'), \
+       'archived', count(*) filter (where i.status = 'archived'))";
 
 /// `finalizeImprovementPage`: rows were fetched with `limit + 1`, so a cursor
 /// exists only when the extra row came back.

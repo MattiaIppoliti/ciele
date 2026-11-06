@@ -129,6 +129,7 @@ export function sourceTypeLabel(kind: SourceKind): string {
 }
 
 export interface HubSearchParams {
+  unused?: boolean;
   q: string;
   status: "" | SourceStatus;
   assistant: string;
@@ -150,6 +151,7 @@ const SORTS: OrgKnowledgeSourceSort[] = [
   "name",
   "status",
   "updatedAt",
+  "cited30",
 ];
 
 /** Parses + clamps the hub's URL search params; garbage falls back to defaults. */
@@ -161,6 +163,7 @@ export function parseHubSearchParams(
   const status = one(params.status);
   const page = Number.parseInt(one(params.page), 10);
   return {
+    ...(one(params.unused) === "1" ? { unused: true } : {}),
     q: one(params.q).slice(0, 200),
     status: (STATUSES as string[]).includes(status)
       ? (status as SourceStatus)

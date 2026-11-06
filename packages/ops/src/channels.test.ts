@@ -502,11 +502,11 @@ describe("oversight", () => {
   it("is capability-gated, not membership-gated", async () => {
     // The capability the surface enforces is declared, so an Editor cannot
     // reach the oversight read at all.
-    expect(listOrgChannelsOp.capability).toBe("manageMembers");
-    expect(readOrgChannelOp.capability).toBe("manageMembers");
+    expect(listOrgChannelsOp.capability).toBe("channels:oversee");
+    expect(readOrgChannelOp.capability).toBe("channels:oversee");
     // Everything a colleague does in a channel of their own is `member`.
-    expect(createChannelOp.capability).toBe("member");
-    expect(postChannelMessageOp.capability).toBe("member");
+    expect(createChannelOp.capability).toBe("channels:use");
+    expect(postChannelMessageOp.capability).toBe("channels:use");
   });
 });
 

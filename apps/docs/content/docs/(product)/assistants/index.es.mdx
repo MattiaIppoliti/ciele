@@ -11,24 +11,24 @@ historial de publicaciones.
 
 | Sección | Propósito |
 | --- | --- |
-| General | Establece los valores predeterminados de identidad, modelo y conversación. |
+| General | Configura los valores predeterminados de identidad, modelo y conversación. |
 | Knowledge | Añade Sources y FAQs. |
 | Flows | Define el enrutamiento y las respuestas. |
 | Tools & Skills | Controla las herramientas de tiempo de ejecución, la integración de API y las instrucciones reutilizables. |
 | Goals | Programa comprobaciones de respuestas deterministas. |
 | Guardrails | Revisa los mensajes de los visitantes y oculta el texto de las respuestas marcadas. |
 | Assistant Help Desks | Selecciona los Help Desks para la escalada. |
-| Style | Establece el color de la marca y la posición del lanzador. |
+| Style | Establece el color de la marca y la posición del iniciador. |
 | Autenticación | Requiere el inicio de sesión con Microsoft Entra para los visitantes. |
 | Publish | Crea y gestiona la instantánea en tiempo real. |
 
-Los cambios afectan a Preview de inmediato. El widget en tiempo real solo cambia
-después de la publicación.
+Los cambios se aplican a Preview de inmediato. El widget en tiempo real solo
+cambia después de la publicación.
 
-Preview puede usar tu suscripción local conectada a Claude o a ChatGPT desde
+Preview puede usar tu suscripción local conectada a Claude o ChatGPT desde
 **Settings → AI**. El panel de progreso informa sobre las búsquedas y sus
 resultados. No solicita el razonamiento privado del modelo. Un modelo conectado
-sigue necesitando Knowledge Sources para responder de forma fiable a preguntas
+sigue necesitando Knowledge Sources para responder con fiabilidad a preguntas
 específicas de la organización.
 
 ## Inspeccionar las fuentes en la vista previa
@@ -40,7 +40,7 @@ Haz clic en una cita con una URL pública para abrir la página original en una
 nueva pestaña.
 
 Cada oración o paso con fuente lleva su cita junto al texto al que respalda.
-Puedes citar una fuente más de una vez en la misma respuesta. Los documentos
+Puedes citar una Source más de una vez en la misma respuesta. Los documentos
 privados muestran una vista previa sin enlace externo. Las fuentes sin
 referencia en línea siguen estando disponibles en la lista Sources situada
 debajo de la respuesta.
@@ -52,3 +52,33 @@ Knowledge.
 
 Revisa el nuevo asistente antes de publicarlo. En particular, añade las Sources
 necesarias y confirma sus conexiones con el Help Desk.
+
+## Mover un asistente entre organizaciones
+
+Abre el menú Assistant y selecciona **Export bundle** para descargar un archivo
+JSON con control de versiones. Leer un asistente permite exportarlo.
+
+Selecciona **Import bundle as new Assistant** para subir el archivo. La
+importación requiere acceso de edición y siempre crea un nuevo asistente. Los
+asistentes existentes no se modifican.
+
+El paquete contiene la configuración de Publication, los Flows, las Skills, los
+Guardrails, las respuestas rápidas y el estilo. Indica los nombres de las
+Collections, los Help Desks y los proveedores de conexión.
+
+La importación busca coincidencias con estos nombres en la organización de
+destino. Lee el informe de importación para detectar coincidencias faltantes o
+ambiguas. Los Flows con referencias no resueltas permanecen deshabilitados.
+
+Se excluyen las credenciales, los valores cifrados, las conversaciones y los
+datos de los visitantes. Configura las credenciales después de la importación.
+Las integraciones de API muestran **Needs setup** hasta que las credenciales
+estén disponibles.
+
+El contenido de la colección no se incluye. Importa enlaces a Sources de destino
+existentes desde una Collection coincidente. Las versiones de bundle
+desconocidas se rechazan antes de su creación.
+
+La API proporciona `GET /api/v1/assistants/{id}/export` y
+`POST /api/v1/assistants/import`. MCP proporciona las acciones de exportación e
+importación de `manage_assistants`.

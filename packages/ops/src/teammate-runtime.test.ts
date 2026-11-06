@@ -35,7 +35,7 @@ describe("execution configuration", () => {
     const teammate = await createTeammateOp.run(context, {
       name: "Admin controlled",
     });
-    expect(configureTeammateRuntimeOp.capability).toBe("manageMembers");
+    expect(configureTeammateRuntimeOp.capability).toBe("teammates:grants");
     await expect(
       configureTeammateRuntimeOp.run(
         { ...context, organizationId: "foreign" },

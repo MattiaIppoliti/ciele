@@ -75,6 +75,7 @@ describe("Ciele AI's toolset", () => {
   it("marks a consequential call as waiting, and a read as not", async () => {
     const run = (await cieleAiTools("owner")).byName("platform.run");
     expect(run.alwaysConfirm?.({ name: "assistants.delete", input: { id: "a" } })).toBe(true);
+    expect(run.alwaysConfirm?.({ name: "assistants.access.set", input: {} })).toBe(true);
     expect(run.alwaysConfirm?.({ name: "inbox.conversations.legalHold", input: {} })).toBe(true);
     expect(run.alwaysConfirm?.({ name: "assistants.list", input: {} })).toBe(false);
   });
@@ -118,6 +119,7 @@ describe("an ordinary Teammate's toolset", () => {
     expect(names).toContain("improvements.list");
     expect(names).toContain("memory.remember");
     expect(names).not.toContain("knowledge.org.faqs.create");
+    expect(names).not.toContain("assistants.access.set");
     expect(tools.every((tool) => tool.alwaysConfirm === undefined)).toBe(true);
 
     const board = tools.find((tool) => tool.operation === "improvements.list")!;

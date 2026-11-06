@@ -70,6 +70,16 @@ pub async fn begin(
     Ok(tx)
 }
 
+/// A transaction as `service_role` with no Organization yet: the API key
+/// lookup, which is what decides the Organization.
+pub async fn begin_service(pool: &PgPool) -> Result<Transaction<'static, Postgres>, ApiError> {
+    let mut tx = pool.begin().await?;
+    sqlx::query("set local role service_role")
+        .execute(&mut *tx)
+        .await?;
+    Ok(tx)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,6 +182,7 @@ mod tests {
             sub: "u".into(),
             email: email.map(Into::into),
             role: crate::assertion::Role::Viewer,
+            caps: None,
             scope: DbScope::Session,
             body: String::new(),
             exp: 0,

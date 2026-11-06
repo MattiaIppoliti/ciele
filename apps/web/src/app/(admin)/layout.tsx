@@ -1,3 +1,5 @@
+import { can } from "@/lib/rbac";
+import { ConsoleGate } from "@/components/shell/console-gate";
 import { TablePreferenceScope } from "@/components/ui/table-preferences";
 import { sidebarWork } from "@/lib/work/sidebar-work";
 import { Suspense, cache } from "react";
@@ -18,7 +20,7 @@ import { TooltipProvider } from "@agent-hub/ui";
 import { FeedbackProvider } from "@agent-hub/ui/feedback";
 import { requirePageMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
-import { listChannelMentionsOp, notificationTriageOp } from "@ciele/ops";
+import { listChannelMentionsOp, listWaitingConversationsOp, notificationTriageOp } from "@ciele/ops";
 import type { AssistantSummary } from "@/components/shell/nav";
 import type { Role } from "@agent-hub/core";
 
@@ -94,6 +96,11 @@ export default function AdminLayout({
   );
 
   const role: Promise<Role | null> = shellRead("Role", ({ session }) => session.role ?? null, null);
+  const access = shellRead(
+    "Capabilities",
+    ({ session }) => ({ role: session.role ?? null, capabilities: session.capabilities }),
+    { role: null, capabilities: [] as string[] }
+  );
 
   const tableScope = shellRead("Table preferences", ({ organizationId, session }) => `${organizationId}:${session.userId}`, "");
 
@@ -154,7 +161,11 @@ export default function AdminLayout({
                     tabIndex={-1}
                     className="bg-content @container min-h-0 min-w-0 flex-1 overflow-hidden focus:outline-none"
                   >
-                    <StaticIcons>{children}</StaticIcons>
+                    <StaticIcons>
+                      <Suspense fallback={null}>
+                        <ConsoleGate access={access}>{children}</ConsoleGate>
+                      </Suspense>
+                    </StaticIcons>
                     {modal}
                   </main>
                 </div>
@@ -179,10 +190,13 @@ export default function AdminLayout({
 
 async function SidebarLoader() {
   const { session, organizationId, reads } = await requirePageMember();
-  const [alertCount, mentions, work] = await Promise.all([
+  const [alertCount, mentions, work, waiting] = await Promise.all([
     reads.activeAlertCount(),
     channelMentions(),
     sidebarWork(),
+    // Best effort, like the work counts: a shell must render one migration
+    // behind (#1083's columns not applied yet reads as nobody waiting).
+    runOperation(listWaitingConversationsOp, {}).catch(() => []),
   ]);
   return (
     <AppSidebar
@@ -192,10 +206,12 @@ async function SidebarLoader() {
       organizations={session.organizations}
       email={session.email}
       role={session.role}
+      capabilities={session.capabilities}
       demo={session.demo}
       profile={session.profile}
       alertCount={alertCount}
       mentionCount={mentions.length}
+      waitingCount={waiting.length}
       work={work}
     />
   );
@@ -203,7 +219,7 @@ async function SidebarLoader() {
 
 async function TopBarLoader() {
   const { session } = await requirePageMember();
-  return <TopBar demo={session.demo} />;
+  return <TopBar demo={session.demo} operatorId={can(session, "inbox:operate") ? session.userId : null} />;
 }
 
 async function ActivationBannerLoader() {

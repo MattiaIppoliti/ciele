@@ -30,7 +30,7 @@
 15 * * * *  /usr/local/bin/run-job.sh /api/cron/run-reviews
 35 * * * *  /usr/local/bin/run-job.sh /api/cron/run-webhooks
 0 4 * * *   /usr/local/bin/run-job.sh /api/cron/verify-goals
-0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports
+*/5 * * * * /usr/local/bin/run-job.sh /api/cron/run-exports
 # SWEEP_RECRAWLS: an hour before the hosted finalize-crawls tick (03:00), so a
 # scheduled re-crawl is finalized the same night. At 06:00 it waited 21 hours
 # for the next tick and showed "Crawling" all day.

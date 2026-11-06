@@ -1,3 +1,19 @@
+import { createHash } from "node:crypto";
+import { exportScheduleDue, exportScheduleSlot, exportScheduleWindow, type ExportSchedule } from "@agent-hub/core";
+import { AUDIT_SYSTEM_ACTOR, trustTier, sourceUsage, documentReview, documentEditFrontmatter } from "@agent-hub/core";
+import type { ImprovementValidation, MemberGrant, OrgRole } from "@agent-hub/core";
+import {
+  BUILTIN_ROLE_KEYS,
+  builtinOrgRole,
+  capabilitiesForLadderRole,
+  compareOrgRoles,
+  isCapability,
+  isOwnerOnlyCapability,
+  orderCapabilities,
+  roleLabel,
+  roleTierFor,
+} from "@agent-hub/core";
+import { requireValidationTargets } from "./improvement-validation";
 import { capPerSource, lexicalScore, lexicalTokens } from "./hybrid-search";
 import {
   compareInboxConversation,
@@ -12,6 +28,7 @@ import {
   decodeMemorySubjectCursor,
   finalizeImprovementPage,
   finalizePage,
+  improvementFilters,
   normalizeImprovementPageInput,
 } from "./improvement-pagination";
 import type { AssistantAvailabilityCheck, AssistantAvailabilityFact } from "@agent-hub/core";
@@ -26,6 +43,8 @@ import type {
   ApplicationSource,
   ApplicationSyncRun,
   Assistant,
+  AssistantAccessEntry,
+  AssistantAccessRole,
   AssistantGoal,
   AssistantInput,
   AssistantPatch,
@@ -104,6 +123,7 @@ import type {
   Task,
   TaskComment,
   TicketingIntegration,
+  EscalationTicket,
   TrustSignal,
   UsageDailyRow,
   UsageEventInput,
@@ -113,6 +133,8 @@ import type {
   VerifiableAnswer,
 } from "@agent-hub/core";
 import {
+  AI_OPERATOR,
+  MAX_WAIT_TIMEOUT_MINUTES,
   ASSISTANT_GOAL_CAP,
   crawlMeterCredentialKind,
   buildPublicationConfig,
@@ -138,6 +160,10 @@ import {
   compareSourceDocuments,
   DOCUMENT_CHUNKS_PAGE_SIZE,
   shortId,
+  isOutboundWebhookEvent,
+  effectiveOperatorState,
+  effectiveOperatorStatus,
+  canOperateConversations,
   SOURCE_DOCUMENTS_PAGE_SIZE,
   sortFlows,
   usageResourceOf,
@@ -197,8 +223,11 @@ interface MockStore {
   assistants: Map<string, Assistant>;
   flows: Map<string, Flow>;
   helpDesks: Map<string, HelpDesk>;
+  escalationTickets: Map<string, EscalationTicket>;
   supportChannels: Map<string, SupportChannel>;
   members: Map<string, Member>;
+  /** Roles (#1164), seeded with the six built-ins as `role-<key>`. */
+  orgRoles: Map<string, OrgRole>;
   invites: Map<string, Invite>;
   /** Org API keys (#618); the mock keeps the hash alongside for later verify. */
   apiKeys: Map<string, OrgApiKey & { secretHash: string }>;
@@ -217,6 +246,7 @@ interface MockStore {
   teammateGrants: Map<string, TeammateGrant>;
   teammateRosterHidden: Map<string, TeammateRosterHidden>;
   threadPreferences: Map<string, import("@agent-hub/core").ThreadPreference>;
+  exportSchedules: Map<string, ExportSchedule>;
   teammateRoutines: Map<string, TeammateRoutine>;
   teammateChannels: Map<string, TeammateChannel>;
   teammateChannelParticipants: Map<string, TeammateChannelParticipant>;
@@ -230,6 +260,21 @@ interface MockStore {
   tasks: Map<string, import("@agent-hub/core").Task>;
   taskDependencies: Map<string, import("@agent-hub/core").TaskDependency>;
   taskLabels: Map<string, import("@agent-hub/core").TaskLabel>;
+  helpDeskOperators: Map<string, import("@agent-hub/core").HelpDeskOperator>;
+  assistantAccess: Map<
+    string,
+    { assistantId: string; userId: string; role: AssistantAccessRole; roleId?: string | null; grantedAt: string; grantedBy: string | null }
+  >;
+  auditEntries: Map<string, import("@agent-hub/core").AuditLogEntry>;
+  faqHistory: Map<string, import("@agent-hub/core").FaqHistoryEntry>;
+  businessHours: Map<string, import("@agent-hub/core").BusinessHours>;
+  mcpServerConnections: Map<string, import("@agent-hub/core").McpServerConnection>;
+  mcpServerTokens: Map<string, string>;
+  outboundWebhookSubscriptions: Map<string, import("@agent-hub/core").OutboundWebhookSubscription>;
+  outboundWebhookSecrets: Map<string, string>;
+  webhookDeliveries: Map<string, import("@agent-hub/core").WebhookDelivery>;
+  quickTexts: Map<string, import("@agent-hub/core").QuickText>;
+  operatorPresence: Map<string, import("@agent-hub/core").OperatorPresence>;
   taskLabelLinks: Map<string, import("@agent-hub/core").TaskLabelLink>;
   savedViews: Map<string, import("@agent-hub/core").SavedView>;
   workFavorites: Map<string, import("@agent-hub/core").WorkFavorite>;
@@ -241,6 +286,7 @@ interface MockStore {
   notificationPreferences: Map<string, import("@agent-hub/core").NotificationPreferences>;
   /** projectId -> the next Task number, the mock's `task_counters`. */
   taskCounters: Map<string, number>;
+  improvementValidations: Map<string, ImprovementValidation>;
   memoryDocuments: Map<string, MemoryDocument>;
   memoryDocumentEntries: Map<string, MemoryDocumentEntry>;
   conversations: Map<string, Conversation>;
@@ -576,9 +622,13 @@ function emptyStore(): MockStore {
     assistants: new Map(),
     flows: new Map(),
     helpDesks: new Map(),
+    escalationTickets: new Map(),
     supportChannels: new Map(),
     members: new Map(
       [DEMO_MEMBER, ...DEMO_TEAMMATES].map((m) => [m.userId, m] as const)
+    ),
+    orgRoles: new Map(
+      BUILTIN_ROLE_KEYS.map((key) => [`role-${key}`, builtinOrgRole(DEMO_ORG.id, key, `role-${key}`)] as const)
     ),
     invites: new Map(),
     apiKeys: new Map(),
@@ -592,6 +642,7 @@ function emptyStore(): MockStore {
     teammateGrants: new Map(),
     teammateRosterHidden: new Map(),
     threadPreferences: new Map(),
+    exportSchedules: new Map(),
     teammateRoutines: new Map(),
     teammateChannels: new Map(),
     teammateChannelParticipants: new Map(),
@@ -603,6 +654,18 @@ function emptyStore(): MockStore {
     tasks: new Map(),
     taskDependencies: new Map(),
     taskLabels: new Map(),
+    helpDeskOperators: new Map(),
+    assistantAccess: new Map(),
+    auditEntries: new Map(),
+    faqHistory: new Map(),
+    businessHours: new Map(),
+    mcpServerConnections: new Map(),
+    mcpServerTokens: new Map(),
+    outboundWebhookSubscriptions: new Map(),
+    outboundWebhookSecrets: new Map(),
+    webhookDeliveries: new Map(),
+    quickTexts: new Map(),
+    operatorPresence: new Map(),
     taskLabelLinks: new Map(),
     savedViews: new Map(),
     workFavorites: new Map(),
@@ -613,6 +676,7 @@ function emptyStore(): MockStore {
     memberNotifications: new Map(),
     notificationPreferences: new Map(),
     taskCounters: new Map(),
+    improvementValidations: new Map(),
     memoryDocuments: new Map(),
     memoryDocumentEntries: new Map(),
     conversations: new Map(),
@@ -911,6 +975,7 @@ function createStore(): MockStore {
       ...seed,
       autoGenerateImprovements: false,
       ticketingIntegration: null,
+      ticketingTarget: null,
       createdAt: seededAt,
       updatedAt: seededAt,
     });
@@ -1102,6 +1167,17 @@ export function listMockInsightsMessages(organizationId: string) {
       createdAt: m.createdAt,
       proactive: isProactiveMessage(m.content),
     }));
+}
+
+/**
+ * The `timings` of an Organization's runtime events, oldest first. Nothing on
+ * the seam reads them back (the runbook's SQL does), so this exists for the
+ * contract suite's round-trip case.
+ */
+export function listMockRuntimeEventTimings(organizationId: string): unknown[] {
+  return getStore()
+    .runtimeEvents.filter((event) => event.organizationId === organizationId && event.timings)
+    .map((event) => event.timings);
 }
 
 /** See {@link listMockInsightsMessages}: mock-only Insights input. */
@@ -2209,6 +2285,7 @@ function stopMockContinuations(assistantId: string, flowId: string | null, reaso
  * so the retention sweep and the Inbox delete button agree.
  */
 function dropConversation(store: MockStore, id: string): void {
+  for (const [key, row] of store.memberNotifications) if (row.kind === "conversation_assigned" && row.conversationId === id) store.memberNotifications.delete(key);
   for (const [key, row] of store.threadPreferences) if (row.conversationId === id) store.threadPreferences.delete(key);
   store.conversations.delete(id);
   for (const [key, row] of store.flowContinuations) if (row.conversationId === id) store.flowContinuations.delete(key);
@@ -2262,6 +2339,7 @@ const MOCK_TABLE_STORES: {
   teammateGrants: () => getStore().teammateGrants,
   teammateRosterHidden: () => getStore().teammateRosterHidden,
   threadPreferences: () => getStore().threadPreferences,
+  exportSchedules: () => getStore().exportSchedules,
   teammateRoutines: () => getStore().teammateRoutines,
   teammateChannels: () => getStore().teammateChannels,
   teammateChannelParticipants: () =>
@@ -2272,6 +2350,14 @@ const MOCK_TABLE_STORES: {
   tasks: () => getStore().tasks,
   taskDependencies: () => getStore().taskDependencies,
   taskLabels: () => getStore().taskLabels,
+  helpDeskOperators: () => getStore().helpDeskOperators,
+  faqHistory: () => getStore().faqHistory,
+  businessHours: () => getStore().businessHours,
+  mcpServerConnections: () => getStore().mcpServerConnections,
+  outboundWebhookSubscriptions: () => getStore().outboundWebhookSubscriptions,
+  webhookDeliveries: () => getStore().webhookDeliveries,
+  quickTexts: () => getStore().quickTexts,
+  operatorPresence: () => getStore().operatorPresence,
   taskLabelLinks: () => getStore().taskLabelLinks,
   savedViews: () => getStore().savedViews,
   workFavorites: () => getStore().workFavorites,
@@ -2281,6 +2367,7 @@ const MOCK_TABLE_STORES: {
   workActivity: () => getStore().workActivity,
   memberNotifications: () => getStore().memberNotifications,
   notificationPreferences: () => getStore().notificationPreferences,
+  improvementValidations: () => getStore().improvementValidations,
   localConnectorPairings: () => getStore().localConnectorPairings,
   localConnectorDevices: () => getStore().localConnectorDevices,
   localInferenceJobs: () => getStore().localInferenceJobs,
@@ -2318,6 +2405,9 @@ const MOCK_CASCADES: Partial<
     }[]
   >
 > = {
+  outboundWebhookSubscriptions: [
+    { rows: () => getStore().webhookDeliveries, column: "subscriptionId" },
+  ],
   teammates: [
     {
       rows: () => getStore().teammateGrants as Map<string, unknown>,
@@ -2705,6 +2795,8 @@ function moveTaskChildren(taskId: string, projectId: string): void {
  * a Task its subtasks and comments, a comment its reactions).
  */
 function cascadeMockDelete(name: DbTableName, id: string): void {
+  if (name === "mcpServerConnections") getStore().mcpServerTokens.delete(id);
+  if (name === "outboundWebhookSubscriptions") getStore().outboundWebhookSecrets.delete(id);
   for (const { rows, column, onDelete = "delete", table } of MOCK_CASCADES[name] ?? []) {
     for (const [childId, child] of [...rows()]) {
       const record = child as Record<string, unknown>;
@@ -3074,6 +3166,59 @@ function unverifiedAnswerCandidates(limit: number): VerifiableAnswer[] {
     .slice(0, limit);
 }
 
+/** Mirrors the transactional outbox triggers in the Supabase adapter. */
+async function emitMockWebhook(organizationId: string, type: string, data: unknown) {
+  const event = { id: shortId(), type, createdAt: new Date().toISOString(), organizationId, data };
+  if (!isOutboundWebhookEvent(event)) throw new Error(`Invalid ${type} webhook payload`);
+  await mockDb.queueOutboundWebhookEvent(organizationId, event);
+}
+
+/** The Role a demo Member holds: their roleId, else the built-in of their ladder name. */
+function mockMemberRole(member: Member): OrgRole | undefined {
+  const roles = getStore().orgRoles;
+  return (member.roleId ? roles.get(member.roleId) : undefined) ?? roles.get(`role-${member.role}`);
+}
+
+/** Mirrors sync_role_assignment: a Role of this Organization, offered at Organization level. */
+function mockAssignableRole(organizationId: string, roleId: string): OrgRole {
+  const role = getStore().orgRoles.get(roleId) ?? getStore().orgRoles.get(`role-${roleId.replace(/^builtin:/, "")}`);
+  if (!role || role.organizationId !== organizationId) throw new Error("That Role belongs to another organization");
+  if (!role.organizationLevel) throw new Error("That Role is only available on Assistants");
+  return role;
+}
+
+/**
+ * Mirrors sync_assistant_access_role: a named Role must be offered on
+ * Assistants, and the row's tier follows it; a ladder name lands on its
+ * built-in; `denied` names nothing.
+ */
+function mockAccessRow(role: AssistantAccessRole, roleId?: string | null): { role: AssistantAccessRole; roleId: string | null } {
+  if (role === "denied" && !roleId) return { role, roleId: null };
+  const roles = getStore().orgRoles;
+  const named = roleId ? roles.get(roleId) ?? roles.get(`role-${roleId.replace(/^builtin:/, "")}`) : roles.get(`role-${role}`);
+  if (!named) return { role, roleId: null };
+  if (!named.assistantLevel) throw new Error("That Role is not available on Assistants");
+  const tier = named.tier === "owner" || named.tier === "admin" ? "admin" : named.tier === "editor" ? "editor" : "viewer";
+  return { role: tier, roleId: named.id };
+}
+
+/** Mirrors org_roles_normalize's refusals and ordering. */
+function mockCheckedCapabilities(capabilities: readonly string[]): string[] {
+  const unknown = capabilities.find((id) => !isCapability(id));
+  if (unknown) throw new Error(`Unknown capability ${unknown}`);
+  if (capabilities.some(isOwnerOnlyCapability)) throw new Error("That capability belongs to the Owner role alone");
+  return orderCapabilities(capabilities);
+}
+
+function mockAssertRoleName(organizationId: string, name: string): void {
+  const wanted = name.trim().toLowerCase();
+  for (const role of getStore().orgRoles.values()) {
+    if (role.organizationId === organizationId && role.name.trim().toLowerCase() === wanted) {
+      throw new Error('duplicate key value violates unique constraint "org_roles_org_name_idx"');
+    }
+  }
+}
+
 export const mockDb: Db = {
   // --- Organizations & membership (single demo org) -------------------
 
@@ -3100,6 +3245,15 @@ export const mockDb: Db = {
         : {}),
       ...(patch.transcriptRetentionDays !== undefined
         ? { transcriptRetentionDays: patch.transcriptRetentionDays }
+        : {}),
+      ...(patch.messageRetentionDays !== undefined
+        ? { messageRetentionDays: patch.messageRetentionDays }
+        : {}),
+      ...(patch.improvementRetentionDays !== undefined
+        ? { improvementRetentionDays: patch.improvementRetentionDays }
+        : {}),
+      ...(patch.auditRetentionDays !== undefined
+        ? { auditRetentionDays: patch.auditRetentionDays }
         : {}),
     };
     return store.organization;
@@ -3145,22 +3299,170 @@ export const mockDb: Db = {
   },
 
   async listMembers() {
-    return [...getStore().members.values()];
+    return [...getStore().members.values()].map((member) => {
+      const role = mockMemberRole(member);
+      return { assistantScope: "all" as const, ...member, roleId: role?.id ?? null, roleName: role?.name ?? roleLabel(member.role) };
+    });
   },
 
   async getMemberRole(_orgId, userId) {
     return getStore().members.get(userId)?.role ?? null;
   },
 
-  async updateMemberRole(_orgId, userId, role) {
+  async getMemberGrant(organizationId, userId) {
+    const member = getStore().members.get(userId);
+    if (!member || getStore().organization.id !== organizationId) return null;
+    const role = mockMemberRole(member);
+    return {
+      role: member.role,
+      roleId: role?.id ?? null,
+      roleName: role?.name ?? roleLabel(member.role),
+      // As supabase.ts: no Role row reads as the ladder Role's defaults.
+      capabilities: role ? [...role.capabilities] : capabilitiesForLadderRole(member.role),
+    } satisfies MemberGrant;
+  },
+
+  async updateMemberRole(organizationId, userId, roleId) {
     const store = getStore();
     const member = store.members.get(userId);
-    if (member) store.members.set(userId, { ...member, role });
+    const role = mockAssignableRole(organizationId, roleId);
+    if (member) store.members.set(userId, { ...member, role: role.tier, roleId: role.id, roleName: role.name });
+  },
+
+  async listOrgRoles(organizationId) {
+    const store = getStore();
+    const count = (ids: Iterable<string | null | undefined>, id: string) => [...ids].filter((item) => item === id).length;
+    return [...store.orgRoles.values()]
+      .filter((role) => role.organizationId === organizationId)
+      .map((role) => ({
+        ...role,
+        memberCount: count([...store.members.values()].map((member) => mockMemberRole(member)?.id), role.id),
+        apiKeyCount: count([...store.apiKeys.values()].filter((key) => !key.revokedAt).map((key) => key.roleId), role.id),
+        inviteCount: count([...store.invites.values()].map((invite) => invite.roleId), role.id),
+        assistantGrantCount: count([...store.assistantAccess.values()].map((row) => row.roleId), role.id),
+      }))
+      .sort(compareOrgRoles);
+  },
+
+  async setRoleDefaults(organizationId, defaults) {
+    const store = getStore();
+    const pick = (id: string | undefined, check: (role: OrgRole) => boolean, message: string) => {
+      if (!id) return undefined;
+      const role = store.orgRoles.get(id);
+      if (!role || role.organizationId !== organizationId) throw new Error("Role not found");
+      if (!check(role)) throw new Error(message);
+      return role;
+    };
+    const member = pick(defaults.memberRoleId, (role) => role.key !== "owner" && role.organizationLevel, "The invitation default must be a Role offered Organization-wide, not Owner");
+    const assistant = pick(defaults.assistantRoleId, (role) => role.assistantLevel, "The Assistant default must be a Role offered on Assistants");
+    for (const [id, role] of store.orgRoles) {
+      if (role.organizationId !== organizationId) continue;
+      store.orgRoles.set(id, {
+        ...role,
+        memberDefault: member ? id === member.id : role.memberDefault,
+        assistantDefault: assistant ? id === assistant.id : role.assistantDefault,
+      });
+    }
+  },
+
+  async createOrgRole(organizationId, input) {
+    const store = getStore();
+    const now = new Date().toISOString();
+    const capabilities = mockCheckedCapabilities(input.capabilities);
+    mockAssertRoleName(organizationId, input.name);
+    const role: OrgRole = {
+      id: `role-${shortId()}`,
+      organizationId,
+      key: null,
+      name: input.name,
+      description: input.description,
+      capabilities,
+      organizationLevel: input.organizationLevel,
+      assistantLevel: input.assistantLevel,
+      tier: roleTierFor(capabilities),
+      memberCount: 0,
+      apiKeyCount: 0,
+      inviteCount: 0,
+      assistantGrantCount: 0,
+      memberDefault: false,
+      assistantDefault: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.orgRoles.set(role.id, role);
+    return role;
+  },
+
+  async updateOrgRole(organizationId, roleId, patch) {
+    const store = getStore();
+    const current = store.orgRoles.get(roleId);
+    if (!current || current.organizationId !== organizationId) throw new Error("Role not found");
+    // Mirrors org_roles_normalize: Owner stays as seeded.
+    if (current.key === "owner") return current;
+    if (patch.name !== undefined && patch.name.trim().toLowerCase() !== current.name.trim().toLowerCase()) {
+      mockAssertRoleName(organizationId, patch.name);
+    }
+    const capabilities = patch.capabilities ? mockCheckedCapabilities(patch.capabilities) : current.capabilities;
+    // Mirrors org_roles_guard_assistant_level and org_roles_guard_defaults.
+    if (patch.assistantLevel === false && [...store.assistantAccess.values()].some((row) => row.roleId === roleId)) {
+      throw new Error("This Role is given on Assistants; move those assignments first");
+    }
+    if (patch.organizationLevel === false && current.memberDefault) {
+      throw new Error("The invitation default must be a Role offered Organization-wide, not Owner");
+    }
+    if (patch.assistantLevel === false && current.assistantDefault) {
+      throw new Error("The Assistant default must be a Role offered on Assistants");
+    }
+    const next: OrgRole = {
+      ...current,
+      ...patch,
+      capabilities,
+      tier: roleTierFor(capabilities),
+      updatedAt: new Date().toISOString(),
+    };
+    store.orgRoles.set(roleId, next);
+    // Mirrors org_roles_propagate_tier.
+    for (const [id, member] of store.members) {
+      if (mockMemberRole(member)?.id === roleId) store.members.set(id, { ...member, role: next.tier, roleId, roleName: next.name });
+    }
+    for (const invite of store.invites.values()) if (invite.roleId === roleId) invite.role = next.tier;
+    for (const key of store.apiKeys.values()) if (key.roleId === roleId) key.role = next.tier;
+    for (const row of store.assistantAccess.values()) {
+      if (row.roleId === roleId) row.role = next.tier === "owner" || next.tier === "admin" ? "admin" : next.tier === "editor" ? "editor" : "viewer";
+    }
+    return next;
+  },
+
+  async deleteOrgRole(organizationId, roleId) {
+    const store = getStore();
+    const role = store.orgRoles.get(roleId);
+    if (!role || role.organizationId !== organizationId || role.key) return false;
+    const held =
+      [...store.members.values()].some((member) => mockMemberRole(member)?.id === roleId) ||
+      [...store.assistantAccess.values()].some((row) => row.roleId === roleId) ||
+      [...store.invites.values()].some((invite) => invite.roleId === roleId) ||
+      [...store.apiKeys.values()].some((key) => key.roleId === roleId && !key.revokedAt);
+    if (held) throw new Error("update or delete on table \"org_roles\" violates foreign key constraint");
+    return store.orgRoles.delete(roleId);
+  },
+
+  async leaveOrganization(orgId, userId, entry) {
+    const member = getStore().members.get(userId);
+    if (!member || getStore().organization.id !== orgId) throw new Error("Member not found");
+    if (member.role === "owner" && [...getStore().members.values()].filter(row => row.role === "owner").length <= 1) throw new Error("The Organization must keep an Owner");
+    let auditRecorded = true;
+    try { await mockDb.recordAuditEntry({ ...entry, organizationId: orgId, memberId: userId }); } catch { auditRecorded = false; }
+    await mockDb.removeMember(orgId, userId);
+    return { auditRecorded };
   },
 
   async removeMember(orgId, userId) {
     const store = getStore();
     store.members.delete(userId);
+    for (const schedule of store.exportSchedules.values()) if (schedule.organizationId === orgId) {
+      schedule.recipientMemberIds = schedule.recipientMemberIds.filter(id => id !== userId);
+      if (!schedule.recipientMemberIds.length) schedule.enabled = false;
+    }
     // Mirrors organization_members_remove_memory (20260927160000): the
     // departed Member's User-layer document goes, history with it.
     for (const [id, doc] of store.memoryDocuments) {
@@ -3182,12 +3484,15 @@ export const mockDb: Db = {
     return [...getStore().invites.values()];
   },
 
-  async createInvite(organizationId, role, email) {
+  async createInvite(organizationId, roleId, email) {
+    const role = mockAssignableRole(organizationId, roleId);
     const invite: Invite = {
       id: shortId(),
       organizationId,
       email: email ?? "",
-      role,
+      role: role.tier,
+      roleId: role.id,
+      roleName: role.name,
       token: shortId() + shortId(),
       createdAt: new Date().toISOString(),
     };
@@ -3214,7 +3519,9 @@ export const mockDb: Db = {
       organizationId,
       name: input.name,
       secretHint: input.secretHint,
-      role: input.role,
+      role: mockAssignableRole(organizationId, input.roleId).tier,
+      roleId: input.roleId,
+      roleName: mockAssignableRole(organizationId, input.roleId).name,
       createdBy: input.createdBy,
       createdAt: new Date().toISOString(),
       lastUsedAt: null,
@@ -3240,7 +3547,8 @@ export const mockDb: Db = {
     for (const stored of getStore().apiKeys.values()) {
       if (stored.secretHash === secretHash) {
         const { secretHash: _secretHash, ...apiKey } = stored;
-        return apiKey;
+        const role = stored.roleId ? getStore().orgRoles.get(stored.roleId) : undefined;
+        return role ? { ...apiKey, roleCapabilities: [...role.capabilities] } : apiKey;
       }
     }
     return null;
@@ -3356,6 +3664,94 @@ export const mockDb: Db = {
     }
   },
 
+  async listAssistantAccess(assistantId) {
+    const store = getStore();
+    return [...store.assistantAccess.values()]
+      .filter((a) => a.assistantId === assistantId)
+      .sort((a, b) => a.grantedAt.localeCompare(b.grantedAt))
+      .map((a) => {
+        const member = store.members.get(a.userId);
+        return {
+          userId: a.userId,
+          email: member?.email ?? "",
+          username: member?.username ?? null,
+          firstName: member?.firstName ?? null,
+          lastName: member?.lastName ?? null,
+          avatarUrl: member?.avatarUrl ?? null,
+          role: a.role,
+          roleId: a.roleId ?? null,
+          ...(a.roleId ? { roleName: store.orgRoles.get(a.roleId)?.name } : {}),
+          grantedAt: a.grantedAt,
+          grantedBy: a.grantedBy,
+        } satisfies AssistantAccessEntry;
+      });
+  },
+
+  async setAssistantAccess(assistantId, userId, role, roleId) {
+    getStore().assistantAccess.set(`${assistantId}:${userId}`, {
+      assistantId,
+      userId,
+      ...mockAccessRow(role, roleId),
+      grantedAt: new Date().toISOString(),
+      grantedBy: DEMO_MEMBER.userId,
+    });
+  },
+
+  async clearAssistantAccess(assistantId, userId) {
+    getStore().assistantAccess.delete(`${assistantId}:${userId}`);
+  },
+
+  async listMemberAssistantAccess(organizationId, userId) {
+    const store = getStore();
+    return [...store.assistantAccess.values()]
+      .filter((row) => row.userId === userId && store.assistants.get(row.assistantId)?.organizationId === organizationId)
+      .map((row) => ({
+        assistantId: row.assistantId,
+        role: row.role,
+        roleId: row.roleId ?? null,
+        ...(row.roleId ? { roleName: store.orgRoles.get(row.roleId)?.name } : {}),
+      }));
+  },
+
+  async getMemberAssistantGrant(organizationId, userId, assistantId) {
+    const store = getStore();
+    const member = store.members.get(userId);
+    if (!member || store.organization.id !== organizationId) return null;
+    const row = store.assistantAccess.get(`${assistantId}:${userId}`);
+    const role = row?.roleId ? store.orgRoles.get(row.roleId) : undefined;
+    return {
+      role: member.role,
+      scope: member.assistantScope ?? "all",
+      override: row ? { role: row.role, capabilities: role ? [...role.capabilities] : null } : null,
+    };
+  },
+
+  async setMemberAssistantScope(organizationId, userId, scope, access) {
+    // Mirrors public.set_member_assistant_scope (20261104132000).
+    const store = getStore();
+    const member = store.members.get(userId);
+    if (!member) throw new Error("not a member of this organization");
+    if (member.role === "owner" && scope === "selected") {
+      throw new Error("an owner always has access to every assistant");
+    }
+    store.members.set(userId, { ...member, assistantScope: scope });
+    for (const [key, row] of store.assistantAccess) {
+      if (row.userId === userId && store.assistants.get(row.assistantId)?.organizationId === organizationId) {
+        store.assistantAccess.delete(key);
+      }
+    }
+    for (const row of access) {
+      if (store.assistants.get(row.assistantId)?.organizationId !== organizationId) continue;
+      store.assistantAccess.set(`${row.assistantId}:${userId}`, {
+        assistantId: row.assistantId,
+        userId,
+        ...mockAccessRow(row.role, row.roleId),
+        grantedAt: new Date().toISOString(),
+        grantedBy: DEMO_MEMBER.userId,
+      });
+    }
+  },
+
   async listFlows(assistantId) {
     return sortFlows(
       [...getStore().flows.values()].filter((f) => f.assistantId === assistantId)
@@ -3442,6 +3838,7 @@ export const mockDb: Db = {
       description: input.description ?? "",
       autoGenerateImprovements: false,
       ticketingIntegration: null,
+      ticketingTarget: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -3467,6 +3864,9 @@ export const mockDb: Db = {
     store.helpDesks.delete(id);
     for (const [cid, channel] of store.supportChannels) {
       if (channel.helpDeskId === id) store.supportChannels.delete(cid);
+    }
+    for (const [tid, ticket] of store.escalationTickets) {
+      if (ticket.helpDeskId === id) store.escalationTickets.delete(tid);
     }
   },
 
@@ -3516,7 +3916,11 @@ export const mockDb: Db = {
   },
 
   async deleteSupportChannel(id) {
-    getStore().supportChannels.delete(id);
+    const store = getStore();
+    store.supportChannels.delete(id);
+    for (const [tid, ticket] of store.escalationTickets) {
+      if (ticket.channelId === id) store.escalationTickets.delete(tid);
+    }
   },
 
   async reorderSupportChannels(helpDeskId, orderedIds) {
@@ -3556,10 +3960,213 @@ export const mockDb: Db = {
     const updated: HelpDesk = {
       ...current,
       ticketingIntegration: null,
+      ticketingTarget: null,
       updatedAt: new Date().toISOString(),
     };
     store.helpDesks.set(helpDeskId, updated);
     return updated;
+  },
+
+  async setTicketingTarget(helpDeskId, target) {
+    const store = getStore();
+    const current = store.helpDesks.get(helpDeskId);
+    if (!current) throw new Error(`Help desk ${helpDeskId} not found`);
+    const updated: HelpDesk = {
+      ...current,
+      ticketingTarget: structuredClone(target),
+      updatedAt: new Date().toISOString(),
+    };
+    store.helpDesks.set(helpDeskId, updated);
+    return updated;
+  },
+
+  async recordAuditEntry(entry) {
+    const id = crypto.randomUUID();
+    getStore().auditEntries.set(id, { ...entry, id, createdAt: new Date().toISOString() });
+  },
+  async listAuditEntries(organizationId, filter) {
+    const oldest = filter.order === "oldest";
+    const system = filter.memberId === AUDIT_SYSTEM_ACTOR;
+    const cursorAt = oldest ? filter.after : filter.before;
+    const cursorId = oldest ? filter.afterId : filter.beforeId;
+    const pastCursor = (row: { createdAt: string; id: string }) =>
+      !cursorAt ||
+      (oldest ? row.createdAt > cursorAt : row.createdAt < cursorAt) ||
+      (row.createdAt === cursorAt && Boolean(cursorId) && (oldest ? row.id > cursorId! : row.id < cursorId!));
+    const newestFirst = (a: { createdAt: string; id: string }, b: { createdAt: string; id: string }) =>
+      b.createdAt.localeCompare(a.createdAt) || (a.id === b.id ? 0 : a.id < b.id ? 1 : -1);
+    return [...getStore().auditEntries.values()]
+      .filter(
+        (row) =>
+          row.organizationId === organizationId &&
+          (!filter.memberId || (system ? row.memberId === null : row.memberId === filter.memberId)) &&
+          (!filter.domain || row.operation.split(".")[0] === filter.domain) &&
+          (!filter.operations?.length || filter.operations.includes(row.operation)) &&
+          (!filter.from || row.createdAt >= filter.from) &&
+          (!filter.to || row.createdAt <= filter.to) &&
+          pastCursor(row)
+      )
+      .sort((a, b) => (oldest ? -newestFirst(a, b) : newestFirst(a, b)))
+      .slice(0, Math.min(1000, Math.max(1, filter.limit ?? 100)))
+      .map((row) => ({ targetLabel: null, targetDetail: null, changes: {}, ...row }));
+  },
+
+  async getSourceUsage(organizationId, now) {
+    const store = getStore();
+    const assistants = [...store.assistants.values()].filter(row => row.organizationId === organizationId);
+    const assistantIds = new Set(assistants.map(row => row.id));
+    const sourceIds = [...store.sources.values()].filter(row => store.collections.get(row.collectionId)?.organizationId === organizationId).map(row => row.id);
+    return sourceUsage({ sourceIds, assistants, conversations: [...store.conversations.values()].filter(row => row.assistantId && assistantIds.has(row.assistantId)), messages: [...store.messages.values()], now: new Date(now) });
+  },
+
+  async setDocumentReview(organizationId, input) {
+    const store = getStore();
+    const concept = await this.getConcept(input.documentId);
+    if (!concept || store.collections.get(concept.collectionId)?.organizationId !== organizationId) throw new Error("Document not found");
+    const role = await this.getMemberRole(organizationId, input.memberId);
+    if (!role || !["owner", "admin", "editor"].includes(role)) throw new Error("Forbidden");
+    const result = { ...concept, frontmatter: documentReview(concept.frontmatter, input.memberId, input.reviewed, new Date().toISOString()) };
+    store.concepts.set(concept.id, result);
+    return result;
+  },
+
+  async saveBusinessHours(organizationId, id, input) {
+    const store = getStore();
+    const current = id ? store.businessHours.get(id) : null;
+    if (id && (!current || current.organizationId !== organizationId)) throw new Error("Business hours not found");
+    const now = new Date().toISOString();
+    const schedule: import("@agent-hub/core").BusinessHours = { ...structuredClone(input), id: id ?? shortId(), organizationId, createdAt: current?.createdAt ?? now, updatedAt: now };
+    if (schedule.isDefault) for (const row of store.businessHours.values()) if (row.organizationId === organizationId) store.businessHours.set(row.id, { ...row, isDefault: false, updatedAt: now });
+    store.businessHours.set(schedule.id, schedule);
+    const rows = [...store.businessHours.values()].filter(row => row.organizationId === organizationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    if (!rows.some(row => row.isDefault)) store.businessHours.set(rows[0].id, { ...rows[0], isDefault: true });
+    return structuredClone(store.businessHours.get(schedule.id)!);
+  },
+  async deleteBusinessHours(organizationId, id) {
+    const store = getStore();
+    const current = store.businessHours.get(id);
+    if (!current || current.organizationId !== organizationId) throw new Error("Business hours not found");
+    const assistants = new Set([...store.assistants.values()].filter(row => row.organizationId === organizationId).map(row => row.id));
+    const refers = (flow: Flow) => flow.conditions.some(condition => condition.kind === "schedule" && condition.mode === "business_hours" && condition.businessHoursId === id);
+    const labels = [...store.supportChannels.values()].filter(channel => store.helpDesks.get(channel.helpDeskId)?.organizationId === organizationId && channel.availability.mode === "business_hours" && channel.availability.businessHoursId === id).map(channel => `Channel ${channel.name}`);
+    for (const flow of store.flows.values()) if (assistants.has(flow.assistantId) && refers(flow)) labels.push(`Flow ${flow.name}`);
+    const latest = new Map<string, Publication>();
+    for (const publication of store.publications.values()) if (assistants.has(publication.assistantId) && publication.version > (latest.get(publication.assistantId)?.version ?? 0)) latest.set(publication.assistantId, publication);
+    for (const publication of latest.values()) for (const flow of publication.config.flows) if (refers(flow)) labels.push(`Published Flow ${flow.name}`);
+    if (labels.length) throw new Error(`Business hours is used by: ${[...new Set(labels)].sort().join(", ")}`);
+    store.businessHours.delete(id);
+    const remaining = [...store.businessHours.values()].filter(row => row.organizationId === organizationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    if (remaining.length && !remaining.some(row => row.isDefault)) store.businessHours.set(remaining[0].id, { ...remaining[0], isDefault: true, updatedAt: new Date().toISOString() });
+  },
+  async setDefaultTimezone(organizationId, timezone) {
+    const store = getStore();
+    if (store.organization.id !== organizationId) throw new Error("Organization not found");
+    new Intl.DateTimeFormat("en", { timeZone: timezone });
+    store.organization = { ...store.organization, defaultTimezone: timezone };
+  },
+
+  async createMcpServerConnection(organizationId, input) {
+    const now = new Date().toISOString();
+    const connection = { id: shortId(), organizationId, name: input.name, url: input.url, tools: structuredClone(input.tools), revision: 1, createdAt: now, updatedAt: now };
+    getStore().mcpServerConnections.set(connection.id, connection);
+    if (input.encryptedToken) getStore().mcpServerTokens.set(connection.id, input.encryptedToken);
+    return structuredClone(connection);
+  },
+  async compareAndSetMcpTools(organizationId, serverId, revision, tools) {
+    const current = getStore().mcpServerConnections.get(serverId);
+    if (!current || current.organizationId !== organizationId || current.revision !== revision) return null;
+    const updated = { ...current, tools: structuredClone(tools), revision: revision + 1, updatedAt: new Date().toISOString() };
+    getStore().mcpServerConnections.set(serverId, updated);
+    return structuredClone(updated);
+  },
+  async getMcpServerToken(serverId) {
+    return getStore().mcpServerConnections.has(serverId) ? getStore().mcpServerTokens.get(serverId) ?? null : null;
+  },
+
+  async createOutboundWebhookSubscription(organizationId, input) {
+    const now = new Date().toISOString();
+    const subscription: import("@agent-hub/core").OutboundWebhookSubscription = {
+      id: shortId(), organizationId, name: input.name, url: input.url,
+      eventTypes: [...input.eventTypes], paused: false, createdAt: now, updatedAt: now,
+    };
+    getStore().outboundWebhookSubscriptions.set(subscription.id, subscription);
+    getStore().outboundWebhookSecrets.set(subscription.id, input.encryptedSecret);
+    return structuredClone(subscription);
+  },
+
+  async getOutboundWebhookSecret(subscriptionId) {
+    if (!getStore().outboundWebhookSubscriptions.has(subscriptionId)) return null;
+    return getStore().outboundWebhookSecrets.get(subscriptionId) ?? null;
+  },
+
+  async queueOutboundWebhookEvent(organizationId, event, subscriptionId) {
+    if (event.organizationId !== organizationId) throw new Error("Webhook event Organization mismatch");
+    const store = getStore();
+    for (const subscription of store.outboundWebhookSubscriptions.values()) {
+      if (subscription.organizationId !== organizationId || subscription.paused ||
+        (subscriptionId ? subscription.id !== subscriptionId : !subscription.eventTypes.includes(event.type))) continue;
+      if ([...store.webhookDeliveries.values()].some((row) => row.subscriptionId === subscription.id && row.event.id === event.id)) continue;
+      const id = shortId();
+      store.webhookDeliveries.set(id, {
+        id, organizationId, subscriptionId: subscription.id, event: structuredClone(event),
+        attempts: 0, status: "queued", lastStatusCode: null, lastAttemptAt: null, createdAt: new Date().toISOString(),
+      });
+      await mockDb.createBackgroundJob({ organizationId, kind: "deliver_outbound_webhook", payload: { deliveryId: id }, maxAttempts: 40 });
+    }
+  },
+
+  async recordWebhookDeliveryAttempt(input) {
+    const store = getStore();
+    const job = store.backgroundJobs.get(input.jobId);
+    const delivery = store.webhookDeliveries.get(input.deliveryId);
+    if (!delivery || !job || job.leaseToken !== input.leaseToken || job.status !== "running" || job.payload.deliveryId !== delivery.id) return false;
+    store.webhookDeliveries.set(delivery.id, { ...delivery, attempts: job.attempts, status: input.status, lastStatusCode: input.statusCode, lastAttemptAt: input.now });
+    return true;
+  },
+
+  async getEscalationTicket(organizationId, idempotencyKey) {
+    const ticket = [...getStore().escalationTickets.values()].find(
+      (row) => row.organizationId === organizationId && row.idempotencyKey === idempotencyKey
+    );
+    return ticket ? structuredClone(ticket) : null;
+  },
+
+  async claimEscalationTicket(input) {
+    const store = getStore();
+    const now = new Date();
+    const existing = [...store.escalationTickets.values()].find(
+      (row) =>
+        row.organizationId === input.organizationId &&
+        row.idempotencyKey === input.idempotencyKey
+    );
+    if (!existing) {
+      const ticket: EscalationTicket = {
+        id: shortId(),
+        ...input,
+        status: "pending",
+        ticket: null,
+        error: null,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      };
+      store.escalationTickets.set(ticket.id, ticket);
+      return { ticket: structuredClone(ticket), claimed: true };
+    }
+    // Neither provider offers an idempotency key. A lost response or a
+    // crashed process does not prove the write failed, so a key is never reclaimed.
+    return { ticket: structuredClone(existing), claimed: false };
+  },
+
+  async settleEscalationTicket(id, outcome) {
+    const store = getStore();
+    const current = store.escalationTickets.get(id);
+    if (!current || current.status !== "pending") return;
+    store.escalationTickets.set(
+      id,
+      outcome.status === "filed"
+        ? { ...current, status: "filed", ticket: structuredClone(outcome.ticket), error: null, updatedAt: new Date().toISOString() }
+        : { ...current, status: "failed", error: outcome.error, updatedAt: new Date().toISOString() }
+    );
   },
 
   // --- Widget SSO connections -------------------------------------------
@@ -3771,6 +4378,10 @@ export const mockDb: Db = {
 
   async getCollection(id) {
     return getStore().collections.get(id) ?? null;
+  },
+
+  async getOrgLibraryCollection(organizationId) {
+    return getStore().collections.get(`org-library-${organizationId}`) ?? null;
   },
 
   async getOrCreateOrgLibraryCollection(organizationId) {
@@ -4741,6 +5352,9 @@ export const mockDb: Db = {
 
   async sweepRuntimeLedgers(now, limit) {
     const store = getStore();
+    const auditCutoff = new Date(new Date(now).getTime() - 180 * 86_400_000).toISOString();
+    const staleAudit = [...store.auditEntries.values()].filter(row => row.createdAt < auditCutoff).sort((a,b) => a.createdAt.localeCompare(b.createdAt)).slice(0, Math.max(0, Math.min(limit,5000)));
+    for (const entry of staleAudit) store.auditEntries.delete(entry.id);
     const cap = Math.max(0, Math.min(limit, 5000));
     let backgroundJobs = 0;
     const jobCutoff = new Date(new Date(now).getTime() - 30 * 86_400_000).toISOString();
@@ -4872,6 +5486,21 @@ export const mockDb: Db = {
     };
   },
 
+  async queueDueExportSchedules(now, limit) {
+    let queued = 0;
+    const schedules = [...getStore().exportSchedules.values()].filter(row => exportScheduleDue(row, new Date(now))).slice(0, limit);
+    for (const schedule of schedules) {
+      const slot = exportScheduleSlot(schedule, new Date(now));
+      const prior = schedule.lastSlotAt;
+      schedule.lastSlotAt = slot.toISOString();
+      try {
+        await mockDb.createExportJob(schedule.organizationId, { kind: schedule.kind, format: schedule.format, params: { ...schedule.filters, ...exportScheduleWindow(schedule, slot), name: schedule.name, scheduleId: schedule.id, scheduleSlot: slot.toISOString() } });
+        queued++;
+      } catch (error) { if (schedule.lastSlotAt === slot.toISOString()) schedule.lastSlotAt = prior; throw error; }
+    }
+    return queued;
+  },
+
   async createExportJob(organizationId, input) {
     const now = new Date().toISOString();
     const job: ExportJob = {
@@ -4941,6 +5570,7 @@ export const mockDb: Db = {
       ...patch,
       updatedAt: new Date().toISOString(),
     });
+    if (patch.status === "done" && job.status !== "done" && patch.storagePath && typeof job.params.scheduleId === "string") await mockDb.createBackgroundJob({ id: `export-ready:${job.id}`, organizationId: job.organizationId, kind: "notify_export_ready", payload: { jobId: job.id }, maxAttempts: 5 });
   },
 
   async requeueExportJob(id) {
@@ -5083,6 +5713,7 @@ export const mockDb: Db = {
   },
 
   async deleteSource(id) {
+    for (const entry of getStore().faqHistory.values()) if (entry.sourceId === id) getStore().faqHistory.delete(entry.id);
     const store = getStore();
     store.sources.delete(id);
     deleteMemoriesOfSource(id);
@@ -5180,6 +5811,7 @@ export const mockDb: Db = {
         ...concept,
         excluded: prior.excluded,
         recrawlSchedule: prior.recrawlSchedule,
+        frontmatter: (() => { const { verified: _incoming, ...rest } = concept.frontmatter; return sameText && prior.frontmatter.verified ? { ...rest, verified: prior.frontmatter.verified } : rest; })(),
         summary: sameText ? prior.summary : null,
         summaryGenerated: sameText ? prior.summaryGenerated : null,
       });
@@ -5347,15 +5979,22 @@ export const mockDb: Db = {
     return concept;
   },
 
-  async updateConcept(id, patch) {
+  async updateConcept(id, patch, edit) {
     const store = getStore();
     const concept = store.concepts.get(id);
     if (!concept) throw new Error(`Concept ${id} not found`);
     const updated: Concept = {
       ...concept,
-      frontmatter: patch.frontmatter ?? concept.frontmatter,
+      frontmatter: documentEditFrontmatter(concept.frontmatter, concept.body, patch.frontmatter ?? concept.frontmatter, patch.body ?? concept.body),
       body: patch.body ?? concept.body,
     };
+    if (edit?.forceVersion) { const { verified: _review, ...frontmatter } = updated.frontmatter; updated.frontmatter = frontmatter; }
+    if (concept.sourceId && concept.frontmatter.type === "FAQ" && (edit?.forceVersion || concept.body !== updated.body || concept.frontmatter.title !== updated.frontmatter.title)) {
+      const history = { id: shortId(), organizationId: store.collections.get(concept.collectionId)?.organizationId ?? "", sourceId: concept.sourceId, question: concept.frontmatter.title ?? "", answer: concept.body, actor: edit?.actor ?? (JSON.stringify(updated.frontmatter.generated) !== JSON.stringify(concept.frontmatter.generated) ? updated.frontmatter.generated?.by ?? "process:unknown" : "process:unknown"), createdAt: new Date().toISOString() };
+      store.faqHistory.set(history.id, history);
+      const entries = [...store.faqHistory.values()].filter(row => row.sourceId === concept.sourceId).reverse();
+      for (const entry of entries.slice(50)) store.faqHistory.delete(entry.id);
+    }
     store.concepts.set(id, updated);
     return updated;
   },
@@ -5484,6 +6123,7 @@ export const mockDb: Db = {
       if (collection?.organizationId !== organizationId) continue;
       const similarity = lexicalScore(chunk.content, tokens);
       if (similarity === 0) continue;
+      if (query.faqOnly && (!chunk.sourceId || store.sources.get(chunk.sourceId)?.kind !== "faq")) continue;
       const concept = store.concepts.get(chunk.conceptId);
       if (concept?.excluded) continue;
       if (
@@ -5538,7 +6178,7 @@ export const mockDb: Db = {
 
   // --- Publications ---------------------------------------------------------
 
-  async createPublication(assistantId, config) {
+  async createPublication(assistantId, config, createdBy = null) {
     const store = getStore();
     const versions = [...store.publications.values()]
       .filter((p) => p.assistantId === assistantId)
@@ -5551,6 +6191,8 @@ export const mockDb: Db = {
       createdAt: new Date().toISOString(),
     };
     store.publications.set(publication.id, publication);
+    const assistant = store.assistants.get(assistantId);
+    if (assistant) await emitMockWebhook(assistant.organizationId, "publication.created", { assistantId, version: publication.version, publishedBy: createdBy });
     return publication;
   },
 
@@ -5710,14 +6352,158 @@ export const mockDb: Db = {
     store.conversations.set(id, { ...conversation, legalHold });
   },
 
+  async takeOverConversation({ conversationId, memberId, memberName, now }) {
+    const store = getStore();
+    const conversation = store.conversations.get(conversationId);
+    if (!conversation || conversation.operator?.memberId) return null;
+    const next: Conversation = {
+      ...conversation,
+      operator: {
+        ...AI_OPERATOR,
+        state: "held",
+        memberId,
+        memberName,
+        heldAt: now,
+        // Kept: the last-assigned tie-break reads assignment history (#1084).
+        assignedMemberId: conversation.operator?.assignedMemberId ?? null,
+        assignedAt: conversation.operator?.assignedAt ?? null,
+      },
+      updatedAt: now,
+    };
+    store.conversations.set(conversationId, next);
+    return next;
+  },
+
+  async releaseConversation({ conversationId, memberId }) {
+    const store = getStore();
+    const conversation = store.conversations.get(conversationId);
+    const operator = conversation?.operator;
+    if (!conversation || operator?.state !== "held") return null;
+    if (memberId && operator.memberId !== memberId) return null;
+    const next: Conversation = {
+      ...conversation,
+      operator: { ...operator, state: "ai", memberId: null, memberName: null, heldAt: null },
+      updatedAt: new Date().toISOString(),
+    };
+    store.conversations.set(conversationId, next);
+    return next;
+  },
+
+  async startConversationWait(input) {
+    const store = getStore();
+    const conversation = store.conversations.get(input.conversationId);
+    if (!conversation || conversation.operator?.state === "held") return null;
+    const next: Conversation = {
+      ...conversation,
+      operator: {
+        ...AI_OPERATOR,
+        state: "waiting",
+        waitingSince: input.now,
+        waitingHelpDeskId: input.helpDeskId,
+        waitingChannelId: input.channelId,
+        waitTimeoutMinutes: input.timeoutMinutes,
+        assignedMemberId: input.assignedMemberId ?? null,
+        assignedAt: input.assignedMemberId ? input.now : null,
+      },
+      updatedAt: input.now,
+    };
+    store.conversations.set(input.conversationId, next);
+    return next;
+  },
+
+  async renewOperatorPresence({ organizationId, memberId, now }) {
+    const row = [...getStore().operatorPresence.values()].find(item => item.organizationId === organizationId && item.memberId === memberId);
+    if (!row || row.status !== "available" || Date.parse(row.updatedAt) <= Date.parse(now) - 120_000) return false;
+    row.updatedAt = now; return true;
+  },
+
+  async assignWaitingConversation({ conversationId, memberId, now }) {
+    const store = getStore();
+    const conversation = store.conversations.get(conversationId);
+    if (!conversation || conversation.operator?.state !== "waiting") return null;
+    if (conversation.operator.assignedMemberId) return null;
+    const organizationId = conversation.assistantId ? store.assistants.get(conversation.assistantId)?.organizationId : undefined;
+    const at = new Date(now);
+    const staffing = [...store.helpDeskOperators.values()].find(row => row.helpDeskId === conversation.operator?.waitingHelpDeskId && row.memberId === memberId && row.organizationId === organizationId);
+    const presence = [...store.operatorPresence.values()].find(row => row.organizationId === organizationId && row.memberId === memberId);
+    if (!staffing || !canOperateConversations(store.members.get(memberId)?.role) || effectiveOperatorStatus(presence, at) !== "available" || effectiveOperatorState(conversation.operator, at) !== "waiting") return null;
+    const load = [...store.conversations.values()].filter(row => {
+      if (!row.assistantId || store.assistants.get(row.assistantId)?.organizationId !== organizationId) return false;
+      const state = effectiveOperatorState(row.operator, at);
+      return state === "held" ? row.operator?.memberId === memberId : state === "waiting" && row.operator?.assignedMemberId === memberId;
+    }).length;
+    if (load >= staffing.capacity) return null;
+    const next: Conversation = {
+      ...conversation,
+      operator: { ...conversation.operator, assignedMemberId: memberId, assignedAt: now },
+    };
+    store.conversations.set(conversationId, next);
+    if (organizationId) {
+      const id = shortId();
+      store.memberNotifications.set(id, { id, organizationId, recipientId: memberId, kind: "conversation_assigned", conversationId, projectId: null, taskId: null, commentId: null, actorMemberId: null, actorTeammateId: null, createdAt: now, readAt: null, archivedAt: null, snoozedUntil: null });
+    }
+    return next;
+  },
+
+  async listOperatorAssignments(organizationId, since) {
+    const store = getStore();
+    return [...store.conversations.values()]
+      .filter((conversation) => {
+        const at = conversation.operator?.assignedAt;
+        if (!conversation.operator?.assignedMemberId || !at || at < since) return false;
+        const assistant = conversation.assistantId ? store.assistants.get(conversation.assistantId) : undefined;
+        return assistant?.organizationId === organizationId;
+      })
+      .map((conversation) => ({
+        memberId: conversation.operator!.assignedMemberId!,
+        assignedAt: conversation.operator!.assignedAt!,
+      }));
+  },
+
+  async listOperatorConversations(organizationId) {
+    const store = getStore();
+    return [...store.conversations.values()]
+      .filter((conversation) => {
+        const state = conversation.operator?.state;
+        if (state !== "waiting" && state !== "held") return false;
+        // Same window as the Supabase read: a wait older than the longest
+        // timeout can no longer be on.
+        if (
+          state === "waiting" &&
+          Date.parse(conversation.operator?.waitingSince ?? "") <
+            Date.now() - (MAX_WAIT_TIMEOUT_MINUTES + 1) * 60_000
+        ) {
+          return false;
+        }
+        const assistant = conversation.assistantId
+          ? store.assistants.get(conversation.assistantId)
+          : undefined;
+        return assistant?.organizationId === organizationId;
+      })
+      .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
+  },
+
   async updateConversationMetadata(id, patch) {
     const store = getStore();
     const conversation = store.conversations.get(id);
     if (conversation) {
+      const metadata = { ...conversation.metadata, ...patch };
       store.conversations.set(id, {
         ...conversation,
-        metadata: { ...conversation.metadata, ...patch },
+        metadata,
       });
+      if (metadata.escalated === true && conversation.metadata?.escalated !== true) {
+        const assistant = conversation.assistantId ? store.assistants.get(conversation.assistantId) : null;
+        const desk = metadata.escalationHelpDeskId ? store.helpDesks.get(metadata.escalationHelpDeskId) : null;
+        const channel = metadata.escalationChannelId ? store.supportChannels.get(metadata.escalationChannelId) : null;
+        if (assistant && desk?.organizationId === assistant.organizationId) await emitMockWebhook(assistant.organizationId, "conversation.escalated", {
+          conversationId: id, conversationName: `Conversation ${id}`,
+          assistantId: assistant.id, assistantName: assistant.title, helpDeskId: desk.id, helpDeskName: desk.name,
+          channelId: channel?.helpDeskId === desk.id ? channel.id : null,
+          channelName: channel?.helpDeskId === desk.id ? channel.name : null,
+          inboxUrl: metadata.escalationInboxUrl ?? `/inbox?conversation=${id}`,
+        });
+      }
     }
   },
 
@@ -5993,12 +6779,58 @@ export const mockDb: Db = {
       .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   },
 
+  async recordMessageModeration(organizationId, messageId, check) {
+    const store = getStore();
+    const message = store.messages.get(messageId);
+    const conversation = message ? store.conversations.get(message.conversationId) : null;
+    const assistant = conversation?.assistantId ? store.assistants.get(conversation.assistantId) : null;
+    if (!message || message.role !== "assistant" || !conversation || conversation.teammateId || assistant?.organizationId !== organizationId) throw new Error("Assistant message not found");
+    if (check.type !== "moderation" || check.target !== "answer") throw new Error("Invalid answer moderation result");
+    const trace = message.trace ?? { steps: [], searchCount: 0 };
+    message.trace = { ...trace, guardrails: [...(trace.guardrails ?? []).filter(row => !(row.id === check.id && row.target === "answer")), check] };
+    if (check.flagged) {
+      conversation.metadata = { ...conversation.metadata, flaggedAnswer: true };
+      const sourceKey = `answer-moderation:${assistant.id}:${message.createdAt.slice(0, 10)}`;
+      if (![...store.alerts.values()].some(row => row.organizationId === organizationId && row.sourceKey === sourceKey)) await mockDb.raiseAlert(organizationId, { type: "system", title: "Assistant answer flagged", detail: `Review the answer in /inbox?conversationId=${conversation.id}`, sourceKey });
+    }
+  },
+
   async getMessage(id) {
     return getStore().messages.get(id) ?? null;
   },
 
   async listRecentMessages(conversationId, limit) {
     return (await mockDb.listMessages(conversationId)).slice(-limit);
+  },
+
+  async appendOperatorMessage(input) {
+    const store = getStore();
+    const createdAt = new Date().toISOString();
+    const message: StoredMessage = {
+      id: shortId(),
+      conversationId: input.conversationId,
+      role: input.role,
+      content: [{ type: "text", text: input.text }],
+      authorMemberId: input.authorMemberId,
+      authorName: input.authorName,
+      flowId: null,
+      flowName: null,
+      feedback: 0,
+      trace: null,
+      createdAt,
+    };
+    store.messages.set(message.id, message);
+    const conversation = store.conversations.get(input.conversationId);
+    if (conversation) {
+      store.conversations.set(conversation.id, { ...conversation, updatedAt: createdAt });
+    }
+    return message;
+  },
+
+  async listMessagesSince(conversationId, after) {
+    return (await mockDb.listMessages(conversationId))
+      .filter((message) => message.createdAt >= after)
+      .slice(0, 100);
   },
 
   async appendMessage(input) {
@@ -6244,7 +7076,15 @@ export const mockDb: Db = {
   async setMessageFeedback(messageId, feedback, reaction: FeedbackReactionId | null = null) {
     const store = getStore();
     const message = store.messages.get(messageId);
-    if (message) store.messages.set(messageId, { ...message, feedback, feedbackReaction: reaction });
+    // Only an AI answer takes feedback (#1082).
+    if (message?.role === "assistant") {
+      store.messages.set(messageId, { ...message, feedback, feedbackReaction: reaction });
+      if (feedback === -1 && message.feedback !== -1) {
+        const conversation = store.conversations.get(message.conversationId);
+        const assistant = conversation?.assistantId ? store.assistants.get(conversation.assistantId) : null;
+        if (assistant) await emitMockWebhook(assistant.organizationId, "feedback.negative", { conversationId: message.conversationId, messageId, assistantId: assistant.id });
+      }
+    }
   },
 
   async listTraceRetentionPolicies() {
@@ -6289,6 +7129,58 @@ export const mockDb: Db = {
       deleted += 1;
     }
     return deleted;
+  },
+
+  async listRetentionPolicies(kind) {
+    const store = getStore();
+    const retentionDays =
+      kind === "messages"
+        ? store.organization.messageRetentionDays
+        : store.organization.improvementRetentionDays;
+    return retentionDays ? [{ organizationId: store.organization.id, retentionDays }] : [];
+  },
+
+  async deleteExpiredMessages(organizationId, cutoffIso, limit = Infinity) {
+    const store = getStore();
+    const cutoff = Date.parse(cutoffIso);
+    let deleted = 0;
+    const byAge = [...store.messages].sort(([, a], [, b]) =>
+      a.createdAt.localeCompare(b.createdAt)
+    );
+    for (const [id, message] of byAge) {
+      if (deleted >= limit) break;
+      if (Date.parse(message.createdAt) >= cutoff) continue;
+      const conversation = store.conversations.get(message.conversationId);
+      if (!conversation || conversation.legalHold) continue;
+      const assistant = assistantOfConversation(conversation);
+      const teammate = conversation.teammateId
+        ? store.teammates.get(conversation.teammateId)
+        : undefined;
+      if ((assistant?.organizationId ?? teammate?.organizationId) !== organizationId) continue;
+      store.messages.delete(id);
+      // The link goes with the message; the Improvement stays.
+      for (const [linkId, link] of store.improvementMessages) {
+        if (link.messageId === id) store.improvementMessages.delete(linkId);
+      }
+      const through = conversation.messagesDeletedThrough;
+      store.conversations.set(conversation.id, {
+        ...conversation,
+        messagesDeletedThrough:
+          through && through > message.createdAt ? through : message.createdAt,
+      });
+      deleted += 1;
+    }
+    return deleted;
+  },
+
+  async deleteExpiredImprovements(organizationId, cutoffIso, limit = Infinity) {
+    const store = getStore();
+    const expired = [...store.improvements.values()]
+      .filter((i) => i.organizationId === organizationId && i.updatedAt < cutoffIso)
+      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+      .slice(0, Number.isFinite(limit) ? limit : undefined);
+    for (const improvement of expired) await mockDb.deleteImprovement(improvement.id);
+    return expired.length;
   },
 
   async deleteExpiredWorkActivity(organizationId, cutoffIso, limit = Infinity) {
@@ -6358,9 +7250,35 @@ export const mockDb: Db = {
       .sort((a, b) => b.seq - a.seq);
   },
 
+  async createImprovementValidation(organizationId, input) {
+    await requireValidationTargets(this, organizationId, input);
+    if (input.kind === "replay" && [...getStore().improvementValidations.values()].some((row) => row.improvementId === input.improvementId && row.organizationId === organizationId && row.kind === "replay" && row.status === "pending")) throw new Error("A replay is already pending");
+    const row = await this.table("improvementValidations").insert({ ...input, organizationId });
+    if (row.kind === "replay") await this.createBackgroundJob({ organizationId, kind: "replay_improvement", payload: { validationId: row.id }, maxAttempts: 1 });
+    return row;
+  },
+  async getAssistantValidationSnapshot(assistantId) {
+    const publication = await this.getLatestPublication(assistantId);
+    const ids = (await this.listAssistantSourceIds(assistantId)).sort();
+    const sources = await Promise.all(ids.map((id) => this.getSource(id)));
+    const concepts = [...getStore().concepts.values()].filter((row) => row.sourceId && ids.includes(row.sourceId)).sort((a,b) => a.id.localeCompare(b.id));
+    return createHash("sha256").update(JSON.stringify({ publication, sources, concepts })).digest("hex");
+  },
+
   async listImprovementsPage(organizationId, input) {
     const { limit, beforeSeq, status } = normalizeImprovementPageInput(input);
-    const all = await this.listImprovements(organizationId);
+    // The mock twin of `public.matching_improvements`.
+    const filters = improvementFilters(input) ?? {};
+    const search = filters.search?.toLowerCase();
+    const store = getStore();
+    const all = (await this.listImprovements(organizationId)).filter((row) => {
+      if (search && ![row.title, `IMP-${row.seq}`, ...row.tags].some((value) => value.toLowerCase().includes(search))) return false;
+      if (filters.priority && row.priority !== filters.priority) return false;
+      if (filters.assigneeId !== undefined && row.assigneeId !== filters.assigneeId) return false;
+      if (filters.projectId && row.projectId !== filters.projectId) return false;
+      if (filters.assistantId && ![...store.improvementMessages.values()].some((link) => link.improvementId === row.id && store.conversations.get(store.messages.get(link.messageId)?.conversationId ?? "")?.assistantId === filters.assistantId)) return false;
+      return true;
+    });
     const ordered = status ? all.filter((item) => item.status === status) : all;
     const matchingIndex =
       beforeSeq !== null
@@ -6371,15 +7289,14 @@ export const mockDb: Db = {
     return finalizeImprovementPage(slice, limit);
   },
 
-  async countImprovementsByStatus(organizationId) {
-    const counts = Object.fromEntries(
-      IMPROVEMENT_STATUS_VALUES.map((status) => [status, 0]),
-    ) as Record<ImprovementStatus, number>;
-    for (const improvement of getStore().improvements.values()) {
-      if (improvement.organizationId === organizationId) {
-        counts[improvement.status] += 1;
-      }
-    }
+  async countImprovementsByStatus(organizationId, filters = {}) {
+    const counts = Object.fromEntries(IMPROVEMENT_STATUS_VALUES.map((status) => [status, 0])) as Record<ImprovementStatus, number>;
+    let cursor: string | null = null;
+    do {
+      const page = await this.listImprovementsPage(organizationId, { ...filters, limit: 100, cursor });
+      for (const row of page.items) counts[row.status] += 1;
+      cursor = page.nextCursor;
+    } while (cursor);
     return counts;
   },
 
@@ -6399,7 +7316,7 @@ export const mockDb: Db = {
       organizationId,
       seq: nextSeq,
       title: input.title,
-      description: "",
+      description: input.description ?? "",
       status: "to_do",
       priority: "none",
       tags: [],
@@ -6420,6 +7337,15 @@ export const mockDb: Db = {
         createdAt: now,
       });
     }
+    const message = input.messageId ? store.messages.get(input.messageId) : null;
+    const conversation = message ? store.conversations.get(message.conversationId) : null;
+    const assistantId = input.assistantId ?? conversation?.assistantId ?? null;
+    await emitMockWebhook(organizationId, "improvement.created", {
+      id: improvement.id,
+      title: input.messageId || input.source === "flow_action" || input.source === "escalation" ? `Improvement IMP-${improvement.seq}` : improvement.title,
+      source: input.source ?? "manual",
+      assistantId: assistantId && store.assistants.get(assistantId)?.organizationId === organizationId ? assistantId : null,
+    });
     return improvement;
   },
 
@@ -6439,6 +7365,7 @@ export const mockDb: Db = {
   async deleteImprovement(id) {
     const store = getStore();
     store.improvements.delete(id);
+    for (const [key, row] of store.improvementValidations) if (row.improvementId === id) store.improvementValidations.delete(key);
     for (const [lid, link] of store.improvementMessages) {
       if (link.improvementId === id) store.improvementMessages.delete(lid);
     }
@@ -6750,8 +7677,10 @@ export const mockDb: Db = {
   async listOrgKnowledgeSources(organizationId, filter) {
     const store = getStore();
     const query = (filter.query ?? "").trim().toLowerCase();
+    const usage = new Map((await this.getSourceUsage(organizationId, new Date().toISOString())).map(row => [row.sourceId, row]));
     const matches = [...store.sources.values()].filter((source) => {
       if (!filter.kinds.includes(source.kind)) return false;
+      if (filter.unused && usage.get(source.id)?.unused90 === false) return false;
       const collection = store.collections.get(source.collectionId);
       if (collection?.organizationId !== organizationId) return false;
       if (filter.status && source.status !== filter.status) return false;
@@ -6763,7 +7692,7 @@ export const mockDb: Db = {
         return false;
       return true;
     });
-    matches.sort(compareOrgKnowledgeSources(filter));
+    matches.sort((a, b) => compareOrgKnowledgeSources(filter)({ ...a, usage: usage.get(a.id) }, { ...b, usage: usage.get(b.id) }));
 
     const statusCounts = { processing: 0, ready: 0, error: 0 };
     for (const source of matches) statusCounts[source.status] += 1;
@@ -6792,6 +7721,7 @@ export const mockDb: Db = {
         }));
       return {
         id: source.id,
+        usage: usage.get(source.id),
         collectionId: source.collectionId,
         name: source.name,
         kind: source.kind,
@@ -6808,7 +7738,7 @@ export const mockDb: Db = {
       };
     });
 
-    return { items, total: matches.length, statusCounts };
+    return { items, total: matches.length, statusCounts, qualityAvailable: true };
   },
 
   async listOrgKnowledgeSourceOptions(organizationId, filter) {
@@ -6881,6 +7811,7 @@ export const mockDb: Db = {
       // The same three states the badge shows, and the same rule the SQL
       // read applies: Excluded is the flag, Ready and Pending differ by
       // whether the Document has chunks.
+      .filter(concept => !options?.trustTier || trustTier(concept.frontmatter) === options.trustTier)
       .filter((concept) => {
         if (!options?.status) return true;
         if (options.status === "excluded") return concept.excluded;
@@ -6910,6 +7841,7 @@ export const mockDb: Db = {
     return {
       items: all.slice(from, from + pageSize).map((concept) => ({
         id: concept.id,
+        trustTier: trustTier(concept.frontmatter),
         path: concept.path,
         title: concept.frontmatter.title || concept.path,
         resourceUrl: concept.frontmatter.resource ?? null,
@@ -6918,6 +7850,7 @@ export const mockDb: Db = {
         createdAt: concept.createdAt,
       })),
       total: all.length,
+      qualityAvailable: true,
     };
   },
 
@@ -7118,6 +8051,7 @@ export const mockDb: Db = {
       resolvedBy: null,
     };
     store.alerts.set(alert.id, alert);
+    await emitMockWebhook(organizationId, "alert.raised", { id: alert.id, type: alert.type, title: alert.title });
     return alert;
   },
 
@@ -7129,6 +8063,7 @@ export const mockDb: Db = {
       ...(patch.status ? { resolvedAt: patch.status === "resolved" ? new Date().toISOString() : null,
         resolvedBy: patch.status === "resolved" ? updatedBy ?? null : null } : {}) };
     store.alerts.set(id, next);
+    if (next.status !== current.status) await emitMockWebhook(next.organizationId, next.status === "active" ? "alert.raised" : "alert.resolved", { id, type: next.type, title: next.title });
     return next;
   },
 
@@ -7143,6 +8078,7 @@ export const mockDb: Db = {
       resolvedBy: resolvedBy ?? null,
     };
     store.alerts.set(id, resolved);
+    if (current.status !== "resolved") await emitMockWebhook(resolved.organizationId, "alert.resolved", { id, type: resolved.type, title: resolved.title });
     return resolved;
   },
 
@@ -7161,6 +8097,7 @@ export const mockDb: Db = {
           resolvedAt: now,
           resolvedBy: null,
         });
+        await emitMockWebhook(organizationId, "alert.resolved", { id, type: alert.type, title: alert.title });
       }
     }
   },
@@ -7533,6 +8470,20 @@ export const mockDb: Db = {
     }
     return [...grouped.values()];
   },
+  async getModerationCounts(organizationId, from, to, assistantId) {
+    const store = getStore();
+    const result = { visitors: 0, answers: 0 };
+    for (const message of store.messages.values()) {
+      const conversation = store.conversations.get(message.conversationId);
+      const assistant = conversation?.assistantId ? store.assistants.get(conversation.assistantId) : null;
+      if (message.role !== "assistant" || !conversation || conversation.teammateId || conversation.subjectType === "member" || assistant?.organizationId !== organizationId || (assistantId && assistant.id !== assistantId) || message.createdAt < from || message.createdAt >= to) continue;
+      const flags = (message.trace?.guardrails ?? []).filter(check => check.type === "moderation" && check.flagged === true);
+      if (flags.some(check => check.target !== "answer")) result.visitors++;
+      if (flags.some(check => check.target === "answer")) result.answers++;
+    }
+    return result;
+  },
+
   async getOrgDashboardFacts(organizationId, from, to) {
     const store = getStore();
     const fromMs = Date.parse(from);

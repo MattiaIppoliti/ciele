@@ -1,9 +1,11 @@
 import type { Role } from "@agent-hub/core";
 import {
   API_KEY_PREFIX,
+  capabilitiesAllow,
+  capabilitiesForLadderRole,
   hashApiKeySecret,
+  intersectCapabilities,
   memberRoleRank,
-  roleAllowsCapability,
 } from "@agent-hub/core";
 import { createOrgPinnedDb, type Db } from "@agent-hub/db";
 import type { OperationCapability } from "@ciele/ops";
@@ -18,8 +20,15 @@ import { apiError } from "@/lib/api-v1/http";
 
 export interface ApiKeyContext {
   organizationId: string;
-  /** The Role the key acts with (capped at its creator's at mint time). */
+  /** The ladder tier the key acts at: the lower of its Role's and its creator's. */
   role: Role;
+  /**
+   * What the key may do (ADR-0028): its Role's Capabilities intersected with
+   * its creator's current ones, so a key never outlives a demotion.
+   */
+  capabilities: string[];
+  /** The key's own Role's Capabilities: the cap on anything its creator's Assistant Role adds. */
+  keyCapabilities: readonly string[];
   keyId: string;
   /** Human who delegated this key; used for audit fields on derived writes. */
   actorUserId: string;
@@ -68,10 +77,11 @@ export async function resolveApiKeyContext(
   // membership that disappeared by some route other than the operation. A
   // point read, not the roster: this runs on every keyed request, and
   // `listMembers` here would make auth latency scale with org size.
-  const creatorRole = await db.getMemberRole(key.organizationId, key.createdBy);
-  if (!creatorRole) {
+  const creator = await db.getMemberGrant(key.organizationId, key.createdBy);
+  if (!creator) {
     return unauthorized();
   }
+  const creatorRole = creator.role;
 
   // And it delegates at most what its creator may *currently* do (#801,
   // CYB-04, the demotion half): an admin who minted an admin key and was
@@ -81,15 +91,21 @@ export async function resolveApiKeyContext(
   // original. The stored role still matters as the *ceiling* the key was
   // minted with, a re-promotion never silently widens an old key past it.
   const role = memberRoleRank(creatorRole) < memberRoleRank(key.role) ? creatorRole : key.role;
+  // The same rule for Capabilities: what both the key's Role and its creator
+  // hold. A key minted before Roles carried none reads its ladder Role.
+  const keyCapabilities = keyRoleCapabilities(key);
+  const capabilities = intersectCapabilities(keyCapabilities, creator.capabilities);
 
   await db.touchApiKeyLastUsed(key.id).catch(() => {});
 
   return {
     organizationId: key.organizationId,
     role,
+    capabilities,
+    keyCapabilities,
     keyId: key.id,
     actorUserId: key.createdBy,
-    db: createOrgPinnedDb(db, key.organizationId),
+    db: createOrgPinnedDb(db, key.organizationId, { memberId: key.createdBy }),
   };
 }
 
@@ -101,11 +117,16 @@ export function requireApiCapability(
   ctx: ApiKeyContext,
   capability: ApiCapability
 ): Response | null {
-  if (capability === "member") return null;
-  if (roleAllowsCapability(ctx.role, capability)) return null;
+  if (capabilitiesAllow(ctx.capabilities, capability)) return null;
+  // The same words the Rust service answers with (`src/v1.rs`).
   return apiError(
     403,
     "forbidden",
-    `This API key's role (${ctx.role}) does not allow this operation`
+    `This API key's role does not allow this operation: it needs ${capability}`
   );
+}
+
+/** The Capabilities of the Role a key carries; the built-in of its tier before Roles. */
+function keyRoleCapabilities(key: { roleCapabilities?: readonly string[]; role: Role }): readonly string[] {
+  return key.roleCapabilities ?? capabilitiesForLadderRole(key.role);
 }

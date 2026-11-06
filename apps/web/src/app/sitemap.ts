@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { FEATURES } from "@/components/marketing/feature-catalog";
-import { COMPONENT_FAMILIES, catalogPath } from "@/components/component-catalog/catalog";
 import { MARKETING_SITEMAP_PATHS } from "@/lib/console-routes";
 import { isCanonicalMarketingHost, marketingCanonicalUrl } from "@/lib/marketing/seo";
 
@@ -14,9 +13,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!isCanonicalMarketingHost(host)) return [];
 
   const paths = [
+    // Only the catalogue's two index pages: its ~190 per-family pages were
+    // most of Google's never-crawled queue on a young domain, starving the
+    // pages that sell. They stay reachable, and crawlable, by link.
     "/components",
     "/components/blocks",
-    ...COMPONENT_FAMILIES.map(catalogPath),
     ...MARKETING_SITEMAP_PATHS,
     ...FEATURES.map((feature) => `/features/${feature.slug}`),
   ];

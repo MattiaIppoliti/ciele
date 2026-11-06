@@ -7,8 +7,8 @@ Insights calcula las métricas de la organización a partir de los eventos de
 tiempo de ejecución almacenados. Utiliza el intervalo de fechas disponible y los
 filtros de Assistant para cambiar el conjunto de datos.
 
-Los gráficos de Insights, Eval, Assistant Overview y Usage emplean una paleta en
-escala de grises que se adapta a los temas claros y oscuros. Los resultados
+Los gráficos de Insights, Eval, Assistant Overview y Usage utilizan una paleta
+en escala de grises que se adapta a los temas claros y oscuros. Los resultados
 positivos y negativos siguen siendo verdes y rojos. Los cambios se basan en la
 dirección de cada métrica: la reducción de costes, de la latencia y de los
 errores es positiva. Las etiquetas, las leyendas y los valores exactos
@@ -24,9 +24,9 @@ mismo diseño de tarjeta.
 La animación sigue las recetas de Transitions.dev. Los números actualizados
 aparecen con un breve escalonamiento de los dígitos, y los pies de foto se
 intercambian con un ligero desenfoque. Las tarjetas de carga se difuminan hasta
-mostrar su contenido, y las tablas de datos se expanden con suavidad. El
-indicador de la pestaña activa se desliza entre las selecciones. Los ajustes de
-movimiento reducido eliminan el movimiento de los dígitos y el desenfoque de
+convertirse en su contenido, y las tablas de datos se expanden de forma fluida.
+El indicador de la pestaña activa se desliza entre las selecciones. Los ajustes
+de movimiento reducido eliminan el movimiento de los dígitos y el desenfoque de
 estas transiciones.
 
 ## Descripción general actual
@@ -38,7 +38,7 @@ La vista general puede incluir estas métricas:
 - Tasa de resolución de la IA
 - valoraciones de las respuestas y datos de satisfacción del cliente
 - derivaciones
-- respuestas por conversación
+- respuestas por Conversation
 - questions per Conversation: el número de mensajes que ha enviado el visitante
 - duración media de la conversación: el tiempo transcurrido desde el inicio de
   una conversación hasta su último mensaje
@@ -51,7 +51,7 @@ seleccionado.
 
 El gráfico **Conversation depth** muestra la duración media de las
 conversaciones y el número de preguntas por conversación para cada día, semana o
-mes. Ciele asigna cada Conversación al periodo en el que se inició. Una
+mes. Ciele asigna cada Conversation al periodo en el que se inició. Una
 Conversation que continúa después del final del intervalo conserva su duración
 total.
 
@@ -62,9 +62,9 @@ desgloses de las conversaciones.
 
 Utiliza la ventana **Explore conversations over time** para ampliar los gráficos
 dentro del intervalo de fechas seleccionado. Arrastra la ventana o sus
-controles, o usa las teclas de dirección después de seleccionar un control. Las
-tarjetas de resumen, la tabla de datos y las exportaciones siguen abarcando todo
-el intervalo de fechas.
+controladores, o usa las teclas de dirección después de seleccionar un
+controlador. Las tarjetas de resumen, la tabla de datos y las exportaciones
+siguen abarcando todo el intervalo de fechas.
 
 ## Costes y observabilidad
 
@@ -76,8 +76,8 @@ Ambos paneles utilizan los mismos filtros. Selecciona un intervalo de fechas y,
 a continuación, selecciona **All**, **Assistants**, **Teammates** o
 **Internal**.
 
-- **Assistants** muestra el tráfico de widgets y de Preview, así como los flujos
-  HTTP entrantes.
+- **Assistants** muestra el tráfico de widgets y de la vista previa, así como
+  los flujos HTTP entrantes.
 - **Teammates** muestra los chats de los AI Teammates, los turnos de los canales
   y las Routines.
 - **Internal** muestra el trabajo de la plataforma: indexación, tareas
@@ -88,7 +88,7 @@ Assistant.
 
 Cada panel de control comienza con tarjetas de estadísticas. Una tarjeta muestra
 un valor para el intervalo, una línea con sus valores diarios y la variación
-respecto al periodo anterior. El periodo anterior tiene la misma duración y
+respecto al período anterior. El periodo anterior tiene la misma duración y
 finaliza el día anterior al inicio del intervalo. Mueve el puntero a lo largo de
 la línea para leer el valor de cada día.
 
@@ -105,9 +105,9 @@ la línea para leer el valor de cada día.
 - un treemap del gasto por proveedor y por modelo. Selecciona un proveedor para
   inspeccionar sus modelos
 
-El filtro Surface se aplica a los gráficos diarios y al desglose por modelos.
-Los totales de las superficies que aparecen debajo del streamgraph siempre
-comparan todas las superficies.
+El filtro Surface se aplica a los gráficos diarios y al desglose por modelo. Los
+totales de las superficies que aparecen debajo del streamgraph siempre comparan
+todas las superficies.
 
 El gasto es una estimación en euros. Ciele lo calcula a partir del número de
 tokens y de los precios de lista. No es una factura.
@@ -116,9 +116,8 @@ tokens y de los precios de lista. No es una factura.
 
 - turnos completados, tasa de éxito, turnos fallidos y llamadas a herramientas
   por turno
-- latencia por turno: mediana, percentil 95, un histograma y una tendencia
-  diaria
-- **Answer accuracy**: el porcentaje de respuestas del asistente que superaron
+- latencia por turno: mediana, percentil 95, histograma y tendencia diaria
+- **Answer accuracy**: la proporción de respuestas del asistente que superaron
   la verificación
 - **Autonomy**: el porcentaje de conversaciones de visitantes que no se
   derivaron a un servicio de asistencia
@@ -127,9 +126,9 @@ tokens y de los precios de lista. No es una factura.
 - una comparación de la fiabilidad, la precisión y la autonomía con respecto al
   periodo anterior, en puntos porcentuales
 - las clases de error más frecuentes
-- los cinco Flows más utilizados, clasificados entre sí por día o por semana
+- los cinco Flows más utilizados, comparados entre sí por día o por semana
 
-**Answer accuracy** y **Autonomy** solo se aplican a los Asistentes. Para
+**Answer accuracy** y **Autonomy** se aplican únicamente a los asistentes. Para
 **Teammates** y **Internal**, estas métricas no se muestran.
 
 ### Notas
@@ -157,14 +156,14 @@ pestaña.
 ## Actualidad de los datos
 
 Insights almacena la vista general calculada y los paneles durante un máximo de
-cinco minutos para cada organización y conjunto de filtros. Todos los miembros
-de la organización leen los mismos datos almacenados.
+cinco minutos para cada organización y conjunto de filtros. Todos los Members de
+la Organization leen los mismos datos almacenados.
 
 Cualquier cambio que un Member realice en la consola (en un Assistant, una
 Conversation o una Improvement) borra al instante la vista general almacenada.
-El tráfico de widgets (nuevas Conversations, valoraciones de respuestas,
-puntuaciones de satisfacción, escalaciones) alcanza las cifras en un plazo de
-cinco minutos.
+El tráfico de widgets (Conversations nuevas, valoraciones de respuestas,
+puntuaciones de satisfacción, escaladas) alcanza las cifras en un plazo de cinco
+minutos.
 
 Para forzar un nuevo cálculo antes de que transcurran los cinco minutos, envía
 `DELETE /api/insights` desde una sesión de navegador en la que hayas iniciado
@@ -174,18 +173,27 @@ general. Cualquier Member de la Organization puede enviar esta solicitud.
 ## Recuento de notificaciones
 
 Una notificación no es una respuesta de IA. Una sesión solo de notificaciones no
-aumenta los KPI de Conversation ni de respuestas.
+incrementa los KPI de Conversation ni de respuestas.
 
 La métrica **Notifications Sent** y sus series de gráficos registran la entrega
 proactiva por separado.
 
 ## Investiga un cambio
 
-1. Selecciona el intervalo de fechas y el Assistant que quieras.
+1. Selecciona el intervalo de fechas y el asistente que quieras.
 2. Identifica la métrica que ha cambiado.
 3. Abre la Inbox con el mismo ámbito.
-4. Lee Conversations representativas.
-5. Crea «Improvements» para los problemas de respuestas procesables.
+4. Lee conversaciones representativas.
+5. Crea Improvements para problemas de respuestas procesables.
 
-Utiliza [Exports](/operations/exports) para obtener registros estructurados de
+Usa [Exports](/operations/exports) para obtener registros estructurados de
 conversaciones.
+
+## Recibe informes programados
+
+Usa **Exports** para programar archivos de Insights semanales o mensuales.
+Selecciona los Miembros destinatarios y mantén los mismos filtros de informes y
+formatos de archivo.
+
+Consulta [Exports](/operations/exports) para obtener información sobre ventanas
+de fechas móviles, notificaciones y controles de programación.

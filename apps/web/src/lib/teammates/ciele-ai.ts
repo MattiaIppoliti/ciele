@@ -34,7 +34,7 @@ async function ensureCieleAiUncached(organizationId: string, userId: string): Pr
       // Not the caller's Role and not read: the operation is `member`, so the
       // lowest rung is the honest claim for a create that any Role triggers.
       role: "viewer",
-      db: createOrgPinnedDb(getServiceRoleDb(), organizationId),
+      db: createOrgPinnedDb(getServiceRoleDb(), organizationId, { memberId: userId }),
     },
     {}
   );

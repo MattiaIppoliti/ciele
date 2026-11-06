@@ -1,15 +1,22 @@
+import { exportReadyMailHandler } from "./export-ready-mail";
+import type { EmailTransport } from "./email";
+import { answerModerationHandler } from "./answer-moderation";
+import { improvementReplayHandler } from "./improvement-replay";
 import type { BackgroundJob, BackgroundJobKind } from "@agent-hub/core";
 import { thrownMessage } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { observe, reportError } from "@agent-hub/diagnostics";
 import { createHash } from "node:crypto";
 
+import { summarizeConversation } from "./conversation-history";
 import { getRuntimeHost } from "./host";
 import {
   draftGoalProposal,
   draftImprovementProposal,
 } from "./improvement-proposal";
 import { ingestSource, type SourceConceptDraft } from "./ingest";
+import { errorClassOf, recordRuntimeEvent } from "./telemetry";
+import { TurnClock, activeTurnClock, timedDb, withTurnClock } from "./turn-clock";
 import { MEMORY_QUIET_MS, promoteConversationMemories } from "./memories";
 import { distillAgentLearning } from "./agent-learnings";
 import {
@@ -23,6 +30,7 @@ import {
 } from "./review-runtime";
 import { resumeWebhookConversationHandler } from "./webhook-runtime";
 import { answerSlackMentionHandler } from "./slack-mentions";
+import { outboundWebhookHandler } from "./outbound-webhooks";
 import type { ApplicationHttpClient } from "./application-provider-http";
 import type { streamConversationTurn } from "./turn";
 
@@ -47,6 +55,7 @@ import type { streamConversationTurn } from "./turn";
  */
 
 export interface JobDeps {
+  emailTransport?: EmailTransport;
   db: Db;
   applicationConnectors?: ApplicationConnectorRegistry;
   /** Provider HTTP transport override (tests); defaults to the guarded egress client. */
@@ -60,6 +69,8 @@ export interface JobHandler {
   /** Executes one claimed job to completion; throwing triggers backoff/retry. */
   perform(record: BackgroundJob, deps: JobDeps): Promise<void>;
   settleSuccess?(record: BackgroundJob, deps: JobDeps, now: Date): Promise<boolean>;
+  /** A domain deadline or backoff; null ends retrying. Omitted uses the default policy. */
+  retryAt?(record: BackgroundJob, now: Date): Date | null;
   /**
    * Runs once when attempts are exhausted (after the ledger marks the job
    * failed): surface the failure on the job's own domain object (Source
@@ -214,62 +225,42 @@ async function legacyApplicationIngestIsCurrent(
   return mapping.contentHash === contentHash;
 }
 
+/**
+ * One ingest job, with where its time went recorded as an `ingest_job` event
+ * (#1112): parse, chunk, embed and the job's own `Db` calls. The job layer has
+ * already opened a `job` clock for it (`runClaimedJob`); a caller outside the
+ * layer gets one of its own.
+ */
+async function clockedIngest(
+  record: BackgroundJob,
+  deps: JobDeps,
+  run: (deps: JobDeps) => Promise<void>
+): Promise<void> {
+  const own = activeTurnClock();
+  const clock = own?.kind === "job" ? own : new TurnClock(undefined, "job");
+  const startedAt = Date.now();
+  const timedDeps: JobDeps = { ...deps, db: timedDb(deps.db) };
+  let failure: { error: unknown } | null = null;
+  try {
+    await (clock === own ? run(timedDeps) : withTurnClock(clock, () => run(timedDeps)));
+  } catch (error) {
+    failure = { error };
+    throw error;
+  } finally {
+    await recordRuntimeEvent(deps.db, {
+      organizationId: record.organizationId,
+      assistantId: (record.payload as Partial<IngestJob> | null)?.assistantId ?? null,
+      kind: "ingest_job",
+      status: failure ? "failed" : "succeeded",
+      durationMs: Date.now() - startedAt,
+      timings: clock.ingestSummary(),
+      ...(failure ? { errorClass: errorClassOf(failure.error) } : {}),
+    });
+  }
+}
+
 const ingestSourceHandler: JobHandler = {
-  async perform(record, deps) {
-    const job = jobFromRecord(record);
-    const renewLease = () =>
-      deps.db.renewBackgroundJobLease({
-        id: record.id,
-        leaseToken: record.leaseToken!,
-        now: new Date().toISOString(),
-      });
-    if ("rawText" in job) {
-      if (job.schemaLagFallback) {
-        await performIngest(job, job.rawText, deps, renewLease);
-        return;
-      }
-      if (!(await legacyApplicationIngestIsCurrent(deps.db, job))) return;
-      const payloadVersion = await deps.db.upgradeLegacySourceIngestJob({
-        jobId: record.id,
-        leaseToken: record.leaseToken!,
-        assistantId: job.assistantId,
-        collectionId: job.collectionId,
-        sourceId: job.sourceId,
-        rawText: job.rawText,
-        now: new Date().toISOString(),
-      });
-      if (payloadVersion === "schema_lag") {
-        await performIngest(job, job.rawText, deps, renewLease);
-        return;
-      }
-      if (payloadVersion === null) return;
-      await performIngest(
-        {
-          ...job,
-          jobId: record.id,
-          leaseToken: record.leaseToken!,
-          payloadVersion,
-        },
-        job.rawText,
-        deps,
-        renewLease
-      );
-      return;
-    }
-    const payload = await deps.db.getSourceIngestPayload(
-      job.sourceId,
-      job.payloadVersion
-    );
-    if (!payload) throw new Error("Ingest payload not found");
-    if (!record.leaseToken) throw new Error("Claimed ingest job has no lease token");
-    await performIngest(
-      { ...job, jobId: record.id, leaseToken: record.leaseToken },
-      payload.rawText,
-      deps,
-      renewLease,
-      payload.drafts
-    );
-  },
+  perform: (record, deps) => clockedIngest(record, deps, (timed) => performIngestJob(record, timed)),
   async onTerminalFailure(record, deps, message) {
     const payloadSourceId = (record.payload as Partial<IngestJob>).sourceId;
     const sourceId = payloadSourceId ?? record.sourceId;
@@ -278,6 +269,62 @@ const ingestSourceHandler: JobHandler = {
     }
   },
 };
+
+async function performIngestJob(record: BackgroundJob, deps: JobDeps): Promise<void> {
+  const job = jobFromRecord(record);
+  const renewLease = () =>
+    deps.db.renewBackgroundJobLease({
+      id: record.id,
+      leaseToken: record.leaseToken!,
+      now: new Date().toISOString(),
+    });
+  if ("rawText" in job) {
+    if (job.schemaLagFallback) {
+      await performIngest(job, job.rawText, deps, renewLease);
+      return;
+    }
+    if (!(await legacyApplicationIngestIsCurrent(deps.db, job))) return;
+    const payloadVersion = await deps.db.upgradeLegacySourceIngestJob({
+      jobId: record.id,
+      leaseToken: record.leaseToken!,
+      assistantId: job.assistantId,
+      collectionId: job.collectionId,
+      sourceId: job.sourceId,
+      rawText: job.rawText,
+      now: new Date().toISOString(),
+    });
+    if (payloadVersion === "schema_lag") {
+      await performIngest(job, job.rawText, deps, renewLease);
+      return;
+    }
+    if (payloadVersion === null) return;
+    await performIngest(
+      {
+        ...job,
+        jobId: record.id,
+        leaseToken: record.leaseToken!,
+        payloadVersion,
+      },
+      job.rawText,
+      deps,
+      renewLease
+    );
+    return;
+  }
+  const payload = await deps.db.getSourceIngestPayload(
+    job.sourceId,
+    job.payloadVersion
+  );
+  if (!payload) throw new Error("Ingest payload not found");
+  if (!record.leaseToken) throw new Error("Claimed ingest job has no lease token");
+  await performIngest(
+    { ...job, jobId: record.id, leaseToken: record.leaseToken },
+    payload.rawText,
+    deps,
+    renewLease,
+    payload.drafts
+  );
+}
 
 // ---------------------------------------------------------------------------
 // draft_improvement_proposal, drafts a Suggested Fix for an Improvement
@@ -460,6 +507,47 @@ export async function enqueueAgentMemoryJob(
   });
   getRuntimeHost().scheduleAfterResponse(() =>
     runDueJobs(deps, { kinds: [DISTILL_AGENT_MEMORY_KIND], limit: 5 })
+  );
+}
+
+// ---------------------------------------------------------------------------
+// summarize_conversation, folds what left a long thread's recent window into
+// its rolling summary (conversation-history.ts). Same shape as the Agent-layer
+// distillation: durable row first, `after()` accelerates it, cron backstops it,
+// and every gate resolves to a no-op success.
+// ---------------------------------------------------------------------------
+
+const SUMMARIZE_CONVERSATION_KIND = "summarize_conversation" as const;
+
+const summarizeConversationHandler: JobHandler = {
+  async perform(record, deps) {
+    const payload = record.payload as { organizationId?: string; conversationId?: string };
+    if (!payload.organizationId || !payload.conversationId) {
+      throw new Error("Invalid summarize-conversation job payload");
+    }
+    await summarizeConversation({
+      db: deps.db,
+      organizationId: payload.organizationId,
+      conversationId: payload.conversationId,
+    });
+  },
+  // No onTerminalFailure: the next long turn queues the fold again, and a
+  // missing summary only means the turn sees less of the thread.
+};
+
+/** Queue the summary fold, delayed like the memory jobs so a burst folds once. */
+export async function enqueueConversationSummaryJob(
+  job: { organizationId: string; conversationId: string },
+  deps: JobDeps
+): Promise<void> {
+  await deps.db.createBackgroundJob({
+    organizationId: job.organizationId,
+    kind: SUMMARIZE_CONVERSATION_KIND,
+    payload: { kind: SUMMARIZE_CONVERSATION_KIND, ...job },
+    nextRunAt: new Date(Date.now() + MEMORY_QUIET_MS).toISOString(),
+  });
+  getRuntimeHost().scheduleAfterResponse(() =>
+    runDueJobs(deps, { kinds: [SUMMARIZE_CONVERSATION_KIND], limit: 5 })
   );
 }
 
@@ -799,11 +887,13 @@ export async function drainMemoryExtractions(
 // ---------------------------------------------------------------------------
 
 const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
+  replay_improvement: improvementReplayHandler,
   ingest_source: ingestSourceHandler,
   draft_improvement_proposal: draftProposalHandler,
   draft_goal_proposal: goalProposalHandler,
   promote_memories: promoteMemoriesHandler,
   distill_agent_memory: distillAgentMemoryHandler,
+  summarize_conversation: summarizeConversationHandler,
   sync_application_import: applicationSyncHandler,
   // Human review (#841): delivery, then continuation or halt.
   deliver_review_request: deliverReviewRequestHandler,
@@ -814,6 +904,9 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   // Slack mention replies (#857): queued by the signed event route, drained by
   // its after-response hook and the run-slack cron tick.
   answer_slack_mention: answerSlackMentionHandler,
+  deliver_outbound_webhook: outboundWebhookHandler,
+  score_assistant_answer: answerModerationHandler,
+  notify_export_ready: exportReadyMailHandler,
   // Knowledge memories, one job per Document of a committed generation (#930).
   extract_document_memories: extractMemoriesHandler,
 };
@@ -823,7 +916,9 @@ async function runClaimedJob(
   deps: JobDeps,
   now: Date
 ): Promise<JobOutcome> {
-  return observe({
+  // Every job runs under a `job` clock, so a turn's `overlap` counts the jobs
+  // burning the same process's CPU beside it (#1112).
+  return withTurnClock(new TurnClock(undefined, "job"), () => observe({
     name: "job",
     context: {
       surface: "background", organizationId: record.organizationId,
@@ -854,7 +949,8 @@ async function runClaimedJob(
         error === null ||
         !("retryable" in error) ||
         error.retryable !== false;
-      if (!retryable || record.attempts >= record.maxAttempts) {
+      const scheduledRetry = handler.retryAt?.(record, now);
+      if (!retryable || record.attempts >= record.maxAttempts || scheduledRetry === null) {
         // Cleanup must complete before the durable terminal transition. If the
         // hook fails, the running lease eventually becomes eligible for the
         // retryable terminal-cleanup claim path.
@@ -876,7 +972,7 @@ async function runClaimedJob(
         typeof error.retryAfterMs === "number"
           ? error.retryAfterMs
           : 0;
-      const retryAt = new Date(
+      const retryAt = scheduledRetry ?? new Date(
         now.getTime() +
           Math.max(RETRY_BACKOFF_MS * record.attempts, requestedRetryMs)
       );
@@ -892,7 +988,7 @@ async function runClaimedJob(
       });
       return settled ? "retried" : "superseded";
     }
-  });
+  }));
 }
 
 /**
@@ -934,7 +1030,7 @@ export async function runDueJobs(
       limit,
     });
     for (const record of terminal) {
-      const outcome = await observe<JobOutcome>({
+      const outcome = await withTurnClock(new TurnClock(undefined, "job"), () => observe<JobOutcome>({
         name: "job.terminal_cleanup",
         context: {
           surface: "background", organizationId: record.organizationId,
@@ -960,7 +1056,7 @@ export async function runDueJobs(
           reportError("job.terminal_cleanup", error);
           return "retried";
         }
-      });
+      }));
       result[outcome] += 1;
     }
     const remaining = Math.max(limit - terminal.length, 0);
@@ -1174,4 +1270,15 @@ export async function enqueueDueApplicationSyncs(
     }
   }
   return { enqueued };
+}
+
+/** Durable row first; scoring itself only runs after the response or on cron. */
+export async function enqueueAnswerModerationJob(organizationId: string, messageId: string, guardrails: ReturnType<typeof import("./answer-moderation").answerModerationRules>, deps: JobDeps) {
+  await deps.db.createBackgroundJob({ id: `answer-moderation:${messageId}`, organizationId, kind: "score_assistant_answer", payload: { messageId, guardrails } });
+  getRuntimeHost().scheduleAfterResponse(() => runDueJobs(deps, { kinds: ["score_assistant_answer"], limit: 1 }));
+}
+
+/** The insert already queued the durable job atomically; this only accelerates it. */
+export function scheduleImprovementReplay(db: Db): void {
+  getRuntimeHost().scheduleAfterResponse(() => runDueJobs({ db }, { kinds: ["replay_improvement"], limit: 1 }));
 }

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { KnowledgeHubClient } from "@/components/knowledge/knowledge-hub-client";
 import { requirePageMember } from "@/lib/authz";
-import { canEdit, canPublish } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import {
   KNOWLEDGE_TAB_KINDS,
   isKnowledgeTabSlug,
@@ -28,7 +28,8 @@ export default async function LibraryTabPage({
   const { tab } = await params;
   if (!isKnowledgeTabSlug(tab)) notFound();
   const filters = parseHubSearchParams(await searchParams);
-  const { organizationId, role, db, session, reads } = await requirePageMember();
+  const { organizationId, role, db, session, reads, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
 
   const showApplications = tab === "applications";
   const [
@@ -41,7 +42,7 @@ export default async function LibraryTabPage({
     // Applications draws no Source table (its Imports open onto their items),
     // so it skips the read rather than fetching a page nobody renders.
     showApplications
-      ? Promise.resolve({ items: [], total: 0 })
+      ? Promise.resolve({ items: [], total: 0, qualityAvailable: false })
       : db.listOrgKnowledgeSources(organizationId, {
           kinds: KNOWLEDGE_TAB_KINDS[tab],
           status: filters.status,
@@ -51,6 +52,7 @@ export default async function LibraryTabPage({
           pageSize: filters.size,
           sort: filters.sort || undefined,
           ascending: filters.ascending,
+          unused: filters.unused,
         }),
     reads.assistantShellSummaries(),
     showApplications ? db.listApplicationConnections(organizationId) : Promise.resolve([]),
@@ -63,6 +65,7 @@ export default async function LibraryTabPage({
 
   return (
     <KnowledgeHubClient
+      qualityAvailable={page.qualityAvailable ?? false}
       tab={tab}
       filters={filters}
       items={page.items}
@@ -73,8 +76,8 @@ export default async function LibraryTabPage({
       applicationConnections={applicationConnections.map(redactApplicationConnection)}
       applicationImports={applicationImports}
       applicationOperationalState={Object.fromEntries(applicationOperationalState)}
-      canEdit={canEdit(role)}
-      canManageConnections={canPublish(role)}
+      canEdit={can(access, "knowledge:edit")}
+      canManageConnections={can(access, "applications:connect")}
       applicationOAuthAvailability={applicationOAuthAvailability()}
     />
   );

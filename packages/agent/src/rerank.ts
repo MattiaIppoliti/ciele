@@ -35,6 +35,7 @@ import type { Db } from "@agent-hub/db";
 import { alertKeys, signalHealth } from "./health";
 import { maskOutbound } from "./pii-masking";
 import { meterUsage } from "./usage";
+import { timedWait } from "./turn-clock";
 
 /** How many hybrid candidates the reranker chooses the six from. */
 export const RERANK_CANDIDATES = 20;
@@ -123,8 +124,11 @@ export function createReranker(opts: {
 
     const documents = candidates.map(rerankDocument);
     try {
-      const result = await rerank({
-        model,
+      // `model` is a lazily assigned `let`, so its null check does not reach
+      // into the closure; the const carries the narrowing in.
+      const rerankingModel = model;
+      const result = await timedWait("rerank", () => rerank({
+        model: rerankingModel,
         // The reranker is a model provider too (#1078).
         query: maskOutbound(query),
         documents: documents.map((document) => maskOutbound(document)),
@@ -132,7 +136,7 @@ export function createReranker(opts: {
         // One attempt: a retry inside a 1.5 s budget only moves the timeout.
         maxRetries: 0,
         abortSignal: AbortSignal.timeout(timeoutMs),
-      });
+      }));
       await meterUsage(attribution.db, [
         {
           organizationId: attribution.organizationId,

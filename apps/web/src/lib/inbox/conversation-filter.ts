@@ -22,6 +22,7 @@ export interface InboxFilters {
   staff: "" | "include" | "only";
   /** Human review (#841): only Conversations waiting on a decision. */
   review: "" | "pending";
+  answerModeration: "" | "flagged";
 }
 
 /** The Inbox opens on the last 30 days with everything else wide open. */
@@ -43,6 +44,7 @@ export function defaultInboxFilters(): InboxFilters {
     escalation: "",
     staff: "",
     review: "",
+    answerModeration: "",
   };
 }
 
@@ -52,6 +54,7 @@ const INBOX_FILTER_OPTIONS = {
   escalation: ["", "escalated", "not_escalated"],
   staff: ["", "include", "only"],
   review: ["", "pending"],
+  answerModeration: ["", "flagged"],
 } as const;
 
 /** Filters and search as the address bar keeps them; `q` is the search box. */
@@ -114,5 +117,6 @@ export function inboxQueryFromFilters(
     feedback: criteria.feedback || undefined,
     escalation: criteria.escalation || undefined,
     staff: criteria.staff,
+    flaggedAnswer: criteria.answerModeration === "flagged" || undefined,
   };
 }

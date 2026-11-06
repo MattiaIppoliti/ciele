@@ -34,9 +34,16 @@ curl https://ciele.app/api/v1/whoami \
 Para el autoalojamiento, sustituye `https://ciele.app` por el origen público de
 Ciele.
 
+La respuesta incluye `capabilities`: las capacidades de la clave. Una clave solo
+puede hacer lo que tanto su Role como su creador pueden hacer.
+
+En una operación para un solo asistente, se aplica el Role del creador de ese
+asistente. Si solo ese Role del asistente rechaza la operación, la API devuelve
+`404`, lo mismo que para un asistente que no existe.
+
 ## Errores de respuesta
 
-Los errores utilizan una única envolvente JSON:
+Los errores utilizan una única envoltura JSON:
 
 ```json
 {
@@ -71,50 +78,54 @@ el mismo valor solo cuando vuelvas a intentar la misma operación lógica.
 
 ## Dominios comunes
 
-Estos son ejemplos. La [API reference](/api-reference) enumera el conjunto
-completo y actual de operaciones.
+Estos son ejemplos. La [referencia de la API](/api-reference) enumera el
+conjunto completo y actual de operaciones.
 
-- Asistentes: listar, leer, crear, actualizar, duplicar y eliminar.
-- Flujos: listar, leer, crear, actualizar, reordenar y eliminar.
+- Assistants: listar, leer, crear, actualizar, duplicar y eliminar.
+- Flows: list, read, create, update, reorder y delete.
 - Knowledge: gestiona Collections, Sources, FAQs y los enlaces del asistente en
   cada Source.
-- Publicación: consulta el estado, publica, anula la publicación y restaura una
-  publicación.
-- Inbox: revisa, exporta, ancla, añade anotaciones, valora y elimina
-  Conversations.
+- Publication: consulta el estado, publica, cancela la publicación y restaura
+  una publicación.
+- Inbox: revisa, exporta, ancla, anota, valora y elimina Conversations.
 - Mejoras: enumera, lee y actualiza elementos.
 - Memories: revisa la configuración y realiza el borrado de Memory con un ámbito
   específico.
 - SSO: gestiona las afirmaciones de identidad, la configuración de conexión, la
   validación y la desconexión.
-- Help Desks: gestiona los desks, los canales de escalado, el orden y
-  ServiceNow.
+- Help Desks: gestiona los desks, los canales de escalado, el orden y el destino
+  de los tickets.
 - Teammates: gestiona a los Teammates de IA y lee tus propias conversaciones con
   Teammates.
-- Projects: gestiona los Projects, sus milestones y los documentos del Project
-  que leen los Teammates.
-- Tareas: enumera, lee, crea, modifica, archiva y elimina tareas, comenta sobre
-  ellas y gestiona las etiquetas de las tareas. La lista se filtra por Project,
-  assignee, status, Label, fechas de entrega, text e Improvement, y utiliza un
-  cursor para cada página. Una clave solo lee los Projects que su miembro puede
-  leer. Un comentario indica a ese miembro como su autor.
+- Projects: gestiona los proyectos, sus hitos y los documentos del proyecto que
+  leen los Teammates.
+- Tareas: enumera, lee, crea, modifica, archiva y elimina Tareas, comenta sobre
+  ellas y gestiona las Etiquetas de las tareas. La lista se filtra por Project,
+  assignee, status, Label, fechas de vencimiento, text e Improvement, y utiliza
+  un cursor para cada página. Una clave solo lee los Proyectos que su miembro
+  puede leer. Un comentario indica a ese miembro como el autor.
 - Reviews: enumera, lee y toma decisiones sobre las solicitudes de revisión
   humana.
-- Channels: lee y configura los canales de compañeros de equipo en los que
-  participas, así como sus listas de miembros. No existe un endpoint para enviar
-  un mensaje: un mensaje inicia una cadena de respuestas de compañeros de
-  equipo, y esa cadena se ejecuta en la consola.
+- Channels: lee y da forma a los canales de compañeros de equipo en los que
+  estás y a sus listas de miembros. No hay ningún endpoint para enviar un
+  mensaje: un mensaje inicia una cadena de respuestas de compañeros de equipo, y
+  esa cadena se ejecuta en la consola.
 - Configuration: gestiona Skills, Assistant Goals y Alerts operativas.
-- Organization: gestiona la configuración, los Members, las Invites y las claves
-  API.
+- Organization: gestiona la configuración, los Members, las Invites y las API
+  keys. Limita a un miembro a los asistentes seleccionados.
 - Integrations: gestiona las integraciones de la API del asistente y las
   conexiones con los proveedores de modelos.
 - Uso: consulta los contadores del plan y quién ha gastado los créditos de una
-  ventana. Solo lectura. El desglose del gasto mantiene sus dimensiones
-  separadas. Una respuesta menciona tanto al compañero de equipo que ejecutó la
-  tarea como al compañero que la solicitó, por lo que sumar las dimensiones
-  cuenta el caso dos veces. La compra de créditos no tiene endpoint: una compra
+  ventana. Solo lectura. El desglose del gasto mantiene separadas sus
+  dimensiones. Una respuesta indica tanto al compañero de equipo que ejecutó la
+  acción como al compañero que la solicitó, por lo que sumar las dimensiones la
+  contabiliza dos veces. La compra de créditos no tiene un endpoint: una compra
   corresponde a una pantalla en la que una persona confirma un importe.
+- Registro de auditoría: consulta quién cambió qué, desde qué interfaz, con el
+  valor anterior y posterior para los cambios de rol, invitación, clave, acceso
+  y configuración. Solo lectura. Filtra por acción, actor y fecha. Para
+  consultar registros más antiguos, envía el `createdAt` y el `id` de la última
+  entrada que tengas como `before` y `beforeId`.
 
-Utiliza el documento OpenAPI para los campos de las solicitudes, la
-autenticación y los códigos de estado de las respuestas documentados.
+Utiliza el documento OpenAPI para los campos de solicitud, la autenticación y
+los códigos de estado de respuesta documentados.

@@ -1,27 +1,27 @@
 ---
-title: Inbox
-description: Revisa las conversaciones, las fuentes, los rastreos de ejecución y los metadatos de las sesiones.
+title: Bandeja de entrada
+description: Revisa las conversaciones, las fuentes, los rastreos en tiempo de ejecución y los metadatos de las sesiones.
 ---
 
-La bandeja de entrada almacena los turnos del visitante y del asistente. Abre
+La Bandeja de entrada almacena los turnos del Visitante y del Asistente. Abre
 una Conversation para revisar la transcripción exacta almacenada.
 
 ## Lista de conversaciones
 
-Utiliza la búsqueda y los filtros disponibles para acotar la lista. Cada fila
+Usa la búsqueda y los filtros disponibles para acotar la lista. Cada fila
 identifica la actividad reciente y el estado actual de la Conversation.
 
-Una sesión que contiene únicamente Notifications proactivas lleva el marcador
+Una sesión que contiene únicamente Notificaciones proactivas lleva el marcador
 **Notification only**. Se convierte en una Conversation normal después de que un
 Visitor responda.
 
 Desliza una fila hacia la izquierda o selecciona su botón **Actions** para
-mostrar **Archive**, **Flag** y **Delete**. Si deslizas completamente hacia la
-izquierda, la Conversación se archiva. Selecciona **Archived** para restaurarla
-o **Flagged** para encontrar tus Conversaciones marcadas. Las acciones «Archive»
-y «Flag» solo afectan a tu propia lista. No modifican la transcripción ni sus
-análisis. Delete te pide confirmación y elimina la transcripción. No se puede
-eliminar una Conversation sujeta a retención legal.
+mostrar **Archive**, **Flag** y **Delete**. Si deslizas una fila completamente
+hacia la izquierda, se archiva la Conversation. Selecciona **Archived** para
+restaurarla o **Flagged** para encontrar tus Conversaciones marcadas. Las
+acciones Archive y Flag solo afectan a tu propia lista. No modifican la
+transcripción ni sus análisis. Delete solicita confirmación y elimina la
+transcripción. No se puede eliminar una Conversation sujeta a retención legal.
 
 ## Detalle de la conversación
 
@@ -38,11 +38,60 @@ La vista de detalles puede mostrar:
   acceso
 
 Las acciones de Verbatim Message y las Basic replies no contienen un registro de
-Thinking. Las respuestas de búsqueda en la base de conocimientos pueden contener
+Thinking. Las respuestas de búsqueda en la base de conocimiento pueden contener
 eventos de herramientas y de progreso.
 
 Las llamadas de integración de la API también aparecen en el seguimiento. Sus
 eventos muestran qué endpoint admitió la respuesta.
+
+## Asumir el control de una conversación
+
+Puedes responder tú mismo a un Visitor. Abre la Conversation y selecciona **Take
+over**. Debes tener el rol de Editor, Admin, Owner o Support Agent.
+
+Cuando mantienes una Conversation:
+
+- El asistente no responde. Cada mensaje de un Visitor se guarda y se muestra en
+  la Inbox, pero no se ejecuta ningún Flow ni se llama a ningún modelo.
+- Debajo de la transcripción aparece un cuadro de respuesta. Tu respuesta se
+  envía al Widget abierto con tu nombre para mostrar. El Visitor no tiene que
+  enviar un mensaje primero.
+- El Widget y la Inbox muestran una línea cuando te unes y cuando te vas.
+- Los demás miembros ven quién tiene el control de la Conversación. Solo un
+  miembro puede tenerla en cada momento.
+
+Selecciona **Release** para devolver la conversación al asistente. El siguiente
+mensaje del visitante inicia un turno normal. Un Admin o un Owner puede liberar
+una Conversation que tenga un compañero.
+
+Tus respuestas son mensajes de operador. No son respuestas de IA, por lo que
+Insights, la verificación de respuestas y los comentarios no las tienen en
+cuenta. La exportación JSON y la transcripción impresa los identifican con el
+remitente `Operator` y tu nombre.
+
+El Widget comprueba si hay respuestas tuyas cada pocos segundos mientras
+mantienes la Conversation. También comprueba cada 15 segundos durante 5 minutos
+después de que el Visitor envíe un mensaje, para poder mostrar que te has unido.
+Un Widget inactivo no envía solicitudes adicionales.
+
+## Textos rápidos
+
+Los Textos rápidos son respuestas guardadas para el cuadro de respuesta. Los
+Editors, Admins y Owners los crean, editan y eliminan en **Settings** > **Quick
+Texts**. Cada Quick Text tiene un título, un cuerpo y una carpeta opcional.
+
+Para insertar un texto rápido, escribe **/** en el cuadro de respuesta. Sigue
+escribiendo para filtrar la lista por título. Selecciona un Quick Text o pulsa
+Intro para insertar su cuerpo en el lugar donde has escrito **/**. Puedes
+cambiar el texto antes de enviarlo.
+
+El cuerpo puede utilizar las variables de plantilla que usan las acciones de
+Flow, por ejemplo `{{user.name}}`. Ciele las rellena a partir de la conversación
+a la que respondes. Una variable que no tiene valor se convierte en texto vacío.
+
+Todos los miembros que puedan responder pueden usar todos los Textos rápidos.
+También puedes gestionar los Textos rápidos con la API, el comando de la CLI
+`ciele quick-texts` y la herramienta MCP `manage_configuration`.
 
 ## Crea trabajo de calidad
 
@@ -50,4 +99,4 @@ Utiliza la acción Improvement disponible cuando una respuesta necesite
 corrección. El nuevo elemento enlaza con el mensaje de la Conversation afectado.
 
 Usa [Exports](/operations/exports) cuando necesites registros estructurados
-fuera de la Bandeja de entrada.
+fuera de la Inbox.

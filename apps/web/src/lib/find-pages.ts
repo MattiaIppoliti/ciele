@@ -144,6 +144,13 @@ const entries = {
       links: [
         { title: "General", href: "/settings/general" },
         { title: "Members", href: "/settings/members" },
+        { title: "Roles", href: "/settings/roles" },
+        { title: "Audit log", href: "/settings/audit-log" },
+        { title: "Data retention", href: "/settings/data-retention" },
+        { title: "Business hours", href: "/settings/business-hours" },
+        { title: "MCP servers", href: "/settings/mcp-servers" },
+        { title: "Webhooks", href: "/settings/webhooks" },
+        { title: "Quick Texts", href: "/settings/quick-texts" },
         { title: "AI Provider", href: "/settings/ai" },
         { title: "Crawling", href: "/settings/crawling" },
         { title: "API Keys", href: "/settings/api-keys" },

@@ -4,7 +4,8 @@ import { RollInText } from "@/components/motion/roll-in-text";
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import type { AssistantTools, BuiltInToolName, Skill } from "@agent-hub/core";
+import { McpToolsSettings } from "./mcp-tools-settings";
+import type { McpServerConnection, AssistantTools, BuiltInToolName, Skill } from "@agent-hub/core";
 import { Plus, Trash2 } from "lucide-react";
 import { Globe, Pencil } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -77,6 +78,7 @@ const BUILT_INS: Array<{
 export function ToolsClient({
   assistantId,
   tools: initialTools,
+  mcpServers = [],
   skills: initialSkills,
   attachedSkillIds,
   integration,
@@ -84,6 +86,7 @@ export function ToolsClient({
 }: {
   assistantId: string;
   tools: AssistantTools;
+  mcpServers?: McpServerConnection[];
   skills: Skill[];
   attachedSkillIds: string[];
   /** The assistant's API integration, credential redacted (spec #559). */
@@ -220,6 +223,10 @@ export function ToolsClient({
         integration={integration}
         canEdit={canEdit}
       />
+      </TimelineSection>
+
+      <TimelineSection title="MCP servers" boxed>
+        <McpToolsSettings servers={mcpServers} value={tools.remoteMcp ?? []} canEdit={canEdit} onChange={remoteMcp => saveTools({ ...latestTools.current, remoteMcp }, "MCP tools updated. Publish to apply them.")} />
       </TimelineSection>
 
       {/* Skills */}

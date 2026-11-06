@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Organization } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
@@ -26,9 +27,10 @@ import {
 } from "@/components/ui/select";
 
 /**
- * Retention choices, shared by both windows. "forever" maps to null (the
- * default) in each: nothing an organization already has starts disappearing
- * unless an admin opts in (#573 traces, #801/CYB-12 transcripts).
+ * Reasoning trace retention choices. "forever" maps to null (the default):
+ * nothing an organization already has starts disappearing unless an admin
+ * opts in (#573). Conversations, messages, Improvements and audit records are
+ * on the Data retention tab.
  */
 const RETENTION_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "forever", label: "Keep forever (default)" },
@@ -69,17 +71,8 @@ export function OrganizationClient({
     ? String(organization.traceRetentionDays)
     : "forever";
   const [retention, setRetention] = useState(storedRetention);
-  const storedTranscriptRetention = organization.transcriptRetentionDays
-    ? String(organization.transcriptRetentionDays)
-    : "forever";
-  const [transcriptRetention, setTranscriptRetention] = useState(
-    storedTranscriptRetention
-  );
 
-  const dirty =
-    name !== organization.name ||
-    retention !== storedRetention ||
-    transcriptRetention !== storedTranscriptRetention;
+  const dirty = name !== organization.name || retention !== storedRetention;
   useSettingsDirty(dirty);
 
   function handleSave() {
@@ -93,7 +86,6 @@ export function OrganizationClient({
           await updateOrganizationAction({
             name: name.trim(),
             traceRetentionDays: retentionDays(retention),
-            transcriptRetentionDays: retentionDays(transcriptRetention),
           });
           toast.success("Organization saved");
         } catch {
@@ -104,28 +96,13 @@ export function OrganizationClient({
     // Shortening a window is the one change here that cannot be undone: the
     // nightly retention sweep deletes what falls outside it.
     const traceDays = shortened(retention, storedRetention);
-    const transcriptDays = shortened(
-      transcriptRetention,
-      storedTranscriptRetention,
-    );
-    if (traceDays === null && transcriptDays === null) {
+    if (traceDays === null) {
       save();
       return;
     }
-    const losses = [
-      transcriptDays !== null &&
-        `conversations older than ${transcriptDays} days`,
-      traceDays !== null && `reasoning traces older than ${traceDays} days`,
-    ].filter(Boolean);
     confirmDelete({
       title: "Delete older data?",
-      description: `The next nightly cleanup permanently deletes ${losses.join(
-        " and ",
-      )}.${
-        transcriptDays !== null
-          ? " Conversations under a legal hold are kept."
-          : ""
-      }`,
+      description: `The next nightly cleanup permanently deletes reasoning traces older than ${traceDays} days.`,
       confirmLabel: "Save and delete",
       onConfirm: save,
     });
@@ -242,28 +219,14 @@ export function OrganizationClient({
         </Select>
       </div>
 
-      <div className="space-y-3">
-        <FieldHeader
-          title="Conversation retention"
-          hint="How long conversations are kept before deletion. Legal holds are skipped."
-        />
-        <Select
-          value={transcriptRetention}
-          onValueChange={(value) => setTranscriptRetention(value ?? "forever")}
-        >
-          <SelectTrigger className="h-11 w-full max-w-sm" aria-label="Conversation retention">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {RETENTION_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
+      <p className="text-muted-foreground text-sm">
+        Conversations, messages, improvements and audit records have their own
+        periods on the{" "}
+        <Link href="/settings/data-retention" className="press-text text-foreground underline underline-offset-4">
+          Data retention
+        </Link>{" "}
+        tab.
+      </p>
           </div>
         </TimelineSection>
       </SectionTimeline>

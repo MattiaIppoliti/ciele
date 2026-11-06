@@ -381,6 +381,7 @@ const summarizeWindow: RuntimeToolSpec["summarize"] = (output) => {
 
 const readApiResponseSpec: RuntimeToolSpec = {
   name: "readApiResponse",
+  capsOwnResult: true,
   execution: "parallel-read",
   description:
     "Read more of a large API response, by the handle a previous queryApi returned. Returns the requested character window plus the response's total length.",
@@ -417,6 +418,7 @@ const readApiResponseSpec: RuntimeToolSpec = {
 
 export const READ_KNOWLEDGE_SOURCE_SPEC: RuntimeToolSpec = {
   name: "readKnowledgeSource",
+  capsOwnResult: true,
   piiOrigin: "knowledge",
   description:
     "Read a knowledge document in character windows, by the sourceId a knowledge search returned. Use it when a search result is cut off mid-answer and you need the surrounding text. Returns the window plus the document's total length.",

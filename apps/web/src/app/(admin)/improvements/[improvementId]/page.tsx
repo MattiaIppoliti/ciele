@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { roleAllowsCapability } from "@agent-hub/core";
+import { capabilitiesAllow } from "@agent-hub/core";
 import { createTaskOp, listTasksOp } from "@ciele/ops";
 import { PageCrumb } from "@/components/shell/top-bar-slots";
 import { ImprovementDetail } from "@/components/improvements/improvement-detail";
 import { requirePageMember } from "@/lib/authz";
 import { runPageOperation } from "@/lib/operations";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { improvementTaskRows } from "@/lib/work/improvement-tasks";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,8 @@ export default async function ImprovementDetailPage({
   params: Promise<{ improvementId: string }>;
 }) {
   const { improvementId } = await params;
-  const { organizationId, role, db } = await requirePageMember();
+  const { organizationId, role, capabilities, db } = await requirePageMember();
+  const access = { role, capabilities };
 
   const improvement = await db.getImprovement(improvementId);
   if (!improvement || improvement.organizationId !== organizationId) {
@@ -47,10 +48,10 @@ export default async function ImprovementDetailPage({
         .filter((project) => !project.archived)
         .map((project) => ({ id: project.id, name: project.name }))}
       tasks={improvementTaskRows(tasks.items, projects)}
-      canEdit={canEdit(role)}
+      canEdit={can(access, "improvements:edit")}
       // Linking is a Task write (rule 2): the rank `tasks.create` declares,
       // not the Editor rank on Improvements, even while the two coincide.
-      canCreateTasks={roleAllowsCapability(role, createTaskOp.capability)}
+      canCreateTasks={capabilitiesAllow(capabilities, createTaskOp.capability)}
     />
     </>
   );

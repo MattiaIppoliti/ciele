@@ -2,13 +2,6 @@
 .surface {
   --catalog-radius: 1.25rem;
 }
-.heading {
-  font-size: clamp(1.875rem, 4vw, 2.5rem);
-  font-weight: 600;
-  letter-spacing: -.035em;
-  line-height: 1.15;
-  text-wrap: balance;
-}
 .tile {
   border-radius: var(--catalog-radius);
   transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;

@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
@@ -11,6 +18,30 @@ import {
 import { useModalFocus } from "@/components/motion/use-modal-focus";
 import { useTableOrder } from "@/components/ui/table-preferences";
 import { SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
+
+/**
+ * The docked split, for a list that draws its own width handle. While the
+ * detail is docked beside it, the list fills what is left and moves the
+ * detail's edge instead of its own, so the two sides are one divider: drag
+ * either and both resize. Null when nothing is docked.
+ */
+export type WorkspaceSplit = {
+  /** The detail's docked width, in px. */
+  detailWidth: number;
+  minDetailWidth: number;
+  maxDetailWidth: number;
+  resizeDetail: (width: number) => void;
+  /** The list's own drag: the detail follows the pointer, not a spring. */
+  setDragging: (dragging: boolean) => void;
+  /** Ends a drag that moved the detail, so its width is remembered. */
+  commitDetail: () => void;
+};
+
+const WorkspaceSplitContext = createContext<WorkspaceSplit | null>(null);
+
+export function useWorkspaceSplit(): WorkspaceSplit | null {
+  return useContext(WorkspaceSplitContext);
+}
 
 /**
  * A detail that shares space with its list (#1054), using the chat preview's
@@ -59,6 +90,7 @@ export function WorkspacePanel({
   const hostRef = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState(0);
   const [fullScreen, setFullScreen] = useState(false);
+  const [listDragging, setListDragging] = useState(false);
   const reduceMotion = useReducedMotion();
   const compact = available > 0 && available < 800;
   const expanded = fullScreen || compact;
@@ -86,6 +118,20 @@ export function WorkspacePanel({
     wasResizing.current = resizing;
   }, [resizing, width, widthKey, saveWidth]);
   useModalFocus(open && expanded, containerRef);
+
+  const docked = open && !expanded;
+  const split: WorkspaceSplit | null = docked
+    ? {
+        detailWidth: Math.min(width, maxWidth),
+        minDetailWidth: 360,
+        maxDetailWidth: maxWidth,
+        resizeDetail: resizeTo,
+        setDragging: setListDragging,
+        commitDetail: () => {
+          if (widthKey) saveWidth([String(Math.round(width))]);
+        },
+      }
+    : null;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -135,7 +181,9 @@ export function WorkspacePanel({
           aria-hidden={open && expanded}
           className="min-h-0 min-w-0 flex-1 overflow-hidden"
         >
-          {children}
+          <WorkspaceSplitContext.Provider value={split}>
+            {children}
+          </WorkspaceSplitContext.Provider>
         </div>
         <motion.aside
           ref={containerRef}
@@ -154,7 +202,7 @@ export function WorkspacePanel({
             marginLeft: open && !expanded && !flush ? 16 : 0,
           }}
           transition={
-            reduceMotion || resizing ? { duration: 0 } : open ? SPRING_UNFOLD : SPRING_REFOLD
+            reduceMotion || resizing || listDragging ? { duration: 0 } : open ? SPRING_UNFOLD : SPRING_REFOLD
           }
           className={`relative flex min-h-0 shrink-0 flex-col outline-none ${open ? "" : "overflow-hidden"}`}
         >

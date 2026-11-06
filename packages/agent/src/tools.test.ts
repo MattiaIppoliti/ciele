@@ -680,3 +680,10 @@ describe("API catalogue query, egress containment", () => {
     expect(requestMock).toHaveBeenCalledOnce();
   });
 });
+
+it("loads all instructions of a maximum-size skill through the instrumented registry", async () => {
+  const prompt = "\u0001".repeat(49_980) + "REQUIRED FINAL RULE";
+  const { ctx } = makeContext({ skillIndex: [{ id: "large", name: "large", description: "Always", starter: "", prompt }] });
+  const output = await run(buildToolset(ctx), "useSkill", { name: "large" });
+  expect(output).toMatchObject({ instructions: prompt });
+});

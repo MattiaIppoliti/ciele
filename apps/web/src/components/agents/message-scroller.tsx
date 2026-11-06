@@ -460,7 +460,7 @@ export function MessageScroller({
       className={cn(
         "h-full overflow-y-auto overscroll-contain outline-none [overflow-anchor:none] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         navigation === "rail"
-          ? "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          ? "no-scrollbar"
           : "[scrollbar-gutter:stable]",
         viewportClassName,
         navigation === "rail" && railOverflowing && "pr-10",

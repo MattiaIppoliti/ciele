@@ -1,3 +1,4 @@
+import { completeAuditOutcome, inAuditScope, withAuditScope, recordAuditOutcome } from "./audit";
 import type {
   ApplicationScopeOption,
   Assistant,
@@ -21,22 +22,31 @@ import type {
   Role,
   SsoConnection,
   CrawlerConnectionProvider,
-  TeammateCapabilityCeiling,
+  TeammateActionCeiling,
   TeammateGrantDomain,
   Task,
   UsageLimitsSnapshot,
+} from "@agent-hub/core";
+import {
+  capabilitiesAllow,
+  capabilitiesForLadderRole,
+  effectiveAssistantCapabilities,
+  isAssistantLevelCapability,
+  type CapabilityRequirement,
+  type CapabilityTier,
 } from "@agent-hub/core";
 import type { Db, DbTableInsert } from "@agent-hub/db";
 import { observe } from "@agent-hub/diagnostics";
 import type { ZodType } from "zod";
 import type { MutatedEntity } from "./entities";
 import { remoteExecutorFor, type DbScope } from "./remote";
+import { OperationError } from "./errors";
 
 /** One Work Activity entry as an operation records it (#1051): the table's own insert shape. */
 export type WorkActivityEntry = DbTableInsert<"workActivity">;
 
 /** One Member Notification as an operation raises it (#1048): the table's own insert shape. */
-export type WorkNotificationRow = DbTableInsert<"memberNotifications">;
+export type WorkNotificationRow = Extract<DbTableInsert<"memberNotifications">, { taskId: string }>;
 
 /**
  * The operations layer (#620): the one seam both admin surfaces stand on.
@@ -54,6 +64,7 @@ export type WorkNotificationRow = DbTableInsert<"memberNotifications">;
 
 /** Who an operation runs as, resolved by the calling surface. */
 export interface OperationContext {
+  surface?: "console" | "api" | "mcp" | "teammate";
   /** Cooperative cancellation before admission; started mutations must drain. */
   signal?: AbortSignal;
   organizationId: string;
@@ -69,6 +80,17 @@ export interface OperationContext {
   userId: string;
   /** Already-authorized Role, capability was checked by the caller. */
   role: Role;
+  /**
+   * The caller's Capabilities (ADR-0028): their Role's set, for a key the
+   * intersection of the key's Role and its creator's. Absent means the
+   * built-in defaults of {@link role}; see `contextAllows`.
+   */
+  capabilities?: readonly string[];
+  /**
+   * An API key's own Role's Capabilities, before intersecting with its
+   * creator's. Caps what the creator's Role on one Assistant can add.
+   */
+  delegatedCapabilities?: readonly string[];
   /**
    * The acting Member's email and display name (#841), when the surface knows
    * them. A Human review's assignees are emails, so deciding one needs the
@@ -135,7 +157,7 @@ export interface TeammateActor {
   id: string;
   /** Shown on the transcript card and in refusals, so the model can say who. */
   name: string;
-  ceiling: TeammateCapabilityCeiling;
+  ceiling: TeammateActionCeiling;
   /** Domains with a grant row. Absence is refusal; there is no default. */
   grants: readonly TeammateGrantDomain[];
   approvalBypass: boolean;
@@ -165,6 +187,16 @@ export interface TriageDecisionAnswers {
 }
 
 export interface OperationPorts {
+  remoteMcp?: {
+    discover(input: { url: string; encryptedToken: string | null }): Promise<import("@agent-hub/core").DiscoveredMcpTool[]>;
+    refresh(serverId: string): Promise<import("@agent-hub/core").DiscoveredMcpTool[]>;
+  };
+  /** The host owns DNS-pinned egress policy and the after-response ledger drain. */
+  outboundWebhooks?: {
+    validateUrl(url: string): Promise<void>;
+    wakeDeliveries(): void;
+  };
+  enqueueImprovementReplay?(validationId: string): Promise<void>;
   /**
    * The host half of the Application Import lifecycle. A port because each of
    * these needs what an operation cannot hold: discovery reads the sealed
@@ -204,7 +236,9 @@ export interface OperationPorts {
     input: Record<string, unknown>;
     /** Who the action is attributed to, which is not who approved it. */
     requestedBy: string | null;
-  }): Promise<void>;
+  }): Promise<unknown>;
+  /** Records a remote tool approval outcome after its execution claim settles. */
+  afterActionApprovalDecided?(approval: import("@agent-hub/core").ActionApproval, result?: unknown): Promise<void>;
 
   /**
    * One Conversation Turn asked by an API key and read back whole
@@ -227,6 +261,7 @@ export interface OperationPorts {
    * Organization; the host pins the search to its own. Absent, the operation
    * refuses rather than answering an empty list that looks like "no match".
    */
+  findFaqDuplicates?(input: { collectionId: string; question: string }): Promise<import("@agent-hub/core").FaqDuplicate[]>;
   searchKnowledge?(input: {
     query: string;
     /** Null searches the whole Library. */
@@ -438,14 +473,82 @@ export interface OperationPorts {
   };
 }
 
-/** Same ladder the web app's authz seam speaks. */
-export type OperationCapability =
-  | "member"
-  | "edit"
-  | "publish"
-  | "manageMembers"
-  | "manageApiKeys"
-  | "changeRoles";
+/**
+ * What an Operation requires (ADR-0028): one Capability from the catalogue in
+ * `@agent-hub/core`, or `member` for a Member's own things (notification
+ * preferences, favorites, leaving). Checked against the caller's Capability
+ * set, never against a rank.
+ */
+export type OperationCapability = CapabilityRequirement;
+
+/**
+ * The old ladder's rung a Capability sits at. Still what the Teammate ceiling,
+ * the Developer Panel's minimum-Role badge and RLS compare, because those are
+ * tiers by design; nothing else should read it.
+ */
+export type OperationTier = CapabilityTier;
+
+/**
+ * Whether the caller may run an operation requiring this. A context without a
+ * resolved Capability set (a test, an internal path) stands for its ladder
+ * Role's built-in defaults, so the absence of a set never widens anything.
+ */
+/** The Assistant an operation acts on, if it acts on exactly one. */
+export async function operationAssistantId<In>(
+  ctx: OperationContext,
+  op: Pick<Operation<In, unknown>, "name" | "assistant">,
+  input: In
+): Promise<string | null> {
+  if (op.assistant) return (await op.assistant(ctx, input)) ?? null;
+  const fields = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  if (typeof fields.assistantId === "string") return fields.assistantId;
+  if (op.name.startsWith("assistants.") && !op.name.startsWith("assistants.access.") && typeof fields.id === "string") {
+    return fields.id;
+  }
+  return null;
+}
+
+/**
+ * The Capabilities a run is checked against (ADR-0028): the caller's own, and
+ * on an Assistant-level operation the ones their Role on that Assistant
+ * gives, which may be more or less than their Organization Role's. An API
+ * key's `delegatedCapabilities` (its own Role) caps the Assistant half.
+ */
+export async function operationCapabilities<In>(
+  ctx: OperationContext,
+  op: Pick<Operation<In, unknown>, "name" | "capability" | "assistant">,
+  input: In
+): Promise<readonly string[]> {
+  const base = ctx.capabilities ?? capabilitiesForLadderRole(ctx.role);
+  if (op.capability === "member" || !isAssistantLevelCapability(op.capability) || !ctx.userId || ctx.teammate) return base;
+  const assistantId = await operationAssistantId(ctx, op, input);
+  if (!assistantId) return base;
+  const grant = await ctx.db.getMemberAssistantGrant(ctx.organizationId, ctx.userId, assistantId);
+  if (!grant) return base;
+  return effectiveAssistantCapabilities({
+    base,
+    // The Member's own tier, not a key's capped one: an Owner's key still
+    // reaches an Assistant an old Denied row names.
+    isOwner: ctx.role === "owner" || grant.role === "owner",
+    scope: grant.scope,
+    override: grant.override,
+    ceiling: ctx.delegatedCapabilities ?? null,
+  });
+}
+
+/** Whether a run may go ahead; the surfaces refuse with their own copy. */
+export async function authorizeOperation<In>(
+  ctx: OperationContext,
+  op: Pick<Operation<In, unknown>, "name" | "capability" | "assistant">,
+  input: In
+): Promise<{ allowed: boolean; capabilities: readonly string[] }> {
+  const capabilities = await operationCapabilities(ctx, op, input);
+  return { allowed: capabilitiesAllow(capabilities, op.capability), capabilities };
+}
+
+export function contextAllows(ctx: Pick<OperationContext, "role" | "capabilities">, required: OperationCapability): boolean {
+  return capabilitiesAllow(ctx.capabilities ?? capabilitiesForLadderRole(ctx.role), required);
+}
 
 // Its own module so `remote.ts` can throw one without importing this file.
 export { OperationError } from "./errors";
@@ -473,6 +576,13 @@ export interface Operation<In, Out> {
   input: ZodType<In>;
   /** What a successful run mutated; [] for reads. */
   entities(input: In, result: Out): MutatedEntity[];
+  /**
+   * The one Assistant this run acts on, when its input names it by another
+   * entity (a Flow, a Conversation). An input field `assistantId`, and `id`
+   * on `assistants.*`, are read without one. A Member's Role on that
+   * Assistant then decides its Assistant-level Capabilities (ADR-0028).
+   */
+  assistant?(ctx: OperationContext, input: In): Promise<string | null> | string | null;
   run(ctx: OperationContext, input: In): Promise<Out>;
 }
 
@@ -488,19 +598,40 @@ export function defineOperation<In, Out>(
     run: (ctx, input) => observe({
       name: "operation",
       context: { operation: op.name, organizationId: ctx.organizationId },
-    }, () => {
-      const remote = remoteExecutorFor(op.name, ctx);
-      if (!remote || !ctx.dbScope) return op.run(ctx, input);
-      return remote({
-        operation: op.name,
-        organizationId: ctx.organizationId,
-        userId: ctx.userId,
-        role: ctx.role,
-        dbScope: ctx.dbScope,
-        actorEmail: ctx.actorEmail,
-        input,
-        signal: ctx.signal,
-      }) as Promise<Out>;
+    }, async () => {
+      const execute = (): Promise<Out> => {
+        const remote = remoteExecutorFor(op.name, ctx);
+        if (!remote || !ctx.dbScope) return Promise.resolve(op.run(ctx, input));
+        return remote({
+          operation: op.name,
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
+          role: ctx.role,
+          capabilities: ctx.capabilities ?? capabilitiesForLadderRole(ctx.role),
+          dbScope: ctx.dbScope,
+          actorEmail: ctx.actorEmail,
+          input,
+          signal: ctx.signal,
+        }) as Promise<Out>;
+      };
+      if (op.effect === "read" || inAuditScope()) return execute();
+      const effect = op.effect;
+      return withAuditScope(async () => {
+        let result: Out;
+        try { result = await execute(); }
+        catch (error) {
+          await recordAuditOutcome(ctx, { operation: op.name, effect, entities: [], outcome: error instanceof OperationError ? error.code : "internal_error" });
+          throw error;
+        }
+        let entities: MutatedEntity[] = [];
+        try { entities = op.entities(input, result); } catch { /* The operation succeeded even if a presentation declaration is unavailable. */ }
+        try { await completeAuditOutcome(ctx, { operation: op.name, effect, entities, outcome: "ok" }); }
+        catch (error) {
+          await recordAuditOutcome(ctx, { operation: op.name, effect, entities: [], outcome: error instanceof OperationError ? error.code : "internal_error" });
+          throw error;
+        }
+        return result;
+      });
     }),
   };
 }

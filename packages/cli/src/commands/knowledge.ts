@@ -72,6 +72,26 @@ export async function sources(
 ): Promise<number> {
   const { client, rest, flags, emit, deps } = ctx;
   switch (verb) {
+    case "documents": {
+      if (!rest[0]) return usage(deps, "sources documents <sourceId> [--trust human-reviewed]");
+      const trust = str(flags.trust);
+      if (trust && trust !== "human-reviewed" && trust !== "machine-confirmed" && trust !== "unverified") return usage(deps, "Use --trust human-reviewed, machine-confirmed or unverified");
+      const trustTier = trust === "human-reviewed" || trust === "machine-confirmed" || trust === "unverified" ? trust : undefined;
+      const result = await client.knowledge.sourceDocuments(rest[0], { trustTier });
+      emit(table(result.items, [{ key: "id", header: "ID" }, { key: "title", header: "Document" }, { key: "trustTier", header: "Trust" }]), result); return EXIT.ok;
+    }
+    case "review":
+    case "remove-review": {
+      if (!rest[0] || !rest[1] || !confirmed(flags)) return usage(deps, "sources <review|remove-review> <sourceId> <documentId> --yes");
+      if (verb === "review") { const result = await client.knowledge.reviewDocument(rest[0], rest[1]); emit("Document marked as reviewed", result); }
+      else { await client.knowledge.removeDocumentReview(rest[0], rest[1]); emit("Your review was removed", { documentId: rest[1] }); }
+      return EXIT.ok;
+    }
+    case "usage": {
+      if (!rest[0]) return usage(deps, "sources usage <sourceId>");
+      const result = await client.knowledge.sourceUsage(rest[0]); emit(result ? `Cited in ${result.cited30} answers in 30 days` : "Citation figures are not available", result); return EXIT.ok;
+    }
+
     case "list": {
       if (!rest[0]) return usage(deps, "sources list <collectionId>");
       const { data } = await client.knowledge.sources(rest[0]);
@@ -239,6 +259,29 @@ export async function faqs(
 ): Promise<number> {
   const { client, rest, flags, emit, deps } = ctx;
   switch (verb) {
+    case "get": {
+      if (!rest[0]) return usage(deps, "faqs get <sourceId>");
+      const result = await client.knowledge.getFaq(rest[0]); emit(`${result.question}\n${result.answer}`, result); return EXIT.ok;
+    }
+    case "update": {
+      const question = str(flags.question); const answer = str(flags.answer);
+      if (!rest[0] || !question || !answer || !confirmed(flags)) return usage(deps, "faqs update <sourceId> --question <q> --answer <a> --yes");
+      const result = await client.knowledge.updateFaq(rest[0], { question, answer }); emit("FAQ updated", result); return EXIT.ok;
+    }
+    case "history": {
+      if (!rest[0]) return usage(deps, "faqs history <sourceId>");
+      const result = await client.knowledge.faqHistory(rest[0]); emit(table(result.data, [{ key: "id", header: "Version" }, { key: "actor", header: "Author" }, { key: "createdAt", header: "Time" }, { key: "question", header: "Question" }]), result); return EXIT.ok;
+    }
+    case "restore": {
+      if (!rest[0] || !rest[1] || !confirmed(flags)) return usage(deps, "faqs restore <sourceId> <versionId> --yes");
+      const result = await client.knowledge.restoreFaq(rest[0], rest[1]); emit("FAQ version restored", result); return EXIT.ok;
+    }
+    case "check": {
+      const question = str(flags.question);
+      if (!question) return usage(deps, "faqs check --question <q> [--collection <id>]");
+      const result = await client.knowledge.checkFaqDuplicates({ question, collectionId: str(flags.collection) || undefined }); emit(table(result.data, [{ key: "sourceId", header: "Source" }, { key: "question", header: "Question" }, { key: "similarity", header: "Similarity" }]), result); return EXIT.ok;
+    }
+
     case "add": {
       const question = str(flags.question);
       const answer = str(flags.answer);
@@ -318,7 +361,7 @@ export async function faqs(
       return EXIT.ok;
     }
     default:
-      return usage(deps, "faqs <add|add-org|import|import-org|export>");
+      return usage(deps, "faqs <get|update|history|restore|check|add|add-org|import|import-org|export>");
   }
 }
 

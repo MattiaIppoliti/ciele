@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as engine from "./engine";
 import { ACTION_HANDLERS } from "./actions";
-import type { Assistant, Flow, RuntimeEventInput } from "@agent-hub/core";
-import { buildPublicationConfig } from "@agent-hub/core";
+import type { Assistant, Flow, RuntimeEventInput, TurnTimings } from "@agent-hub/core";
+import { defaultChannelAvailability, buildPublicationConfig } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { DEMO_ORG, getMockDb } from "@agent-hub/db";
 
@@ -82,7 +82,102 @@ function doneEvent(events: RuntimeEvent[]) {
   return done;
 }
 
+describe("a Conversation a person is answering (#1082, #1083)", () => {
+  it("saves the Visitor's message and starts no turn while held, then answers again after release", async () => {
+    const spy = vi.spyOn(engine, "runAssistantChat");
+    try {
+      const { assistant, flows } = await fixture();
+      const first = await runTurn({ assistant, flows, message: "first question" });
+      const conversationId = doneEvent(first).conversationId;
+      const callsBefore = spy.mock.calls.length;
+
+      await db.takeOverConversation({
+        conversationId,
+        memberId: "u-dana",
+        memberName: "Dana",
+        now: new Date().toISOString(),
+      });
+      const held = await runTurn({ assistant, flows, conversationId, message: "are you a person?" });
+      expect(held.map((event) => event.type)).toEqual(["turn", "operator", "done"]);
+      expect(held[1]).toMatchObject({ type: "operator", state: "held", operatorName: "Dana" });
+      expect(spy.mock.calls.length).toBe(callsBefore);
+      const transcript = await db.listMessages(conversationId);
+      expect(transcript.at(-1)).toMatchObject({
+        role: "user",
+        content: [{ type: "text", text: "are you a person?" }],
+      });
+
+      await db.releaseConversation({ conversationId, memberId: "u-dana" });
+      const after = await runTurn({ assistant, flows, conversationId, message: "thanks" });
+      expect(after.some((event) => event.type === "operator")).toBe(false);
+      expect(doneEvent(after).messageId).not.toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("holds the AI back while the Visitor waits, and lets it answer once the wait runs out", async () => {
+    const { assistant, flows } = await fixture();
+    const first = await runTurn({ assistant, flows, message: "hello" });
+    const conversationId = doneEvent(first).conversationId;
+    await db.startConversationWait({
+      conversationId,
+      helpDeskId: "desk",
+      channelId: "live",
+      timeoutMinutes: 5,
+      now: new Date().toISOString(),
+    });
+    const waiting = await runTurn({ assistant, flows, conversationId, message: "anyone there?" });
+    expect(waiting[1]).toMatchObject({ type: "operator", state: "waiting", operatorName: null });
+
+    await db.startConversationWait({
+      conversationId,
+      helpDeskId: "desk",
+      channelId: "live",
+      timeoutMinutes: 5,
+      now: new Date(Date.now() - 6 * 60_000).toISOString(),
+    });
+    const expired = await runTurn({ assistant, flows, conversationId, message: "still there?" });
+    expect(expired.some((event) => event.type === "operator")).toBe(false);
+    expect(doneEvent(expired).messageId).not.toBeNull();
+  });
+});
+
 describe("streamConversationTurn", () => {
+  it("records why the turn ended on the done event and on its telemetry", async () => {
+    const { assistant, flows } = await fixture();
+    const captured: RuntimeEventInput[] = [];
+    const spyDb: Db = {
+      ...db,
+      async recordRuntimeEvent(event) {
+        captured.push(event);
+        return db.recordRuntimeEvent(event);
+      },
+    };
+    const stream = await streamConversationTurn({
+      db: spyDb,
+      assistant,
+      flows,
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "visitor",
+      subjectId: "visitor-outcome",
+      conversationId: null,
+      message: "hello there",
+      signal: new AbortController().signal,
+    });
+    const events = (await new Response(stream).text())
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as RuntimeEvent);
+    expect(doneEvent(events).outcome).toBe("answered");
+    expect(captured.find((e) => e.kind === "chat_turn")).toMatchObject({
+      status: "succeeded",
+      outcome: "answered",
+    });
+  });
+
+
   it("passes host context to Assistant turns without storing it as a user message", async () => {
     const spy = vi.spyOn(engine, "runAssistantChat");
     try {
@@ -94,6 +189,25 @@ describe("streamConversationTurn", () => {
       expect(JSON.stringify(messages)).not.toContain(context);
     } finally { spy.mockRestore(); }
   });
+  it("records action_failed when an action threw and the turn answered with the fallback", async () => {
+    const { assistant } = await fixture();
+    await db.createFlow(assistant.id, {
+      name: "Broken improvement",
+      description: "my parcel never arrived",
+      actions: ["improvement"],
+    });
+    const flows = await db.listFlows(assistant.id);
+    const broken = vi
+      .spyOn(ACTION_HANDLERS, "improvement")
+      .mockRejectedValue(new Error("provider down"));
+    try {
+      const events = await runTurn({ assistant, flows, message: "my parcel never arrived" });
+      expect(doneEvent(events).outcome).toBe("action_failed");
+    } finally {
+      broken.mockRestore();
+    }
+  });
+
   it("replays a completed turn without duplicating messages or effects", async () => {
     const { assistant } = await fixture();
     await db.createFlow(assistant.id, {
@@ -121,6 +235,9 @@ describe("streamConversationTurn", () => {
       flowName: "Idempotent improvement",
     });
     expect(doneEvent(replay).messageId).toBe(doneEvent(first).messageId);
+    expect(doneEvent(first).outcome).toBe("answered");
+    // The stored reply is re-emitted; why the original ended is not re-derived.
+    expect(doneEvent(replay).outcome).toBe("replayed");
     expect(await db.listMessages(doneEvent(first).conversationId)).toHaveLength(2);
     expect(await db.listImprovements(DEMO_ORG.id)).toHaveLength(
       before.length + 1
@@ -318,6 +435,7 @@ describe("streamConversationTurn", () => {
     });
     // Persisted like any turn.
     const done = doneEvent(events);
+    expect(done.outcome).toBe("faq");
     const messages = await db.listMessages(done.conversationId);
     expect(messages.at(-1)?.flowName).toBe("FAQ");
   });
@@ -368,6 +486,7 @@ describe("streamConversationTurn", () => {
     // flow marker naming both sides of the hop.
     expect((reply?.content.length ?? 0)).toBeGreaterThan(1);
     expect(reply?.flowName).toContain("Specialist Assistant");
+    expect(done.outcome).toBe("handed_over");
   });
 
   it("keeps only the acknowledgement when the handover target is unpublished (#314)", async () => {
@@ -632,6 +751,46 @@ describe("streamConversationTurn (AI Teammates, #768)", () => {
       .split("\n")
       .map((line) => JSON.parse(line) as RuntimeEvent);
   }
+
+  it("hands a long thread's stored summary to the turn as standing context", async () => {
+    const teammate = await teammateFixture();
+    const { conversationId } = doneEvent(await runTeammateTurn(teammate));
+    const conversation = await db.getConversation(conversationId);
+    await db.mergeConversationSessionState({
+      id: conversationId,
+      expectedVersion: conversation!.sessionVersion,
+      patch: { historySummary: { text: "We agreed to ship on Friday.", throughMessageId: "m-old" } },
+    });
+    const spy = vi.spyOn(engine, "runAssistantChat");
+    try {
+      await runTeammateTurn(teammate, { conversationId });
+      const standing = spy.mock.calls[0]![0].memoryDocuments ?? [];
+      expect(standing.join("\n")).toContain("We agreed to ship on Friday.");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("queues the summary fold once a thread is longer than the window", async () => {
+    const teammate = await teammateFixture();
+    const { conversationId } = doneEvent(await runTeammateTurn(teammate));
+    for (let i = 0; i < 40; i += 1) {
+      await db.appendMessage({
+        conversationId,
+        role: i % 2 === 0 ? "user" : "assistant",
+        content: [{ type: "text", text: `earlier ${i}` }],
+      });
+    }
+    await runTeammateTurn(teammate, { conversationId });
+    const queued = await db.claimBackgroundJobs({
+      kind: "summarize_conversation",
+      workerId: "turn-test",
+      now: new Date(Date.now() + 3_600_000).toISOString(),
+      staleBefore: new Date(0).toISOString(),
+      limit: 50,
+    });
+    expect(queued.some((job) => (job.payload as { conversationId?: string }).conversationId === conversationId)).toBe(true);
+  });
 
   it("gives the Conversation to the Teammate and to no Assistant", async () => {
     const teammate = await teammateFixture();
@@ -1246,6 +1405,76 @@ describe("chat_turn telemetry (ADR-0011)", () => {
     });
     expect(captured[0].conversationId).toBeTruthy();
     expect(captured[0].durationMs ?? -1).toBeGreaterThanOrEqual(0);
+    // Where the time went (#1112): no connections, so no model ran, but the
+    // turn read the database and sent an answer.
+    const timings = captured[0].timings as TurnTimings | null | undefined;
+    expect(timings).toMatchObject({ modelCalls: 0, modelMs: 0, queueMs: 0, overlap: 1, trigger: "live" });
+    expect(timings?.firstTokenMs).toBeTypeOf("number");
+    expect(timings?.waitMs).toBeGreaterThanOrEqual(timings?.dbMs ?? 0);
+    expect(timings?.waitMs ?? Infinity).toBeLessThanOrEqual((captured[0].durationMs ?? 0) + 5);
+  });
+
+  it("dates the first token from new output, not from replayed gate outcomes (#1112)", async () => {
+    const spy = vi.spyOn(engine, "runAssistantChat").mockImplementation(async (options) => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      const part: ChatReplyPart = { type: "text", action: "custom_message", text: "Fresh answer" };
+      options.emit?.({ type: "part", part });
+      return { parts: [part], effects: [], flowId: null, flowName: "Default behavior", usage: [] };
+    });
+    try {
+      const { assistant, flows } = await fixture();
+      const first = await runTurn({ assistant, flows, message: "first" });
+      const conversationId = doneEvent(first).conversationId;
+      await db.appendMessage({
+        conversationId,
+        requestId: "review-first-token",
+        role: "assistant",
+        content: [{ type: "text", action: "custom_message", text: "Approved while you were away" }],
+      });
+      const captured: RuntimeEventInput[] = [];
+      const stream = await streamConversationTurn({
+        db: captureDb(captured),
+        assistant,
+        flows,
+        connections: [],
+        organizationId: DEMO_ORG.id,
+        subjectType: "visitor",
+        subjectId: "visitor-1",
+        conversationId,
+        message: "second",
+        signal: new AbortController().signal,
+      });
+      const text = await new Response(stream).text();
+      expect(text).toContain("Approved while you were away");
+      const timings = captured[0]?.timings as TurnTimings | undefined;
+      // The replayed part went out at once; the first new part 60 ms later.
+      expect(timings?.firstTokenMs ?? 0).toBeGreaterThanOrEqual(50);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it.each([
+    [{}, "live"],
+    [{ turnTrigger: "slack" as const }, "slack"],
+    [{ usageAttribution: { surface: "routine" as const }, turnTrigger: "api" as const }, "routine"],
+  ])("names what started the turn in its timings (%j)", async (extra, trigger) => {
+    const { assistant, flows } = await fixture();
+    const captured: RuntimeEventInput[] = [];
+    const stream = await streamConversationTurn({
+      db: captureDb(captured),
+      assistant,
+      flows,
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "visitor",
+      subjectId: "visitor-1",
+      message: "hello",
+      signal: new AbortController().signal,
+      ...extra,
+    });
+    await new Response(stream).text();
+    expect((captured[0]?.timings as TurnTimings | undefined)?.trigger).toBe(trigger);
   });
 
   it("attributes the preview surface when a preview key is resolved", async () => {
@@ -2050,5 +2279,34 @@ describe("concurrency admission", () => {
     const events = await verbatimTurn(watchedDb, "visitor-slot-none");
     expect(events.at(-1)?.type).toBe("done");
     expect(acquired).toBe(0);
+  });
+});
+
+
+describe("live Business hours in published Conversation Turns", () => {
+  it("applies a holiday edit without changing the Publication", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-06T12:00:00Z"));
+    try {
+      const { assistant } = await fixture();
+      const hours = defaultChannelAvailability().hours;
+      hours.monday = { enabled: true, ranges: [{ id: "shift", opensHour: 9, opensMinute: 0, closesHour: 17, closesMinute: 0 }] };
+      const schedule = await db.saveBusinessHours(DEMO_ORG.id, null, { name: "Live calendar", timezone: "UTC", hours, holidays: [], isDefault: false });
+      const flow = await db.createFlow(assistant.id, { name: "Office opening", description: "office opening", actions: ["custom_message"], customMessage: "The office is open", conditions: [{ id: "gate", kind: "schedule", mode: "business_hours", businessHoursId: schedule.id, direction: "during" }] });
+      const publication = await db.createPublication(assistant.id, buildPublicationConfig(assistant, [flow], []));
+      const snapshotFlows = publication.config.flows;
+      const first = await runTurn({ assistant, flows: snapshotFlows, message: "office opening", subjectId: "hours-before" });
+      expect(JSON.stringify(first)).toContain("The office is open");
+      const origin = await db.createAssistant(DEMO_ORG.id, { title: "Hours handover" });
+      const handover = await db.createFlow(origin.id, { name: "Office", description: "office opening", actions: ["handover"], actionSettings: { handover: { assistantId: assistant.id } } });
+      const firstHandover = await runTurn({ assistant: origin, flows: [handover], message: "office opening", subjectId: "handover-before" });
+      expect(JSON.stringify(firstHandover)).toContain("The office is open");
+      await db.saveBusinessHours(DEMO_ORG.id, schedule.id, { ...schedule, holidays: [{ id: "closure", name: "Closure", startDate: "2026-07-06", endDate: "2026-07-06", yearly: false }] });
+      const second = await runTurn({ assistant, flows: snapshotFlows, message: "office opening", subjectId: "hours-after" });
+      expect(JSON.stringify(second)).not.toContain("The office is open");
+      const secondHandover = await runTurn({ assistant: origin, flows: [handover], message: "office opening", subjectId: "handover-after" });
+      expect(JSON.stringify(secondHandover)).not.toContain("The office is open");
+      expect((await db.getLatestPublication(assistant.id))?.id).toBe(publication.id);
+    } finally { vi.useRealTimers(); }
   });
 });

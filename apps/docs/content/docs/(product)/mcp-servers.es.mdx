@@ -1,0 +1,97 @@
+---
+title: Servidores MCP
+description: Conecta herramientas externas para los compañeros de equipo y los asistentes publicados.
+---
+
+Un **MCP Server Connection** conecta tu organización a un servidor externo del
+Model Context Protocol. El servidor proporciona herramientas. Ciele controla qué
+herramientas pueden ejecutarse.
+
+## Registrar un servidor
+
+Un Owner o un Admin abre **Settings → MCP servers**, selecciona **Add server** e
+introduce un nombre y una URL HTTP streamable. Un token de portador es opcional.
+Ciele sella el token en un almacén de credenciales independiente. Nunca devuelve
+el token en la configuración de conexión ni en una instantánea de Publication.
+
+Ciele comprueba la URL y detecta los nombres de las herramientas, sus
+descripciones y los esquemas de entrada. En producción, se requieren endpoints
+HTTPS públicos. Se rechazan las direcciones privadas y las redirecciones. Ciele
+negocia tanto con los protocolos modernos como con los heredados.
+
+Cada nueva herramienta se inicia **Off**. La anotación de solo lectura de un
+servidor es una indicación. No concede ningún permiso.
+
+## Revisa las políticas de las herramientas
+
+Cada herramienta tiene una política:
+
+| Policy | Behavior |
+| --- | --- |
+| Run freely | Ciele puede llamar a la herramienta sin la aprobación de un Member. |
+| Ask first | Un compañero de equipo te muestra una tarjeta de aprobación con la herramienta y los argumentos redactados antes de llamarla. |
+| Off | Ciele no ofrece la herramienta. |
+
+Al aprobar una llamada, la acción guardada se ejecuta una vez a través de la
+solicitud de aprobación de la acción. Si la rechazas, queda como rechazada.
+Modificar una política es una operación de configuración con importantes
+repercusiones.
+
+**Refresh** detecta las definiciones actuales. Se asocia una política al hash de
+la definición que ha revisado el administrador. Cuando cambia una descripción,
+un esquema u otro campo de definición, la herramienta muestra **Changed** y se
+suspende. Revisa la definición actual y vuelve a establecer su política. Las
+herramientas eliminadas siguen visibles para su revisión y no se pueden
+ejecutar.
+
+## Habilita servidores para un compañero de equipo
+
+En la configuración de ejecución del Teammate, un Owner o un Admin elige los
+servidores MCP registrados. El harness nativo de Ciele ofrece las herramientas
+habilitadas bajo un prefijo de servidor, de modo que los nombres de las
+herramientas del servidor no puedan entrar en conflicto. Un Teammate no puede
+registrar su propio servidor ni cambiar una política.
+
+Ask first espera al Member que realiza la invocación, a un Owner o a un Admin.
+La llamada utiliza los argumentos guardados después de la aprobación. Antes de
+su ejecución, se vuelven a comprobar su política y el acceso del Teammate.
+
+## Habilitar herramientas para un asistente
+
+Abre el **Tools & Skills → MCP servers** del asistente. Elige sus herramientas
+Run freely y publícalas. Las herramientas de tipo Ask first no pueden ejecutarse
+para los Visitors. La acción Publish rechaza una selección que requiere
+aprobación, está deshabilitada o tiene un hash de definición antiguo.
+
+Una Publication almacena únicamente los ID de los servidores, los nombres de las
+herramientas y los hashes de las definiciones. Ciele lee la credencial en el
+servidor cuando se ejecuta una llamada. En el momento del turno, una herramienta
+debe seguir teniendo la política Run freely y el mismo hash de definición. De lo
+contrario, Ciele la omite y genera una alerta pidiéndote que la revises y la
+vuelvas a publicar. La vista previa aplica las mismas reglas.
+
+Un turno de Visitor realiza como máximo cinco llamadas MCP. Los resultados de
+las herramientas son datos externos. No son Sources de conocimiento y nunca se
+añaden como citas.
+
+## Inspecciona las llamadas y los errores
+
+El Turn Trace y el Inbox muestran el servidor, la herramienta, los argumentos
+anonimizados, el estado y el resumen de resultados. Los resultados remotos pasan
+por la barrera de contenido no de confianza de Ciele. Los resultados de gran
+tamaño permanecen en un almacén acotado para el turno. El modelo lee ventanas
+adicionales con un identificador de resultado y recibe la longitud total.
+
+Un resultado de Ask first aprobado se guarda junto con su Conversation o
+Channel. El siguiente turno recibe una primera ventana protegida y puede leer el
+resto mediante el identificador (handle) sin repetir la llamada externa. Otras
+Conversations no pueden leer ese resultado.
+
+Cada intento de conexión y cada llamada a una herramienta tiene un límite de
+tiempo total de 30 segundos. Las respuestas tienen un límite de un mebibyte. Un
+fallo en la conexión genera una alerta. La siguiente conexión correcta la
+elimina.
+
+Elimina un servidor para dejar de ofrecer sus herramientas. A continuación, las
+selecciones de asistentes existentes requieren una revisión antes de volver a
+publicarse.

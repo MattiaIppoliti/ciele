@@ -1,15 +1,22 @@
 import type { ApiV1Domain } from "@/lib/api-v1/meta";
 import { ScanTextIcon } from "@/components/ui/icons/scan-text";
 import {
+  CalendarClock,
+  ScrollText,
   Building2,
   CreditCard,
   Fingerprint,
+  Database,
   Gauge,
   Globe,
   KeyRound,
+  MessageSquareText,
   Palette,
   Sparkles,
+  ShieldCheck,
   Users,
+  Webhook,
+  Plug,
   type LucideIcon,
   BellDot,
 } from "lucide-react";
@@ -25,6 +32,7 @@ import {
  *
  * There are **two scopes**, and the split is a permission boundary, not a
  * grouping: the Organization tabs configure the tenant and are owner/admin only,
+ * except the two an Editor may open (Members to read, Business hours to edit),
  * while the personal tabs belong to the signed-in person and every role may open
  * them. Each scope's rail ends with a link into the other one.
  */
@@ -33,8 +41,6 @@ export interface SettingsTab {
   slug: string;
   href: string;
   icon: LucideIcon;
-  /** Short line under the label in the rail. */
-  hint?: string;
 }
 
 export type SettingsScope = "organization" | "personal";
@@ -48,6 +54,18 @@ export const ORG_SETTINGS_TABS: SettingsTab[] = [
     icon: Building2,
   },
   { label: "Members", slug: "members", href: "/settings/members", icon: Users },
+  { label: "Roles", slug: "roles", href: "/settings/roles", icon: ShieldCheck },
+  { label: "Audit log", slug: "audit-log", href: "/settings/audit-log", icon: ScrollText },
+  { label: "Data retention", slug: "data-retention", href: "/settings/data-retention", icon: Database },
+  { label: "Business hours", slug: "business-hours", href: "/settings/business-hours", icon: CalendarClock },
+  { label: "MCP servers", slug: "mcp-servers", href: "/settings/mcp-servers", icon: Plug },
+  { label: "Webhooks", slug: "webhooks", href: "/settings/webhooks", icon: Webhook },
+  {
+    label: "Quick Texts",
+    slug: "quick-texts",
+    href: "/settings/quick-texts",
+    icon: MessageSquareText,
+  },
   {
     label: "AI Provider",
     slug: "ai",
@@ -88,7 +106,6 @@ export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
     slug: "theme",
     href: "/settings/theme",
     icon: Palette,
-    hint: "Appearance, Midnight and Mist Blue",
   },
   {
     // Personal scope, not organization: the document is the Member's own and
@@ -97,14 +114,12 @@ export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
     slug: "memory",
     href: "/settings/memory",
     icon: ScanTextIcon,
-    hint: "What your AI teammates remember about you",
   },
   {
     label: "Notifications",
     slug: "notifications",
     href: "/settings/notifications",
     icon: BellDot,
-    hint: "Which notifications also arrive by email",
   },
 ];
 
@@ -125,6 +140,14 @@ export const PERSONAL_SETTINGS_HOME = PERSONAL_SETTINGS_TABS[0].href;
 export const SETTINGS_API_DOMAINS: Record<string, ApiV1Domain[]> = {
   general: ["organization"],
   members: ["members"],
+  roles: ["roles"],
+  "quick-texts": ["quick-texts"],
+  webhooks: ["webhooks"],
+  "audit-log": ["audit-log"],
+  // The retention windows are fields of the Organization, written by the same
+  // `organization update` as its name.
+  "data-retention": ["organization"],
+  "business-hours": ["business-hours"],
   ai: ["providers", "memories"],
   "api-keys": ["api-keys"],
   usage: ["usage"],
@@ -181,9 +204,33 @@ export function settingsScopeFromPath(pathname: string): SettingsScope {
   return slug && PERSONAL_SLUGS.has(slug) ? "personal" : "organization";
 }
 
-/** The tabs one scope's rail lists. */
-export function tabsForScope(scope: SettingsScope): SettingsTab[] {
-  return scope === "personal" ? PERSONAL_SETTINGS_TABS : ORG_SETTINGS_TABS;
+/**
+ * What the signed-in Member may open in the Organization scope, from the
+ * settings layout's session. Each flag mirrors the check its route enforces:
+ * `manageOrg` every tab, `viewMembers` the Members roster (Editors read it),
+ * `editBusinessHours` Business hours.
+ */
+export interface SettingsAccess {
+  manageOrg: boolean;
+  viewMembers: boolean;
+  editBusinessHours: boolean;
+}
+
+/**
+ * The tabs one scope's rail lists. `access` is null or absent while the role
+ * is still being read, and then the Organization rail lists every tab: the
+ * routes enforce their own access, and an empty rail for an Owner on the first
+ * render is what crashed `/settings/members`. A role that may open nothing in
+ * the scope gets an empty list, which the rail must render.
+ */
+export function tabsForScope(scope: SettingsScope, access?: SettingsAccess | null): SettingsTab[] {
+  if (scope === "personal") return PERSONAL_SETTINGS_TABS;
+  if (!access || access.manageOrg) return ORG_SETTINGS_TABS;
+  return ORG_SETTINGS_TABS.filter(
+    (tab) =>
+      (tab.slug === "members" && access.viewMembers) ||
+      (tab.slug === "business-hours" && access.editBusinessHours),
+  );
 }
 
 /** Heading over a scope's rail. */
@@ -196,20 +243,18 @@ export function scopeTitle(scope: SettingsScope): string {
  * always reachable; the Organization link is only offered to roles that can
  * change something there (and the routes redirect anyway).
  */
-export function crossScopeLink(scope: SettingsScope): SettingsTab {
+export function crossScopeLink(scope: SettingsScope, access?: SettingsAccess | null): SettingsTab {
   return scope === "personal"
     ? {
         label: "Organization",
         slug: "organization-scope",
-        href: SETTINGS_HOME,
+        href: tabsForScope("organization", access)[0]?.href ?? SETTINGS_HOME,
         icon: Building2,
-        hint: "Workspace settings",
       }
     : {
         label: "Personal settings",
         slug: "personal-scope",
         href: PERSONAL_SETTINGS_HOME,
         icon: Fingerprint,
-        hint: "Your profile",
       };
 }

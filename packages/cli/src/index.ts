@@ -1,3 +1,4 @@
+import { exportSchedules } from "./commands/exports.ts";
 import { createInterface } from "node:readline/promises";
 import {
   CieleApiError,
@@ -21,12 +22,15 @@ import { teammates } from "./commands/teammates.ts";
 import { projects } from "./commands/projects.ts";
 import { tasks } from "./commands/tasks.ts";
 import { channels } from "./commands/channels.ts";
-import { alerts, goals, skills } from "./commands/configuration.ts";
-import { apiKeys, invites, members, organization } from "./commands/organization.ts";
+import { businessHours } from "./commands/business-hours.ts";
+import { webhooks } from "./commands/webhooks.ts";
+import { alerts, goals, quickTexts, skills } from "./commands/configuration.ts";
+import { apiKeys, invites, members, organization, roles } from "./commands/organization.ts";
 import { apiIntegrations, providers } from "./commands/integrations.ts";
 import { applications } from "./commands/applications.ts";
 import { reviews } from "./commands/reviews.ts";
 import { usage } from "./commands/usage.ts";
+import { auditLog } from "./commands/audit-log.ts";
 import { str, type CommandContext, type FlagValue } from "./commands/shared.ts";
 
 /** noun → command-group handler; each group owns its verbs (#628). */
@@ -35,6 +39,7 @@ const COMMAND_GROUPS: Record<
   (verb: string | undefined, ctx: CommandContext) => Promise<number>
 > = {
   assistants,
+  "exports": exportSchedules,
   flows,
   collections,
   sources,
@@ -52,10 +57,14 @@ const COMMAND_GROUPS: Record<
   projects,
   tasks,
   skills,
+  "quick-texts": quickTexts,
+  "business-hours": businessHours,
+  webhooks,
   goals,
   alerts,
   organization,
   members,
+  roles,
   invites,
   "api-keys": apiKeys,
   "api-integrations": apiIntegrations,
@@ -63,6 +72,7 @@ const COMMAND_GROUPS: Record<
   providers,
   reviews,
   usage,
+  "audit-log": auditLog,
 };
 
 /**
@@ -143,7 +153,7 @@ Usage: ciele <command> [options]
 Commands:
   login [--key <ciele_sk_…>] [--base-url <url>]   Store a key (validated first)
   logout                                          Forget the stored key
-  whoami                                          The key's org, role and id
+  whoami                                          The key's org, role, id and capabilities
   doctor                                          Verify deployment, API version and key
 
   assistants list [--limit <n>] [--all]
@@ -152,6 +162,12 @@ Commands:
   assistants update <id> [--file patch.json|--title|--nickname|--description|--answering-style]
   assistants delete <id> --yes
   assistants ask <id> "<question>" [--conversation <id>]  Published answer + Sources
+  assistants access <id>
+  exports list|create|update|pause|resume|delete
+  assistants export <id>
+  assistants import <file>
+  assistants set-access <id> <userId> --role denied|viewer|editor|admin --yes
+  assistants clear-access <id> <userId> --yes
   assistants get-skills <id>
   assistants set-skills <id> --ids <skillId,…>
 
@@ -165,6 +181,9 @@ Commands:
   collections list <assistantId>
   sources list <collectionId>
   sources list-org [--kinds <a,b>] [--status <s>] [--assistant <id>] [--q <text>] [--page] [--pageSize]
+  sources documents <sourceId> [--trust human-reviewed|machine-confirmed|unverified]
+  sources review|remove-review <sourceId> <documentId> --yes
+  sources usage <sourceId>
   sources get <id>                                Poll status until it settles
   sources add-text <collectionId> (--text <t> | --file <path>) --assistants <a,b,…> [--name]
   sources add-url <collectionId> --url <url> --assistants <a,b,…>
@@ -173,6 +192,10 @@ Commands:
   sources direct-access <id> <on|off> --assistant <assistantId>
   sources delete <id> --yes
   sources recrawl <id>
+  faqs get|history <sourceId>
+  faqs update <sourceId> --question <q> --answer <a> --yes
+  faqs restore <sourceId> <versionId> --yes
+  faqs check --question <q> [--collection <id>]
   faqs add <collectionId> --question <q> --answer <a> --assistants <a,b,…>
   faqs import <collectionId> --file <faqs.csv> --assistants <a,b,…>
   faqs add-org --question <q> --answer <a> --assistants <a,b,…>
@@ -193,9 +216,9 @@ Commands:
   conversations pin|unpin|feedback|delete <id> [...]
   messages feedback <id> --value <-1|0|1>
 
-  improvements list [--limit] [--cursor]
+  improvements list [--limit] [--cursor] [--search] [--status] [--priority] [--assignee] [--assistant] [--project]
   improvements get <id>
-  improvements update <id> [--status|--priority|--assignee|--due|--title|--description|--tags]
+  improvements update <id> [--status|--priority|--assignee|--project|--due|--title|--description|--tags]
 
   memories status|enable|disable|subjects
   memories list <subjectId>
@@ -212,7 +235,7 @@ Commands:
   help-desks list|get|create|update|delete
   help-desks add-channel|update-channel|delete-channel <deskId> [...]
   help-desks reorder-channels <deskId> --ids <id,id,…>
-  help-desks connect-servicenow <deskId> --file <credentials.json>
+  help-desks set-ticketing <deskId> --connection <connectionId> [--table <table>] [--requester-field <column>]
   help-desks disconnect-ticketing <deskId> --yes
 
   teammates list|get|create|update|delete
@@ -230,11 +253,17 @@ Commands:
   channels remove-member|remove-teammate <id> <id>
 
   skills list|create|update|delete
+  quick-texts list|create|update|delete
+  business-hours list|create|update|delete|timezone
+  webhooks list|create|update|pause|resume|delete|deliveries|test
   goals list|create|update|delete <assistantId> [...]
   alerts list|resolve [<id>]
 
   organization get|update
   members list|set-role|remove
+  members assistants <userId>
+  members set-assistants <userId> --scope all|selected [--assistants <id>:<role>,…]
+  roles list|get|create|update|reset|delete|set-defaults
   invites list|create|revoke
   api-keys list|create|revoke
   api-integrations get|set|delete <assistantId>
@@ -247,6 +276,10 @@ Commands:
 
   usage meters
   usage spenders [--from <iso>] [--to <iso>]
+
+  audit-log list [--action <op,op>] [--actor <userId|system>] [--domain <d>]
+                 [--from <date>] [--to <date>] [--oldest-first] [--limit <n>]
+                 [--before <iso> --before-id <id>]
 
 Global options:
   --version            Print the CLI version
@@ -330,10 +363,11 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
     if (noun === "whoami") {
       const identity = await client().whoami();
       emit(
-        table([identity], [
+        table([{ ...identity, capabilityCount: identity.capabilities?.length ?? "-" }], [
           { key: "organizationId", header: "Organization" },
           { key: "role", header: "Role" },
           { key: "keyId", header: "Key" },
+          { key: "capabilityCount", header: "Capabilities" },
         ]),
         identity
       );

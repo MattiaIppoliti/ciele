@@ -38,7 +38,8 @@ export const INBOX_EXPORT_MAX_CONVERSATIONS = 500;
 
 /** One `Messages[]` item, exactly the reference's five fields. */
 export interface ConversationExportMessage {
-  Sender: "User" | "Assistant";
+  /** `Operator` is a Member who took the Conversation over (#1082); `System` a line about it. */
+  Sender: MessageSender;
   Timestamp: string;
   Content: string;
   /** The reference's string form, or null when the answer was never rated. */
@@ -124,6 +125,31 @@ function str(value: string | number | null | undefined): string {
  * A narration line that already ends in its own ellipsis has it trimmed first, so
  * the joiner reads the way the reference's does rather than as `…...`.
  */
+export type MessageSender = "User" | "Assistant" | "Operator" | "System";
+
+/** Who wrote a message, as the export and the printed transcript label it. */
+export function messageSender(role: StoredMessage["role"]): MessageSender {
+  switch (role) {
+    case "user":
+      return "User";
+    case "operator":
+      return "Operator";
+    case "system":
+      return "System";
+    default:
+      return "Assistant";
+  }
+}
+
+/**
+ * The body of one message in an export: an operator's reply is prefixed with
+ * the Member's name, so a reader knows which person answered.
+ */
+export function exportedMessageContent(message: Pick<StoredMessage, "role" | "content" | "authorName">): string {
+  const body = messageContent(message.content ?? []);
+  return message.role === "operator" && message.authorName ? `${message.authorName}: ${body}` : body;
+}
+
 export function messageContent(content: readonly unknown[]): string {
   const parts = content as ChatReplyPart[];
   const chunks: string[] = [];
@@ -226,9 +252,9 @@ export function conversationExportRows(
         meta.externalUserDataSourceNames ?? []
       ).join(", "),
       Messages: messages.map((message) => ({
-        Sender: message.role === "user" ? ("User" as const) : ("Assistant" as const),
+        Sender: messageSender(message.role),
         Timestamp: message.createdAt,
-        Content: messageContent(message.content ?? []),
+        Content: exportedMessageContent(message),
         Feedback: feedbackLabel(message.feedback),
         AgenticTrace:
           message.role === "assistant"

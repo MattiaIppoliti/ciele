@@ -1,12 +1,13 @@
 import { CreateTeammatePage } from "@/components/teammates/teammates-client";
 import { requirePageMember } from "@/lib/authz";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { notFound } from "next/navigation";
 import { loadScopeSources } from "@/lib/teammates/settings-props";
 
 export default async function NewTeammatePage() {
-  const { organizationId, role, db } = await requirePageMember();
-  if (!canEdit(role)) notFound();
+  const { organizationId, role, db, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
+  if (!can(access, "teammates:edit")) notFound();
   const [collections, library, projects] = await Promise.all([
     db.listOrgCollections(organizationId),
     loadScopeSources(db, organizationId),

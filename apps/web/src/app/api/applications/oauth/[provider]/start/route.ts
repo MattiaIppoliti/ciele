@@ -38,7 +38,7 @@ async function beginOAuth(input: {
   }
   const session = await getSession();
   if (!session?.organization) return new Response("Unauthorized", { status: 401 });
-  if (!canAuthorizeApplicationProvider(provider, session.role)) {
+  if (!canAuthorizeApplicationProvider(provider, session)) {
     return new Response("Forbidden", { status: 403 });
   }
   // Widening a grant is a re-consent of an existing row; a fresh connection
@@ -62,7 +62,7 @@ async function beginOAuth(input: {
         !canReconnectApplicationConnection(
           connection,
           session.userId,
-          session.role
+          session
         )
       ) {
         return new Response("Application Connection not found", { status: 404 });

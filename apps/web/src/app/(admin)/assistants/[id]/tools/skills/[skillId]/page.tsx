@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { SkillEditor } from "@/components/assistant/skill-editor";
-import { requirePageMember } from "@/lib/authz";
+import { requirePageMember, requireAssistantPageAccess } from "@/lib/authz";
 import { getAssistantCached } from "../../../get-assistant";
 
 /**
@@ -15,9 +15,10 @@ export default async function SkillPage({
   params: Promise<{ id: string; skillId: string }>;
 }) {
   const { id, skillId } = await params;
-  const { db, role } = await requirePageMember();
+  const { db } = await requirePageMember();
+  const { access } = await requireAssistantPageAccess(id);
   // The list offers Edit only to those who may edit; a typed URL gets the same answer.
-  if (!canEdit(role)) redirect(`/assistants/${id}/tools`);
+  if (!can(access, "skills:edit")) redirect(`/assistants/${id}/tools`);
   const assistant = await getAssistantCached(id);
   if (!assistant) notFound();
   const skill = await db.table("skills").get(skillId);

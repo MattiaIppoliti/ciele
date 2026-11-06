@@ -62,7 +62,7 @@ export const goalExpectationsSchema = z.object({
 
 export const listSkillsOp = defineOperation({
   name: "skills.list",
-  capability: "member",
+  capability: "skills:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -71,7 +71,7 @@ export const listSkillsOp = defineOperation({
 
 export const createSkillOp = defineOperation({
   name: "skills.create",
-  capability: "edit",
+  capability: "skills:edit",
   effect: "write",
   input: skillInputSchema.extend({ attachToAssistantId: idSchema.optional() }),
   entities: ({ attachToAssistantId }) =>
@@ -96,7 +96,7 @@ export const createSkillOp = defineOperation({
 
 export const updateSkillOp = defineOperation({
   name: "skills.update",
-  capability: "edit",
+  capability: "skills:edit",
   effect: "write",
   input: z.object({ id: idSchema, patch: skillPatchSchema }),
   entities: () => [{ kind: "assistantList" as const }],
@@ -108,7 +108,7 @@ export const updateSkillOp = defineOperation({
 
 export const deleteSkillOp = defineOperation({
   name: "skills.delete",
-  capability: "edit",
+  capability: "skills:edit",
   effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "assistantList" as const }],
@@ -120,7 +120,7 @@ export const deleteSkillOp = defineOperation({
 
 export const getAssistantSkillsOp = defineOperation({
   name: "assistants.skills.get",
-  capability: "member",
+  capability: "assistants:view",
   effect: "read",
   input: z.object({ assistantId: idSchema }),
   entities: () => [],
@@ -132,7 +132,7 @@ export const getAssistantSkillsOp = defineOperation({
 
 export const setAssistantSkillsOp = defineOperation({
   name: "assistants.skills.set",
-  capability: "edit",
+  capability: "assistants:edit",
   effect: "write",
   input: z.object({
     assistantId: idSchema,
@@ -161,7 +161,7 @@ export const setAssistantSkillsOp = defineOperation({
 
 export const listAssistantGoalsOp = defineOperation({
   name: "goals.list",
-  capability: "member",
+  capability: "goals:view",
   effect: "read",
   input: z.object({ assistantId: idSchema }),
   entities: () => [],
@@ -173,7 +173,7 @@ export const listAssistantGoalsOp = defineOperation({
 
 export const createAssistantGoalOp = defineOperation({
   name: "goals.create",
-  capability: "edit",
+  capability: "goals:edit",
   effect: "write",
   input: z.object({
     assistantId: idSchema,
@@ -192,7 +192,7 @@ export const createAssistantGoalOp = defineOperation({
 
 export const updateAssistantGoalOp = defineOperation({
   name: "goals.update",
-  capability: "edit",
+  capability: "goals:edit",
   effect: "write",
   input: z.object({
     assistantId: idSchema,
@@ -217,7 +217,7 @@ export const updateAssistantGoalOp = defineOperation({
 
 export const deleteAssistantGoalOp = defineOperation({
   name: "goals.delete",
-  capability: "edit",
+  capability: "goals:edit",
   effect: "consequential",
   input: z.object({ assistantId: idSchema, goalId: idSchema }),
   entities: ({ assistantId }) => [{ kind: "assistantEditor" as const, assistantId }],
@@ -229,7 +229,7 @@ export const deleteAssistantGoalOp = defineOperation({
 
 export const listAlertsOp = defineOperation({
   name: "alerts.list",
-  capability: "member",
+  capability: "alerts:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -238,7 +238,7 @@ export const listAlertsOp = defineOperation({
 
 export const resolveAlertOp = defineOperation({
   name: "alerts.resolve",
-  capability: "edit",
+  capability: "alerts:edit",
   effect: "write",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "alerts" as const }],
@@ -252,7 +252,7 @@ export const resolveAlertOp = defineOperation({
 /** Only operator-editable fields; timestamps and source identity remain system facts. */
 export const updateAlertOp = defineOperation({
   name: "alerts.update",
-  capability: "edit",
+  capability: "alerts:edit",
   effect: "write",
   input: z.object({ id: idSchema, patch: z.object({
     type: z.enum(["integration", "crawl", "provider", "ingestion", "knowledge", "system"]).optional(),

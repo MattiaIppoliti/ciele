@@ -340,7 +340,9 @@ export function TabsList({
         id={viewportId}
         layoutScroll
         className={cn(
-          "w-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          // Not `[scrollbar-width:none]`: that utility is layered, so the
+          // unlayered `* { scrollbar-width: thin }` in globals.css beats it.
+          "w-full min-w-0 overflow-x-auto no-scrollbar",
           edges.overflow && "[border-radius:inherit]",
         )}
         style={

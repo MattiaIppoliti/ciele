@@ -7,10 +7,12 @@ import { createServer } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { IMPROVEMENT_STATUS_VALUES, WORK_COLORS, roleAllowsCapability, type Role } from "@agent-hub/core";
+import { IMPROVEMENT_STATUS_VALUES, WORK_COLORS, capabilityTier, roleAllowsCapability, type CapabilityTier, type Role } from "@agent-hub/core";
 import { createDb, createOrgPinnedDb, type Db } from "@agent-hub/db";
 import { createPgliteSupabaseClient, createSchemaLoadedPglite } from "@agent-hub/db/testing";
-import { listAlertsOp, resolveAlertOp, updateAlertOp } from "./configuration";
+import { listAlertsOp, listSkillsOp, resolveAlertOp, updateAlertOp } from "./configuration";
+import { listHelpDesksOp } from "./help-desks";
+import { listInvitesOp } from "./organization";
 import type { Operation, OperationContext, OperationPorts } from "./operation";
 import { operationsByName } from "./platform-actions";
 import {
@@ -58,7 +60,7 @@ let pg: PGlite;
 let socket: PGLiteSocketServer;
 let service: ChildProcess | null = null;
 let serviceUrl: string;
-let serviceOperations: { name: string; role: Role }[];
+let serviceOperations: { name: string; role: Role; capability?: string }[];
 let organizationId: string;
 let foreignOrganizationId: string;
 let crowdedOrganizationId: string;
@@ -69,6 +71,10 @@ let outsider: string;
 const KEY_VALID = `ciele_sk_${randomBytes(18).toString("base64url")}`;
 const KEY_REVOKED = `ciele_sk_${randomBytes(18).toString("base64url")}`;
 const KEY_ORPHANED = `ciele_sk_${randomBytes(18).toString("base64url")}`;
+const KEY_ADMIN = `ciele_sk_${randomBytes(18).toString("base64url")}`;
+// An admin key whose creator is an editor now: it acts as an editor.
+const KEY_DEMOTED = `ciele_sk_${randomBytes(18).toString("base64url")}`;
+let admin: { id: string; email: string };
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 /** A user with no seat anywhere: a key they minted outlived their membership. */
@@ -297,7 +303,13 @@ const PORTS: Record<string, PortCases> = {
     inputs: [{ limit: 1 }, { limit: 100 }, { limit: 0 }, { limit: 101 }, { limit: 1.5 }, {},
       ...IMPROVEMENT_STATUS_VALUES.map((status) => ({ limit: 1, status })),
       { limit: 1, status: null }, { limit: 1, status: "other" }, { limit: 1, cursor: null },
-      { limit: 1, cursor: "" }, { limit: 1, cursor: 1 }, ...NOT_OBJECTS],
+      { limit: 1, cursor: "" }, { limit: 1, cursor: 1 },
+      // The board's storage filters (`improvementQuerySchema`).
+      { limit: 1, search: "answer" }, { limit: 1, search: "  " }, { limit: 1, search: "x".repeat(301) },
+      { limit: 1, search: null }, { limit: 1, priority: "high" }, { limit: 1, priority: "urgent" },
+      { limit: 1, priority: null }, { limit: 1, assigneeId: null }, { limit: 1, assigneeId: "" },
+      { limit: 1, projectId: "missing" }, { limit: 1, projectId: "" }, { limit: 1, assistantId: "missing" },
+      { limit: 1, assistantId: 1 }, ...NOT_OBJECTS],
   }),
   "improvements.fix.propose": port(proposeSuggestedFixOp, {
     foreign: { input: { improvementId: "imp-foreign", question: "Q", answer: "A" } },
@@ -458,17 +470,44 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
     }
 
     outsider = await seedOutsider();
-    for (const [id, secret, createdBy, revoked] of [
-      ["00000000-0000-4000-8000-000000000001", KEY_VALID, editor.id, false],
-      ["00000000-0000-4000-8000-000000000002", KEY_REVOKED, editor.id, true],
-      ["00000000-0000-4000-8000-000000000003", KEY_ORPHANED, outsider, false],
+    admin = await seedUser("admin@parity-test.edu", "admin");
+    for (const [id, secret, createdBy, revoked, role] of [
+      ["00000000-0000-4000-8000-000000000001", KEY_VALID, editor.id, false, "viewer"],
+      ["00000000-0000-4000-8000-000000000002", KEY_REVOKED, editor.id, true, "viewer"],
+      ["00000000-0000-4000-8000-000000000003", KEY_ORPHANED, outsider, false, "viewer"],
+      ["00000000-0000-4000-8000-000000000004", KEY_ADMIN, admin.id, false, "admin"],
+      ["00000000-0000-4000-8000-000000000005", KEY_DEMOTED, editor.id, false, "admin"],
     ] as const) {
       await pg.query(
         `insert into public.organization_api_keys (id, organization_id, name, secret_hash, secret_hint, role, created_by, revoked_at)
-         values ($1, $2, 'parity', $3, 'ciele_sk_xxxx', 'viewer', $4, case when $5 then now() end)`,
-        [id, organizationId, sha256(secret), createdBy, revoked]
+         values ($1, $2, 'parity', $3, 'ciele_sk_xxxx', $6, $4, case when $5 then now() end)`,
+        [id, organizationId, sha256(secret), createdBy, revoked, role]
       );
     }
+    await pg.query(
+      `insert into public.skills (id, organization_id, name, description, prompt, created_at) values
+       ('sk-b', $1, 'Second', 'd2', 'p2', timestamptz '2026-10-20 12:00:00+00'),
+       ('sk-a', $1, 'First', 'd1', 'p1', timestamptz '2026-10-19 12:00:00+00'),
+       ('sk-foreign', $2, 'Foreign', '', '', now())`,
+      [organizationId, foreignOrganizationId]
+    );
+    await pg.query(
+      `insert into public.help_desks (id, organization_id, name, description, auto_generate_improvements, ticketing_integration) values
+       ('hd-secret', $1, 'Billing', 'Money', true,
+         '{"id":"ti-1","platform":"servicenow","name":"SN","connectedAt":"2026-10-01T00:00:00Z","config":{"clientSecret":"s3cret","url":"https://x"}}'),
+       ('hd-partial', $1, 'Account', '', false, '{"platform":"zendesk","config":{"clientSecret":"","password":false}}'),
+       ('hd-none', $1, 'Zeta', 'none', false, null),
+       ('hd-foreign', $2, 'Foreign', '', false, null)`,
+      [organizationId, foreignOrganizationId]
+    );
+    await pg.query(
+      `insert into public.organization_invites (organization_id, email, role, token, created_at, accepted_at) values
+       ($1, 'new@parity-test.edu', 'editor', 'tok-1', timestamptz '2026-10-20 12:00:00+00', null),
+       ($1, 'newer@parity-test.edu', 'viewer', 'tok-2', timestamptz '2026-10-21 12:00:00+00', null),
+       ($1, 'done@parity-test.edu', 'editor', 'tok-3', timestamptz '2026-10-19 12:00:00+00', now()),
+       ($2, 'foreign@parity-test.edu', 'editor', 'tok-4', now(), null)`,
+      [organizationId, foreignOrganizationId]
+    );
 
     const dbPort = await freePort();
     socket = new PGLiteSocketServer({ db: pg, port: dbPort, host: "127.0.0.1" });
@@ -520,9 +559,12 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
         name,
         capability,
       }));
-      const expected = serviceOperations.map(({ name, role }) => {
-        const capability = typescript.get(name)?.capability ?? "<no TypeScript operation>";
-        expect(role, name).toBe(ROLES.find((rung) => roleAllowsCapability(rung, capability)));
+      const expected = serviceOperations.map(({ name, role, capability: declared }) => {
+        const required = typescript.get(name)?.capability;
+        // The service checks the same Capability the TypeScript operation declares (ADR-0028).
+        expect(declared, name).toBe(required);
+        const capability = required ? capabilityTier(required) : "<no TypeScript operation>";
+        expect(role, name).toBe(ROLES.find((rung) => roleAllowsCapability(rung, capability as CapabilityTier)));
         return { name, capability };
       });
       const byName = (a: { name?: string }, b: { name?: string }) => (a.name ?? "").localeCompare(b.name ?? "");
@@ -532,7 +574,7 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
     it("refuses exactly the Roles the TypeScript capability refuses", async () => {
       const typescript = new Map(operationsByName().map((op) => [op.name, op]));
       for (const { name } of serviceOperations) {
-        const capability = typescript.get(name)!.capability;
+        const capability = capabilityTier(typescript.get(name)!.capability);
         for (const role of ROLES) {
           // `{}` is refused by every write's schema, so an allowed write changes nothing.
           const { status } = await raw(name, "{}", { role });
@@ -792,11 +834,44 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
             expect((rust as { nextCursor: string | null }).nextCursor).toBe(
               (typescript as { nextCursor: string | null }).nextCursor
             );
+            expect((rust as { counts: unknown }).counts).toEqual((typescript as { counts: unknown }).counts);
             const page = rust as { items: { id: string }[]; nextCursor: string | null };
             seen.push(...page.items.map((item) => item.id));
             cursor = page.nextCursor;
           } while (cursor);
           expect(seen).toEqual(status ? ["imp-5", "imp-3", "imp-1"] : ["imp-5", "imp-4", "imp-3", "imp-2", "imp-1"]);
+        }
+      });
+    }
+
+    for (const scope of ["session", "pinned"] as const) {
+      it(`filters before paging and counts under the same filters (${scope})`, async () => {
+        const cases: Array<[Record<string, unknown>, string[]]> = [
+          [{ search: "answer 3" }, ["imp-3"]],
+          [{ search: "  IMP-4 " }, ["imp-4"]],
+          [{ search: "FAQ" }, ["imp-5", "imp-4", "imp-3", "imp-2", "imp-1"]],
+          [{ priority: "medium" }, ["imp-5", "imp-4", "imp-3", "imp-2", "imp-1"]],
+          [{ priority: "high" }, []],
+          [{ assigneeId: null }, ["imp-5", "imp-4", "imp-3", "imp-2", "imp-1"]],
+          [{ assigneeId: editor.id }, []],
+          [{ assistantId: "as-parity" }, ["imp-1"]],
+          [{ projectId: "missing" }, []],
+          [{ search: "answer", status: "to_do" }, ["imp-5", "imp-3", "imp-1"]],
+        ];
+        for (const [filters, expected] of cases) {
+          let cursor: string | null = null;
+          const seen: string[] = [];
+          do {
+            const input = { limit: 2, cursor, ...filters };
+            const [typescript, rust] = await both(listImprovementsPageOp, scope, [input, input]);
+            const [ts, rs] = [typescript, rust] as { items: unknown[]; nextCursor: string | null; counts: unknown }[];
+            expect(normalize(rs.items)).toEqual(normalize(ts.items));
+            expect(rs.nextCursor).toBe(ts.nextCursor);
+            expect(rs.counts).toEqual(ts.counts);
+            seen.push(...idsOf(rs));
+            cursor = rs.nextCursor;
+          } while (cursor);
+          expect(seen).toEqual(expected);
         }
       });
     }
@@ -848,13 +923,95 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
         const query: string = cursor ? `?limit=2&cursor=${cursor}` : "?limit=2";
         const response = await get(`/api/v1/improvements${query}`, `Bearer ${KEY_VALID}`);
         expect(response.status).toBe(200);
-        const body = (await response.json()) as { data: { id: string }[]; nextCursor: string | null };
+        const body = (await response.json()) as { data: { id: string }[]; nextCursor: string | null; counts: unknown };
         expect(normalize(body.data)).toEqual(normalize(typescript.items));
         expect(body.nextCursor).toBe(typescript.nextCursor);
+        expect(body.counts).toEqual((typescript as unknown as { counts: unknown }).counts);
         seen.push(...body.data.map((item) => item.id));
         cursor = body.nextCursor;
       } while (cursor);
       expect(seen).toEqual(["imp-5", "imp-4", "imp-3", "imp-2", "imp-1"]);
+    });
+
+    it("filters GET /api/v1/improvements the way the TypeScript route does", async () => {
+      registerRemoteExecutor(null);
+      for (const [query, input] of [
+        ["?assistantId=as-parity", { assistantId: "as-parity" }],
+        ["?assigneeId=", { assigneeId: null }],
+        ["?search=answer&status=to_do&limit=2", { search: "answer", status: "to_do", limit: 2 }],
+        ["?priority=medium&priority=high", { priority: "medium" }],
+      ] as const) {
+        const typescript = (await listImprovementsPageOp.run(context("pinned"), {
+          limit: 50,
+          cursor: null,
+          ...input,
+        })) as { items: unknown[]; nextCursor: string | null; counts: unknown };
+        const response = await get(`/api/v1/improvements${query}`, `Bearer ${KEY_VALID}`);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { data: unknown[]; nextCursor: string | null; counts: unknown };
+        expect(normalize(body.data)).toEqual(normalize(typescript.items));
+        expect(body.nextCursor).toBe(typescript.nextCursor);
+        expect(body.counts).toEqual(typescript.counts);
+      }
+      const refused = await get("/api/v1/improvements?priority=urgent", `Bearer ${KEY_VALID}`);
+      expect(refused.status).toBe(422);
+      expect(await refused.json()).toEqual({
+        error: {
+          code: "invalid_input",
+          message: 'Invalid option: expected one of "high"|"medium"|"low"|"none"',
+        },
+      });
+    });
+
+    it("answers GET /api/v1/whoami with the Role the key acts with, capped at its creator's", async () => {
+      for (const [key, role, keyId] of [
+        [KEY_VALID, "viewer", "00000000-0000-4000-8000-000000000001"],
+        [KEY_ADMIN, "admin", "00000000-0000-4000-8000-000000000004"],
+        [KEY_DEMOTED, "editor", "00000000-0000-4000-8000-000000000005"],
+      ] as const) {
+        const response = await get("/api/v1/whoami", `Bearer ${key}`);
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ organizationId, role, keyId });
+      }
+    });
+
+    it("answers GET /api/v1/skills with what the TypeScript route answers", async () => {
+      registerRemoteExecutor(null);
+      const typescript = await listSkillsOp.run(context("pinned"), {});
+      const response = await get("/api/v1/skills", `Bearer ${KEY_VALID}`);
+      expect(response.status).toBe(200);
+      const data = ((await response.json()) as { data: { id: string }[] }).data;
+      expect(normalize(data)).toEqual(normalize(typescript));
+      expect(data.map((skill) => skill.id)).toEqual(["sk-a", "sk-b"]);
+    });
+
+    it("answers GET /api/v1/help-desks the way publicHelpDesk shapes them, credentials never", async () => {
+      registerRemoteExecutor(null);
+      const typescript = await listHelpDesksOp.run(context("pinned"), {});
+      const response = await get("/api/v1/help-desks", `Bearer ${KEY_VALID}`);
+      expect(response.status).toBe(200);
+      const text = await response.text();
+      expect(text).not.toContain("s3cret");
+      const data = (JSON.parse(text) as { data: unknown[] }).data;
+      expect(normalize(data)).toEqual(normalize(typescript));
+      expect(data.map((desk) => (desk as { id: string }).id)).toEqual(["hd-partial", "hd-secret", "hd-none"]);
+    });
+
+    it("answers GET /api/v1/invites for an admin key and refuses a demoted one as auth.ts does", async () => {
+      registerRemoteExecutor(null);
+      const typescript = await listInvitesOp.run(context("pinned"), {});
+      const response = await get("/api/v1/invites", `Bearer ${KEY_ADMIN}`);
+      expect(response.status).toBe(200);
+      const data = ((await response.json()) as { data: { email: string }[] }).data;
+      expect(normalize(data)).toEqual(normalize(typescript));
+      expect(data.map((invite) => invite.email)).toEqual(["newer@parity-test.edu", "new@parity-test.edu"]);
+      for (const key of [KEY_VALID, KEY_DEMOTED]) {
+        const refused = await get("/api/v1/invites", `Bearer ${key}`);
+        expect(refused.status).toBe(403);
+        expect(await refused.json()).toEqual({
+          error: { code: "forbidden", message: "This API key's role does not allow this operation: it needs members:manage" },
+        });
+      }
     });
 
     it("stamps the key as used", async () => {
@@ -867,7 +1024,7 @@ describe.skipIf(!BIN && !REQUIRED)("ciele-api parity with the TypeScript operati
 
     it("refuses every key auth.ts refuses, with the same body", async () => {
       const refused = { error: { code: "unauthorized", message: "Provide a valid API key as a Bearer token" } };
-      for (const path of ["/api/v1/task-labels", "/api/v1/improvements"]) {
+      for (const path of ["/api/v1/task-labels", "/api/v1/improvements", "/api/v1/whoami", "/api/v1/skills", "/api/v1/help-desks", "/api/v1/invites"]) {
         const response = await get(path, `Bearer ${KEY_REVOKED}`);
         expect([path, response.status]).toEqual([path, 401]);
         expect(await response.json()).toEqual(refused);

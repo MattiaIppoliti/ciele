@@ -30,6 +30,7 @@ import { createTaskAction } from "@/app/work-actions";
 import { PriorityIcon, ProjectGlyph, TaskStatusIcon } from "./work-icons";
 import { AssigneePicker, DatePickerPopover, PriorityPicker, StatusPicker } from "./task-pickers";
 import { useTaskMutations } from "./use-task-mutations";
+import { TaskContextMenu } from "./task-context-menu";
 import { useWorkDirectory } from "./work-directory";
 import { useWorkViewContext } from "./use-work-view-context";
 import { useCollapsedGroups } from "./use-collapsed-groups";
@@ -236,6 +237,15 @@ function BoardColumn({
       <ol className="flex min-h-15 flex-col gap-1.5 overflow-y-auto px-2 pt-1 pb-2">
         {cards.map((task, index) => (
           <RollRow key={task.id} index={index}>
+            <TaskContextMenu
+              task={task}
+              canEdit={dir.canEdit}
+              onUpdate={(patch) => mutations.update(task, patch)}
+              onOpen={() => onOpenTask(task.id)}
+              onArchive={() => mutations.archive([task.id])}
+              onDelete={() => mutations.remove([task.id])}
+            >
+            <div className="contents">
             <BoardCard
               task={task}
               scope={scope}
@@ -247,6 +257,8 @@ function BoardColumn({
               onStep={(direction) => step(task, direction)}
               mutations={mutations}
             />
+            </div>
+            </TaskContextMenu>
           </RollRow>
         ))}
       </ol>

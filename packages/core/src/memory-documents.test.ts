@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MemoryDocumentEntry } from "./types";
 import {
   MEMORY_DOCUMENT_MAX_CHARS,
+  annotateMemoryAge,
   appendAgentLearning,
   capMemoryDocument,
   memoryDocumentChanges,
@@ -192,5 +193,59 @@ describe("memoryDocumentChanges", () => {
 
   it("is empty when nothing has been written", () => {
     expect(memoryDocumentChanges([], "anything")).toEqual([]);
+  });
+});
+
+describe("annotateMemoryAge", () => {
+  const today = "2026-10-29";
+
+  it("says how old each dated line is, in days", () => {
+    const body = [
+      "- 2026-10-29: Uses the staging key for demos.",
+      "- 2026-10-28: Prefers tables.",
+      "- 2026-09-29: Owns the Q3 report.",
+    ].join("\n");
+    expect(annotateMemoryAge(body, today)).toBe(
+      [
+        "- 2026-10-29 (today): Uses the staging key for demos.",
+        "- 2026-10-28 (yesterday): Prefers tables.",
+        "- 2026-09-29 (30 days ago): Owns the Q3 report.",
+      ].join("\n")
+    );
+  });
+
+  it("leaves undated, malformed and future lines as written", () => {
+    const body = [
+      "Prefers short answers.",
+      "- 2026-13-40: not a date",
+      "- 2026-11-02: scheduled, not remembered",
+      "Met on 2026-10-01 in passing.",
+    ].join("\n");
+    expect(annotateMemoryAge(body, today)).toBe(body);
+  });
+});
+
+describe("memoryPromptSections with a date", () => {
+  it("annotates dated lines and tells the model what an old note is worth", () => {
+    const [section] = memoryPromptSections({
+      agent: "- 2026-06-01: The export runs nightly.",
+      today: "2026-10-29",
+    });
+    expect(section).toContain("- 2026-06-01 (150 days ago): The export runs nightly.");
+    expect(section).toMatch(/check it against a source before acting on it/);
+  });
+
+  it("adds no age cue to a layer with no dated lines", () => {
+    const [section] = memoryPromptSections({
+      user: "Prefers short answers.",
+      today: "2026-10-29",
+    });
+    expect(section).not.toMatch(/days ago|before acting on it/);
+  });
+
+  it("renders exactly as before without a date", () => {
+    const [section] = memoryPromptSections({ agent: "- 2026-06-01: The export runs nightly." });
+    expect(section).toContain("- 2026-06-01: The export runs nightly.");
+    expect(section).not.toMatch(/before acting on it/);
   });
 });

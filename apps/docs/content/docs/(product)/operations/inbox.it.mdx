@@ -11,26 +11,27 @@ esaminare la trascrizione esatta memorizzata.
 Usa la ricerca e i filtri disponibili per restringere l'elenco. Ogni riga indica
 l'attività recente e lo stato corrente della Conversation.
 
-Una sessione che contiene solo Notifiche proattive presenta il marcatore
-**Notification only**. Diventa una Conversation normale dopo che un Visitor ha
-risposto.
+Una sessione che contiene solo Notifications proattive ha il marker
+**Notification only**. Diventa una Conversation normale dopo che un Visitor
+risponde.
 
-Fai scorrere una riga verso sinistra oppure seleziona il relativo pulsante
-**Actions** per visualizzare **Archive**, **Flag** e **Delete**. Uno scorrimento
-completo archivia la Conversation. Seleziona **Archived** per ripristinarla
-oppure **Flagged** per trovare le tue Conversazioni contrassegnate. Le azioni
-Archive e Flag influiscono solo sul tuo elenco personale. Non modificano la
-trascrizione né le relative analisi. Delete richiede una conferma e rimuove la
-trascrizione. Una Conversation soggetta a legal hold non può essere eliminata.
+Fai scorrere una riga verso sinistra oppure seleziona il pulsante **Actions**
+per visualizzare **Archive**, **Flag** e **Delete**. Uno scorrimento completo
+archivia la Conversation. Seleziona **Archived** per ripristinarla oppure
+**Flagged** per trovare le tue Conversazioni contrassegnate. Le azioni Archive e
+Flag influiscono solo sul tuo elenco personale. Non modificano la trascrizione
+né le relative analisi. Delete richiede una conferma e rimuove la trascrizione.
+Una Conversation soggetta a conservazione per obblighi legali (legal hold) non
+può essere eliminata.
 
 ## Dettagli della conversazione
 
 La vista dettagli può mostrare:
 
-- Messaggi di Visitor e Assistant
+- Messaggi di Visitor e di Assistant
 - il Flow che ha gestito un turno
 - citazioni di fonti denominate
-- Feedback dei visitatori
+- Feedback del visitatore
 - stato di escalation
 - metadati di avvio e del dispositivo
 - il soggetto SSO verificato e l'identity claim configurato
@@ -38,11 +39,62 @@ La vista dettagli può mostrare:
   l'accesso
 
 Le azioni Verbatim Message e le Basic replies non contengono una traccia
-Thinking. Le risposte di Search Knowledge possono contenere eventi relativi agli
-strumenti e all'avanzamento.
+Thinking. Le risposte di Search Knowledge possono contenere eventi relativi a
+tool e progress.
 
 Anche le chiamate di integrazione API compaiono nella traccia. I loro eventi
 mostrano quale endpoint ha supportato la risposta.
+
+## Prendi in carico una conversazione
+
+Puoi rispondere tu stesso a un Visitatore. Apri la Conversation e seleziona
+**Take over**. Devi avere il ruolo di Editor, Admin, Owner o Support Agent.
+
+Quando conduci una Conversation:
+
+- L'Assistente non risponde. Ogni messaggio del Visitor viene salvato e mostrato
+  nell'Inbox, ma non viene eseguito alcun Flow e non viene richiamato alcun
+  modello.
+- Sotto la trascrizione viene visualizzata una casella di risposta. La tua
+  risposta viene inviata al Widget aperto con il tuo nome visualizzato. Il
+  Visitor non deve per forza inviare prima un messaggio.
+- Il Widget e l'Inbox mostrano una riga quando entri e quando esci.
+- Gli altri membri vedono chi detiene la Conversation. Solo un Member alla volta
+  può tenerla.
+
+Seleziona **Release** per restituire la Conversazione all'Assistente. Il
+messaggio successivo del Visitor avvia un turno normale. Un Admin o un Owner può
+rilasciare una Conversation detenuta da un collega.
+
+Le tue risposte sono messaggi dell'operatore. Non sono risposte dell'IA, quindi
+Insights, la verifica delle risposte e il feedback non le considerano.
+L'esportazione JSON e la trascrizione stampata le contrassegnano con il mittente
+`Operator` e il tuo nome.
+
+Il Widget controlla le tue risposte ogni pochi secondi mentre sei titolare della
+Conversazione. Inoltre, dopo che il Visitor ha inviato un messaggio, effettua
+controlli ogni 15 secondi per 5 minuti, in modo da poter mostrare che hai
+partecipato. Un Widget inattivo non invia richieste aggiuntive.
+
+## Testi rapidi
+
+I Quick Text sono risposte predefinite salvate per la casella di risposta. Gli
+Editors, gli Admins e gli Owners possono crearli, modificarli ed eliminarli in
+**Settings** > **Quick Texts**. Ogni Quick Text ha un titolo, un corpo e una
+cartella facoltativa.
+
+Per inserire un Quick Text, digita **/** nella casella di risposta. Continua a
+digitare per filtrare l'elenco per titolo. Seleziona un Quick Text, oppure premi
+Invio, per inserire il suo corpo nel punto in cui hai digitato **/**. Puoi
+modificare il testo prima di inviarlo.
+
+Il corpo può utilizzare le variabili di template usate dalle azioni Flow, ad
+esempio `{{user.name}}`. Ciele li compila sulla base della Conversation a cui
+rispondi. Una variabile che non ha alcun valore diventa testo vuoto.
+
+Ogni Membro che può rispondere può utilizzare tutti i Quick Text. Puoi gestire i
+Quick Text anche tramite l'API, il comando CLI `ciele quick-texts` e lo
+strumento MCP `manage_configuration`.
 
 ## Crea un lavoro di qualità
 

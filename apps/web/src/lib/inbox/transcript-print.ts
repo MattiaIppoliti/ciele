@@ -1,5 +1,5 @@
 import type { InboxConversation, StoredMessage } from "@agent-hub/core";
-import { messageContent } from "./conversation-export";
+import { exportedMessageContent, messageSender } from "./conversation-export";
 import { countLabel } from "@/lib/pagination";
 import { escapeMarkup } from "@/lib/escape";
 
@@ -59,13 +59,13 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
 
   const turns = messages
     .map((message) => {
-      const body = messageContent(message.content ?? []);
+      const body = exportedMessageContent(message);
       // A turn whose parts render to nothing (a bare button, an iframe chip) still
       // happened, printing a blank block is more honest than dropping the turn.
       const text = body.trim() || "(no text content)";
       const vote = VOTE_LABELS[message.feedback];
       const meta = [
-        message.role === "user" ? "User" : "Assistant",
+        messageSender(message.role),
         message.createdAt,
         message.role === "assistant" && message.flowName
           ? `Workflow: ${message.flowName}`

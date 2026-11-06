@@ -12,10 +12,34 @@ describe("usageTotals", () => {
   it("flattens the nested model-level usage object", () => {
     expect(
       usageTotals({
-        inputTokens: { total: 120, noCache: 100, cacheRead: 20 },
+        inputTokens: { total: 120, noCache: 120 },
         outputTokens: { total: 45, text: 40, reasoning: 5 },
       })
     ).toEqual({ inputTokens: 120, outputTokens: 45 });
+  });
+
+  it("reads cache tokens from the result-level shape (AI SDK 7 inputTokenDetails)", () => {
+    expect(
+      usageTotals({
+        inputTokens: 5000,
+        outputTokens: 300,
+        inputTokenDetails: { noCacheTokens: 800, cacheReadTokens: 4000, cacheWriteTokens: 200 },
+      })
+    ).toEqual({
+      inputTokens: 5000,
+      outputTokens: 300,
+      cacheReadTokens: 4000,
+      cacheWriteTokens: 200,
+    });
+  });
+
+  it("reads cache tokens from the nested model-level shape", () => {
+    expect(
+      usageTotals({
+        inputTokens: { total: 120, noCache: 100, cacheRead: 20, cacheWrite: 0 },
+        outputTokens: { total: 45 },
+      })
+    ).toEqual({ inputTokens: 120, outputTokens: 45, cacheReadTokens: 20 });
   });
 
   it("meters zero when usage is missing or partial (never throws)", () => {

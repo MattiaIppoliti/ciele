@@ -1,15 +1,17 @@
 ---
 title: Impostazioni dell'organizzazione
-description: Gestisci membri, connessioni ai provider, chiavi API, utilizzo e fatturazione.
+description: Gestisci i membri, le connessioni ai provider, le chiavi API, l'utilizzo e la fatturazione.
 ---
 
-Un'organizzazione rappresenta il perimetro del tenant per i dati e le
-autorizzazioni di Ciele.
+Un'Organization è il perimetro del tenant per i dati e le autorizzazioni di
+Ciele.
 
 Usa **Settings** per queste aree attuali:
 
 - **General** per le informazioni sull'organizzazione.
-- **Members** per membership, inviti e Roles.
+- **Business hours** per i calendari condivisi, i giorni festivi e il fuso
+  orario predefinito.
+- **Members** per l'appartenenza, gli inviti e i Roles.
 - **AI Provider** per le connessioni ai provider.
 - **Crawling** per il crawler del sito web dell'Organizzazione, ad esempio il
   suo account Apify.
@@ -17,18 +19,19 @@ Usa **Settings** per queste aree attuali:
 - **Usage** per l'utilizzo recente delle risorse e i relativi limiti.
 - **Billing** per il piano gestito e l'account di fatturazione.
 
-L'edizione self-hosted non mostra un catalogo delle sottoscrizioni gestite.
+L'edizione self-hosted non mostra un catalogo di abbonamenti gestiti.
 
-Member Roles e API-key Roles utilizzano la stessa gerarchia di autorizzazioni.
-Una chiave API non può ricevere un Role di livello superiore rispetto a quello
-del suo creatore.
+Un Role è un insieme di funzionalità. Members, invitations e API keys utilizzano
+gli stessi Roles. Una chiave API non può avere una capability che il suo
+creatore non possiede.
 
 L'area **AI Provider** controlla anche la
 [memoria a lungo termine](/data/long-term-memory). Include strumenti per
 cancellare le memorie memorizzate di un Visitor.
 
-La scheda **General** dispone di due impostazioni di conservazione: una per le
-tracce di ragionamento e una per le conversazioni complete. Consulta
+La scheda **Data retention** imposta per quanto tempo vengono conservate
+conversazioni, messaggi, miglioramenti e registrazioni di audit. La scheda
+**General** mantiene aperta la finestra per le tracce di ragionamento. Consulta
 [Data retention](/organization/data-retention).
 
 ## Aspetto personale
@@ -39,3 +42,83 @@ seleziona **Profile**, quindi **Theme**. Scegli **Light**, **Dark** o **System**
 e seleziona la tavolozza **Midnight** o **Mist Blue**. Queste preferenze
 influiscono sulla tua console e vengono salvate in questo browser. Il widget
 pubblicato mantiene il suo stile Assistant.
+
+
+## Orari di apertura e giorni festivi
+
+Un Member con la capability **edit** può aprire **Settings → Business hours**.
+Crea un programma con nome, seleziona il relativo fuso orario IANA e imposta le
+finestre di apertura settimanali. Un giorno può avere più finestre. Un orario di
+chiusura precedente all'orario di apertura prosegue fino al giorno successivo.
+Un programma è quello predefinito dell'organizzazione. Puoi modificare
+l'impostazione predefinita quando modifichi un programma.
+
+Aggiungi le festività con nome come una singola data oppure come un intervallo
+di date inclusivo. Seleziona **Repeat yearly** per una chiusura annuale. Un
+giorno festivo comporta la chiusura dell'intera giornata locale, comprese le ore
+che proseguono dalla notte precedente. I canali e le condizioni dei flussi
+leggono queste impostazioni in tempo reale. Una modifica relativa ai giorni
+festivi viene applicata senza dover ripubblicare un Assistente.
+
+Il fuso orario predefinito dell'organizzazione è il valore iniziale per i nuovi
+orari, le condizioni di Availability del canale e le condizioni di Flow
+Schedule. I fusi orari esistenti e i report di Insights non subiscono modifiche.
+La cancellazione viene rifiutata se un canale, un Flow dell'editor o un Flow
+nella Publication più recente utilizza il programma. Il rifiuto indica i nomi di
+quei canali e di quei Flow.
+
+Il Developer Panel in questa pagina mostra il **Business hours API**. Utilizza
+`/api/v1/business-hours`, `ciele business-hours` o `manage_configuration` in MCP
+per gestire le stesse impostazioni. Imposta il fuso orario predefinito con
+`PATCH /api/v1/business-hours/timezone` o
+`ciele business-hours timezone Europe/Rome --yes`.
+
+
+## Registro di audit
+
+I proprietari e gli amministratori aprono **Settings → Audit log** per
+visualizzare le modifiche alla configurazione. Ogni riga mostra **When**,
+**Action**, **Actor** e **Target**. Gli orari sono espressi in UTC.
+
+- Seleziona **Filter by action** per visualizzare una o più azioni.
+- Seleziona **Filter by actor** per visualizzare le modifiche di un membro o di
+  **System**.
+- Seleziona il controllo della data per visualizzare un solo periodo.
+- Seleziona **When** per visualizzare prima le voci più vecchie.
+
+L'actor è il membro che ha apportato la modifica. Quando una chiave API o un
+Teammate ha apportato la modifica, l'actor è la chiave o il Teammate. Il membro
+per conto del quale agisce viene mostrato sotto di esso. Le modifiche non
+apportate da nessuna persona mostrano **System**.
+
+Seleziona l'icona a forma di occhio su una riga per aprire **Entry details**. Il
+pannello mostra l'actor, il target, la surface, l'outcome e le affected
+entities. I link aprono le entità che esistono ancora. Alcune modifiche mostrano
+anche **Changes**: roles, invitations, API keys, assistant access e Organization
+settings. Ogni campo mostra il suo valore prima e dopo.
+
+Il log registra le operazioni di scrittura e quelle conseguenti, compresi gli
+esecuzioni non riusciti. Un'operazione composita crea una voce per la sua
+chiamata esterna. Non registra input delle operazioni, credenziali, testo dei
+Visitor né operazioni di lettura. Un errore di registrazione non interrompe
+l'operazione. La diagnostica segnala l'errore.
+
+Seleziona **Export CSV** per accodare i filtri correnti nei job di esportazione
+esistenti. L'esportazione viene visualizzata in **Insights → Exports** quando è
+pronta. Le esportazioni di audit rimangono riservate a Owners e Admins. I membri
+non possono riscrivere né eliminare le voci di audit. Il processo di pulizia
+della conservazione elimina le voci più vecchie del periodo **Audit records**
+nella scheda **Data retention**. Il valore predefinito è 180 giorni.
+L'eliminazione di un'Organization comporta anche la rimozione delle relative
+voci di audit.
+
+Il registro di audit è disponibile anche tramite l'API, la CLI e il server MCP.
+Ciascuno è di sola lettura e richiede una chiave che possa gestire i membri.
+
+```bash
+ciele audit-log list --actor system --from 2026-11-01
+curl "https://ciele.app/api/v1/audit-log?action=apiKeys.create" \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Sul server MCP, utilizza l'azione `audit_log_list` di `manage_organization`.

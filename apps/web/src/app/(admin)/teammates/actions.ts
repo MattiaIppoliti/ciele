@@ -5,7 +5,7 @@ import type {
   MemoryDocument,
   RoutineCadence,
   Teammate,
-  TeammateCapabilityCeiling,
+  TeammateActionCeiling,
   TeammateGrantDomain,
   TeammatePatch,
   TeammateRuntimeConfig,
@@ -94,7 +94,7 @@ export async function setTeammateGrantsAction(
   id: string,
   governance: {
     domains: TeammateGrantDomain[];
-    ceiling: TeammateCapabilityCeiling;
+    ceiling: TeammateActionCeiling;
     approvalBypass: boolean;
   }
 ): Promise<TeammateGovernance> {

@@ -36,9 +36,9 @@ colors:
 typography:
   page-title:
     fontFamily: Host Grotesk
-    fontSize: 1.5rem
+    fontSize: clamp(2.25rem, 7cqi, 4.5rem)
     fontWeight: 600
-    letterSpacing: -0.02em
+    letterSpacing: -0.045em
   card-title:
     fontFamily: Host Grotesk
     fontSize: 1rem
@@ -187,7 +187,7 @@ changed in one without the other is a bug in the front matter.
 | `bg-card` / `bg-popover` | `#f1f1f1` | `#141516` | Cards, popovers, panels |
 | `bg-muted` / `bg-secondary` / `bg-accent` | `#f1f1f1` | `#18191a` | Recessed panels, hover rows |
 | `bg-table-frame` | `#eeeeee` | `#0b0c0d` | The table's title, history controls and footer tray |
-| `bg-table-sheet` | `#ffffff` | `#141516` | The rounded sheet shared by headings and data cells |
+| `bg-table-sheet` | `#ffffff` | `#141516` | The rounded sheet shared by headings and data cells, 4px inside the frame at the concentric radius so its border never runs flush against the frame's |
 | `border` / `input` | `oklch(0.922 0 0)` | `#23252a` / `#34343a` | Hairlines: cards and panels, then inputs |
 | `text-foreground` | `oklch(0.145 0 0)` | `#f7f8f8` | Body ink |
 | `text-muted-foreground` | `oklch(0.52 0 0)` | `#8a8f98` | Secondary ink. 0.52 is ~5.0:1 on the ground; `#8a8f98` is 5.4:1 on the darkest control surface and better elsewhere |
@@ -288,8 +288,11 @@ A component with a hard-coded hex breaks it.
 - **Weights.** `font-medium` for labels, buttons and table headers; `font-semibold` for page and
   card titles. Nothing in the console is `font-bold`: Linear holds display at 600 and body at 400,
   and so do we. Bold is left to marketing headings and to `<strong>` inside content.
-- **Page titles** are `text-2xl font-semibold`, with no `tracking-tight`: the step already carries
-  -0.02em.
+- **Page titles** are `text-display` (`globals.css`): `clamp(2.25rem, 7cqi, 4.5rem)` at 600,
+  -0.045em, line-height 1. The console's `SectionHeading` and the public component catalog share
+  it, so the two cannot drift. It is sized on the nearest container, so a title in a narrow list
+  pane (Notifications) steps down to 36px instead of overflowing; give that pane's header
+  `container-type: inline-size`. A title inside a dialog stays `text-2xl`.
 - **Eyebrows** (the small label over a heading or a group) are
   `text-xs font-medium uppercase tracking-wide text-muted-foreground`. Positive tracking is what
   marks them as taxonomy against a negatively tracked heading.
@@ -402,7 +405,7 @@ Preserve menu, tab, calendar, switch, drag-handle and navigable-card geometry an
 - `.press-text` for links and text triggers: an opacity dip, because scaling text reflows it.
 - Reduced motion keeps the acknowledgement and drops the travel (opacity 0.7 on press utilities, 0.8 on buttons).
 
-Operational `SectionHeading` titles are static, with a compact unboxed icon. Only the marketing variant uses a decorative tile and text entrance. Switch travel and validation feedback take at most 150ms and respect `static` and reduced motion.
+Operational `SectionHeading` titles are static display-size type (`text-display`) and carry no icon: the title names the page and its sidebar row already shows the glyph. The exception is an entity with an icon of its own, the Project header, as in the gr8r-studio reference; that icon is unboxed and sized in `em` (0.6em) so it follows the title down the clamp. Only the marketing variant uses a decorative tile and text entrance. Switch travel and validation feedback take at most 150ms and respect `static` and reduced motion.
 
 **Sound and haptics** come with the primitive (`packages/ui/src/feedback/`). `Button` carries
 `data-foley-press`/`-release`; put `data-foley-toggle` on switches and disclosures and
@@ -415,6 +418,8 @@ Operational `SectionHeading` titles are static, with a compact unboxed icon. Onl
 Admin cards and the Flow toolbar use the shared squircle paint in `globals.css`.
 The frame and fill must both use `SquiCircleFilter`, with a one-pixel inset between them;
 hide the resting native border/ring rather than drawing a second corner around the paint.
+The same goes for `box-shadow`: a shadow traces the old rounded rectangle 3px outside the frame,
+so a resting squircle card has none and the frame and sheen are its lift. Dialogs keep theirs.
 The frame keeps the component's ring colour, including hover and status colours. Card
 decorations use child layers; `::before` and `::after` belong to the shared contour. A
 custom wash goes through `--squircle-fill-image` rather than replacing either paint layer.
@@ -472,7 +477,7 @@ Import shared primitives from `@agent-hub/ui`, app primitives from `@/components
 | Code or a snippet | `ui/code-block` | |
 | A chart | `packages/charts` + `ui/chart` | a raw Recharts palette |
 | Width a user can drag | `use-resizable-width` / `resizable-panel` | |
-| A detail docked beside its list (resizable, full screen in a narrow container) | `ui/workspace-panel` (`flush` for a full-bleed view: no page padding, a ruled column instead of a floating card) | a custom split pane |
+| A detail docked beside its list (resizable, full screen in a narrow container) | `ui/workspace-panel` (`flush` for a full-bleed view: no page padding, a ruled column instead of a floating card). A list that draws its own resize edge reads `useWorkspaceSplit()`: while a detail is docked the list fills its pane and its edge moves the boundary | a custom split pane |
 | Markdown with a formatting toolbar | `ui/markdown-editor` (`MARKDOWN_TOOLBAR_BASIC` / `_FULL` / `_COMPACT`, optional `history`) | a second copy of the toolbar buttons |
 | A Task's status or priority glyph | `TaskStatusIcon`, `PriorityIcon` in `components/work/work-icons.tsx` | a coloured dot or a `Badge` per status |
 | A label beside its picker in a properties grid | `PropertyField` in `components/work/task-pickers.tsx`, the picker's `trigger` being a `PillButton` | a hand-aligned label column |

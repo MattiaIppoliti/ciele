@@ -129,7 +129,10 @@ export interface FinalizeDueCrawlsReport {
   memories: RunDueJobsResult;
   /** Teammate Agent-layer distillation (#771). */
   agentMemories: RunDueJobsResult;
+  /** Long-thread rolling summaries (`conversation-history.ts`). */
+  historySummaries: RunDueJobsResult;
   applicationSyncs: RunDueJobsResult & { enqueued: number };
+  outboundWebhooks: RunDueJobsResult;
   crawls: { swept: number; settled: number; results: FinalizedCrawlResult[] };
   backlog: Awaited<ReturnType<Db["getWorkQueueHealth"]>>;
   ledgerSweep: Awaited<ReturnType<Db["sweepRuntimeLedgers"]>>;
@@ -197,10 +200,14 @@ function alertOnOldQueueWork(
  */
 const JOB_QUEUES = [
   { key: "jobs", kind: "ingest_source", suffix: "", limit: 10 },
+  { key: "improvementReplays", kind: "replay_improvement", suffix: "-improvement-replay", limit: 2 },
   { key: "proposals", kind: "draft_improvement_proposal", suffix: "-proposals", limit: 10 },
   { key: "memories", kind: "promote_memories", suffix: "-memories", limit: 20 },
   { key: "agentMemories", kind: "distill_agent_memory", suffix: "-agent-memory", limit: 20 },
+  { key: "historySummaries", kind: "summarize_conversation", suffix: "-history-summary", limit: 20 },
   { key: "applicationSyncs", kind: "sync_application_import", suffix: "-application-sync", limit: 10 },
+  // Five windows of five 10-second requests fit within the worker's 300-second budget.
+  { key: "outboundWebhooks", kind: "deliver_outbound_webhook", suffix: "-outbound-webhooks", limit: 5 },
 ] as const;
 
 /**
@@ -330,6 +337,8 @@ export async function finalizeDueCrawls(
     proposals: totals.proposals,
     memories: totals.memories,
     agentMemories: totals.agentMemories,
+    outboundWebhooks: totals.outboundWebhooks,
+    historySummaries: totals.historySummaries,
     applicationSyncs: {
       ...totals.applicationSyncs,
       enqueued: applicationEnqueued.enqueued,
@@ -396,7 +405,7 @@ interface RetentionPolicy {
 }
 
 /** One org's outcome in either sweep, before the count gets its real name. */
-type SweptPolicyResult =
+export type SweptPolicyResult =
   | { organizationId: string; retentionDays: number; count: number }
   | { organizationId: string; retentionDays: number; error: string };
 
@@ -625,6 +634,65 @@ export interface SweepExpiredTranscriptsReport {
     organizations: number;
     deleted: number;
     results: SweptTranscriptResult[];
+  };
+}
+
+export interface SweepDataRetentionReport {
+  messages: { organizations: number; deleted: number; results: SweptPolicyResult[] };
+  improvements: { organizations: number; deleted: number; results: SweptPolicyResult[] };
+}
+
+/**
+ * The Data retention tab's two newer windows, one nightly tick: messages
+ * deleted from Conversations that stay, and Improvements not updated within
+ * their window, whatever their status. Each is recorded per organization in
+ * `retention_sweep_events` like the transcript sweep. Audit records are not
+ * here: `sweep_runtime_ledgers` deletes them on every job-drain tick, by each
+ * organization's `audit_retention_days`.
+ */
+export async function sweepDataRetention(
+  deps: ScheduledDeps,
+  options: { now?: Date } = {}
+): Promise<SweepDataRetentionReport> {
+  const { db } = deps;
+  const now = options.now ?? new Date();
+  const [messagePolicies, improvementPolicies] = await Promise.all([
+    db.listRetentionPolicies("messages"),
+    db.listRetentionPolicies("improvements"),
+  ]);
+  const [messages, improvements] = await Promise.all([
+    sweepRetentionPolicies({
+      db,
+      policies: messagePolicies,
+      now,
+      policy: "messages",
+      errorLabel: "message sweep failed",
+      run: (organizationId, cutoff) =>
+        drainRetentionBatches((limit) => db.deleteExpiredMessages(organizationId, cutoff, limit)),
+    }),
+    sweepRetentionPolicies({
+      db,
+      policies: improvementPolicies,
+      now,
+      policy: "improvements",
+      errorLabel: "improvement sweep failed",
+      run: (organizationId, cutoff) =>
+        drainRetentionBatches((limit) =>
+          db.deleteExpiredImprovements(organizationId, cutoff, limit)
+        ),
+    }),
+  ]);
+  return {
+    messages: {
+      organizations: messagePolicies.length,
+      deleted: messages.total,
+      results: messages.results,
+    },
+    improvements: {
+      organizations: improvementPolicies.length,
+      deleted: improvements.total,
+      results: improvements.results,
+    },
   };
 }
 

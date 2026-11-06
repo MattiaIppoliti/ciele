@@ -49,7 +49,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
 
     await updateAssistantAction(assistant.id, { nickname: "Patched" });
 
-    expect(requireMemberMock).toHaveBeenCalledWith("edit");
+    expect(requireMemberMock).toHaveBeenCalledWith("assistants:edit", expect.anything());
     expect((await db.getAssistant(assistant.id))?.nickname).toBe("Patched");
     expect(revalidatePathMock.mock.calls).toEqual([
       ["/", undefined],
@@ -313,7 +313,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
 
     await deleteAssistantAction(assistant.id);
 
-    expect(requireMemberMock).toHaveBeenCalledWith("publish");
+    expect(requireMemberMock).toHaveBeenCalledWith("assistants:delete", expect.anything());
     expect(await db.getAssistant(assistant.id)).toBeNull();
     expect(revalidatePathMock.mock.calls).toEqual([["/", undefined]]);
   });

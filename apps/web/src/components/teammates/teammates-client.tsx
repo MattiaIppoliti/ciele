@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useSetTopBarSlot } from "@/components/shell/top-bar-slots";
-import { MessagesSquare, Settings2 } from "lucide-react";
+import { MessagesSquare } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useTopBarFormActions } from "@/components/settings/form-actions";
@@ -200,7 +200,7 @@ export function CreateTeammatePage({
   return (
     <div className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
-        <SectionHeading icon={Settings2} title="New AI Teammate"  />
+        <SectionHeading title="New AI Teammate"  />
         <div className="pt-10 pb-24"><SectionTimeline>
         <TimelineSection title="Start from a role" boxed>
 

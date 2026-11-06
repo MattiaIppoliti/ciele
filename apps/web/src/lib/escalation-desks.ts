@@ -1,4 +1,5 @@
 import type {
+  BusinessHoursCalendar,
   ChannelAvailability,
   ChannelFieldType,
   ChannelKind,
@@ -36,6 +37,7 @@ export interface EscalationChannel {
   kind: ChannelKind;
   name: string;
   availability: ChannelAvailability;
+  businessHours?: BusinessHoursCalendar;
   /** tel/url target for actionable kinds; null renders as info-only. */
   target: string | null;
   /** Present for email channels, submitting it sends the escalation email. */
@@ -79,8 +81,19 @@ export function visibleFormFields(
     }));
 }
 
-function toEscalationChannel(c: SupportChannel): EscalationChannel {
-  let target: string | null = null;
+/** Contact links have no form submission; the runtime uses this same eligibility check. */
+export function contactChannelTarget(c: SupportChannel): string | null {
+  if (c.kind === "email" && c.config.destinationEmail && visibleFormFields(c).length === 0) return `mailto:${c.config.destinationEmail}`;
+  if (c.kind === "phone" && c.config.phoneNumber) return `tel:${c.config.phoneNumber.replace(/[^+\d]/g, "")}`;
+  if ((c.kind === "live_chat" || c.kind === "external_link") && c.config.url) return c.config.url;
+  return null;
+}
+
+function toEscalationChannel(
+  c: SupportChannel,
+  desk: { ticketingReady: boolean } = { ticketingReady: false }
+): EscalationChannel {
+  const target = contactChannelTarget(c);
   let form: EscalationForm | null = null;
   if (c.kind === "email" && c.config.destinationEmail) {
     const fields = visibleFormFields(c);
@@ -90,17 +103,23 @@ function toEscalationChannel(c: SupportChannel): EscalationChannel {
         fields,
         confirmationMessage: c.confirmationMessage,
       };
-    } else {
-      // An email channel whose form was emptied still needs a way to act.
-      target = `mailto:${c.config.destinationEmail}`;
     }
-  } else if (c.kind === "phone" && c.config.phoneNumber) {
-    target = `tel:${c.config.phoneNumber.replace(/[^+\d]/g, "")}`;
-  } else if (
-    (c.kind === "live_chat" || c.kind === "external_link") &&
-    c.config.url
-  ) {
-    target = c.config.url;
+  } else if (c.kind === "ticket" && desk.ticketingReady) {
+    // A ticket channel files into the desk's ticketing target (#1088). With
+    // no target there is nowhere to file, so it stays info-only.
+    form = {
+      title: c.formTitle.trim() || "Create a ticket",
+      fields: visibleFormFields(c),
+      confirmationMessage: c.confirmationMessage,
+    };
+  } else if (c.kind === "live_operator") {
+    // The Visitor stays in the chat (#1083): the optional form is all there
+    // is to fill in, and submitting it starts the wait.
+    form = {
+      title: c.formTitle.trim() || "Talk to a person",
+      fields: visibleFormFields(c),
+      confirmationMessage: c.confirmationMessage,
+    };
   } else if (c.kind === "api_endpoint" && c.config.url) {
     // API-endpoint channels submit their form to the configured endpoint
     // (#315). A form with no visible fields still renders a submit action.
@@ -118,6 +137,36 @@ function toEscalationChannel(c: SupportChannel): EscalationChannel {
     target,
     form,
   };
+}
+
+/**
+ * What the Visitor reads after a ticket channel filed (#1088): the desk's own
+ * confirmation, followed by the number they can quote. The number is the
+ * one thing a Visitor needs to follow up, so it is never left to the
+ * confirmation text an admin may have written without it.
+ */
+export function ticketConfirmationText(
+  confirmationMessage: string,
+  ticket: { number: string | null } | null | undefined
+): string {
+  const base =
+    confirmationMessage.trim() ||
+    "Thanks! Your request has been sent, our team will get back to you.";
+  return ticket?.number ? `${base}\n\nYour ticket number is ${ticket.number}.` : base;
+}
+
+/** What the Visitor reads when the ticket could not be filed. */
+export const TICKET_NOT_FILED =
+  "We couldn't confirm your ticket. Please contact the team through another channel before sending a new request.";
+
+/** The one line an escalation carries when its Chat summary could not be produced (#1081). */
+export const SUMMARY_UNAVAILABLE = "Summary unavailable";
+
+/** A filed ticket and the Conversation the Visitor continues in. */
+export interface TicketConfirmation {
+  number: string;
+  url: string;
+  conversationId: string;
 }
 
 /** Labels of visible required fields missing from a form submission. */
@@ -144,6 +193,11 @@ export function buildEscalationEmail(
     deskName: string;
     /** Rendered transcript, included when the channel attaches chat history. */
     transcript?: string;
+    /**
+     * The Chat summary (#1081): text when it was produced, null when the
+     * channel asked for one and it could not be, absent when not asked.
+     */
+    summary?: string | null;
   }
 ): { to: string; subject: string; body: string; replyTo?: string } {
   const fields = visibleFormFields(channel);
@@ -162,8 +216,15 @@ export function buildEscalationEmail(
   const lines = [
     `New support request from "${context.assistantTitle}", ${context.deskName} / ${channel.name}.`,
     "",
-    ...fields.map((f) => `${f.label}: ${value(f.id) || "N/A"}`),
   ];
+  // Above the form fields, so the reader knows the story before the details.
+  if (context.summary !== undefined) {
+    lines.push(
+      ...(context.summary ? ["--- Summary ---", context.summary] : [SUMMARY_UNAVAILABLE]),
+      ""
+    );
+  }
+  lines.push(...fields.map((f) => `${f.label}: ${value(f.id) || "N/A"}`));
   if (context.transcript) {
     lines.push("", "--- Conversation ---", context.transcript);
   }
@@ -176,23 +237,40 @@ export function buildEscalationEmail(
   };
 }
 
+/**
+ * `staffedDeskIds` are the desks with an Available operator (#1084), which
+ * the caller reads through `desksWithAvailableOperator` in `@ciele/ops`. It is
+ * passed in rather than read here because this module's types reach client
+ * components, and the operations layer must not. Absent offers no Live
+ * operator channel, so a Visitor is never queued for nobody.
+ */
 export async function listEscalationDesks(
   db: Db,
   organizationId: string,
-  selectedIds: string[]
+  selectedIds: string[],
+  staffedDeskIds: ReadonlySet<string> = new Set()
 ): Promise<EscalationHelpDesk[]> {
   const all = await db.listHelpDesks(organizationId);
   const desks = all.filter((desk) => selectedIds.includes(desk.id));
+  const staffed = staffedDeskIds;
 
   return Promise.all(
     desks.map(async (desk) => {
       const channels = await db.listSupportChannels(desk.id);
+      const schedules = channels.some(channel => channel.availability.mode === "business_hours") ? await db.table("businessHours").list({ organizationId }).catch((error: unknown) => {
+        if (error && typeof error === "object" && "code" in error && ["42P01", "PGRST205"].includes(String(error.code))) return [];
+        throw error;
+      }) : [];
       return {
         id: desk.id,
         name: desk.name,
         channels: channels
-          .filter((c) => c.enabled)
-          .map(toEscalationChannel)
+          .filter((c) => c.enabled && (c.kind !== "live_operator" || staffed.has(desk.id)))
+          .map((c) => {
+            const channel = toEscalationChannel(c, { ticketingReady: Boolean(desk.ticketingTarget) });
+            const schedule = c.availability.mode === "business_hours" ? schedules.find(row => row.id === c.availability.businessHoursId) : null;
+            return schedule ? { ...channel, businessHours: { id: schedule.id, timezone: schedule.timezone, hours: schedule.hours, holidays: schedule.holidays.map(holiday => ({ startDate: holiday.startDate, endDate: holiday.endDate, yearly: holiday.yearly })) } } : channel;
+          })
           // An email channel without a destination address can neither open a
           // form nor a mailto, hide it rather than render a dead button.
           .filter((c) => c.kind !== "email" || c.target !== null || c.form !== null),

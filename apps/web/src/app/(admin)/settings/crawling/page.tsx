@@ -1,18 +1,18 @@
-import { Globe } from "lucide-react";
 import { redirect } from "next/navigation";
 import { CrawlerConnectionCard } from "@/components/settings/crawler-connection-card";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { requirePageMember } from "@/lib/authz";
-import { canManageMembers } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { websiteCrawlerCapabilities } from "@agent-hub/agent";
 
 export const dynamic = "force-dynamic";
 
 export default async function CrawlingSettingsPage() {
-  const { session, organizationId, role, db } = await requirePageMember();
+  const { session, organizationId, role, db, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
   // Crawler accounts are org-wide credentials, admins and owners only.
-  if (!canManageMembers(role)) redirect("/settings/profile");
+  if (!can(access, "crawlers:manage")) redirect("/settings/profile");
 
   const connection = await db
     .getCrawlerConnection(organizationId, "apify")
@@ -20,7 +20,6 @@ export default async function CrawlingSettingsPage() {
 
   return (
     <SettingsPanel
-      icon={Globe}
       title="Crawling"
       description={`Connect ${session.organization.name}'s own crawler account. Website Sources that run on Apify then use your token and bill your Apify account.`}
     >

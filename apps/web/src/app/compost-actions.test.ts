@@ -31,7 +31,7 @@ describe("updateCompostOptOutAction", () => {
     expect(await db.getCompostOptOut(DEMO_ORG.id)).toBe(false);
 
     await updateCompostOptOutAction(true);
-    expect(requireMemberMock).toHaveBeenCalledWith("manageMembers");
+    expect(requireMemberMock).toHaveBeenCalledWith("organization:edit");
     expect(await db.getCompostOptOut(DEMO_ORG.id)).toBe(true);
 
     await updateCompostOptOutAction(false);
@@ -42,7 +42,7 @@ describe("updateCompostOptOutAction", () => {
     expect(await db.getPersonalAiSubscriptionsAllowed(DEMO_ORG.id)).toBe(false);
 
     await updatePersonalAiSubscriptionsAllowedAction(true);
-    expect(requireMemberMock).toHaveBeenLastCalledWith("changeRoles");
+    expect(requireMemberMock).toHaveBeenLastCalledWith("personalSubscriptions:manage");
     expect(await db.getPersonalAiSubscriptionsAllowed(DEMO_ORG.id)).toBe(true);
 
     await updatePersonalAiSubscriptionsAllowedAction(false);

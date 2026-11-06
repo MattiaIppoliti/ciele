@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { canEditTeammate } from "@agent-hub/core";
 import { TeammateSettingsPage } from "@/components/teammates/teammate-settings-page";
 import { requirePageMember } from "@/lib/authz";
-import { canManageMembers } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { findVisibleTeammate } from "@/lib/teammates/access";
 import { loadTeammateSettingsProps } from "@/lib/teammates/settings-props";
 
@@ -23,7 +23,8 @@ export default async function TeammateSettingsRoute({
   params: Promise<{ teammateId: string }>;
 }) {
   const { teammateId } = await params;
-  const { organizationId, role, session, db } = await requirePageMember();
+  const { organizationId, role, session, db, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
 
   const viewer = { userId: session.userId, role: role ?? "viewer" };
   const teammate = await findVisibleTeammate(
@@ -42,7 +43,7 @@ export default async function TeammateSettingsRoute({
   return (
     <TeammateSettingsPage
       teammate={teammate}
-      canGrant={canManageMembers(role)}
+      canGrant={can(access, "teammates:grants")}
       {...props}
     />
   );

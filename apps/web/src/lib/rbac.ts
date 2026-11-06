@@ -1,61 +1,36 @@
-import type { Role } from "@agent-hub/core";
-import { memberRoleRank, roleAllowsCapability } from "@agent-hub/core";
+import type { CapabilityRequirement, Role } from "@agent-hub/core";
+import { capabilitiesAllow, memberRoleRank, roleLabel } from "@agent-hub/core";
 
 /**
- * The ladder itself lives in `@agent-hub/core` (ADR-0019: the domain and its
- * pure derivations). It moved there when a *composite* operation had to check a
- * capability from inside the operations layer, where this module is not
- * reachable. This file keeps the app-facing names and the copy that explains
- * each rung; it no longer keeps a second copy of the numbers.
+ * What the console shows a Member (ADR-0028): every control is gated on the
+ * Capability the operation behind it requires, the same check the server
+ * makes, so a narrowed Role does not see a button it would be refused on.
+ *
+ * Pages pass {@link Access} from `requirePageMember` (or, on an Assistant's
+ * pages, `requireAssistantPageAccess`, which applies the Member's Role on that
+ * Assistant). The ladder helpers below it are what is left of the tier model
+ * and gate only navigation into Settings, which follows the tier because the
+ * Settings rail is the Organization scope.
  */
 
-/** Editors and above can create/edit assistants, flows and knowledge. */
-export function canEdit(role: Role | null): boolean {
-  return roleAllowsCapability(role, "edit");
+/** How a Role reads in the console; the one copy lives in `@agent-hub/core`. */
+export { roleLabel };
+
+export interface Access {
+  role: Role | null;
+  capabilities: readonly string[];
 }
 
-/** Admins and above can publish, delete assistants and manage members. */
-export function canPublish(role: Role | null): boolean {
-  return roleAllowsCapability(role, "publish");
+/** Whether the Member may do what an operation requiring `capability` does. */
+export function can(access: Access | null | undefined, capability: CapabilityRequirement): boolean {
+  return Boolean(access) && capabilitiesAllow(access!.capabilities, capability);
 }
 
+/**
+ * Whether the Organization-scoped Settings tabs are offered at all. A tier on
+ * purpose: those tabs are the Organization's administration, and each page
+ * still checks its own Capability.
+ */
 export function canManageMembers(role: Role | null): boolean {
-  return roleAllowsCapability(role, "manageMembers");
-}
-
-/**
- * Admins and above can read a stored turn's raw reasoning in the Inbox. The
- * Thinking panel itself: which tools ran, with what input and outcome, stays
- * visible to everyone who can open the Inbox; only the model's own
- * chain-of-thought is gated, because it quotes the Visitor's message and
- * whatever the knowledge base returned back verbatim (#557).
- */
-export function canViewReasoning(role: Role | null): boolean {
   return memberRoleRank(role) >= 3;
-}
-
-/** Editors and above can view the member roster (managing it stays admin+). */
-export function canViewMembers(role: Role | null): boolean {
-  return memberRoleRank(role) >= 2;
-}
-
-/** Only owners can change member roles and org settings. */
-export function canChangeRoles(role: Role | null): boolean {
-  return roleAllowsCapability(role, "changeRoles");
-}
-
-/** Admins and above manage the Organization's API keys (#618). */
-export function canManageApiKeys(role: Role | null): boolean {
-  return roleAllowsCapability(role, "manageApiKeys");
-}
-
-/**
- * An API key may never carry a Role above its creator's, the key acts as a
- * delegate of the human who minted it, so the ladder caps at their rank.
- */
-export function canAssignApiKeyRole(
-  creator: Role | null,
-  keyRole: Role
-): boolean {
-  return memberRoleRank(keyRole) <= memberRoleRank(creator);
 }

@@ -608,7 +608,7 @@ describe("collaboration", () => {
     await createTaskCommentOp.run(as(EDITOR, "editor"), { taskId: t.id, body: `See ${mentionToken("Bo", OTHER_EDITOR)}` });
     await updateTaskOp.run(as(EDITOR, "editor"), { id: t.id, patch: { title: "New title" } });
     const inbox = await notificationTriageOp.run(as(OTHER_EDITOR, "editor"), {});
-    expect(inbox.map((n) => [n.kind, n.task.title, n.project.key, n.excerpt]).sort()).toEqual([
+    expect(inbox.map((n) => [n.kind, n.task?.title, n.project?.key, n.excerpt]).sort()).toEqual([
       ["assigned", "New title", p.key, null],
       ["mentioned", "New title", p.key, "See @Bo"],
     ]);

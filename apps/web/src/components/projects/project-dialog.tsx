@@ -1,11 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import {
   MEMORY_DOCUMENT_MAX_CHARS,
+  IMPROVEMENT_STATUS_VALUES,
+  IMPROVEMENT_WORKFLOW,
   memoryDocumentChanges,
 } from "@agent-hub/core";
-import type { MemoryDocumentEntry } from "@agent-hub/core";
+import type { ImprovementStatus, MemoryDocumentEntry } from "@agent-hub/core";
 import { Archive, ArchiveRestore, ChevronRight, Trash2, X } from "lucide-react";
 import { Button, Dialog, DialogBody, DialogContent, DialogFooter, DialogTitle, Skeleton } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
@@ -58,7 +61,9 @@ export function ProjectDialog({
   onCreated?: (project: { id: string; name: string }) => void;
   onDeleted?: (projectId: string) => void;
 }) {
+  const router = useRouter();
   const creating = projectId === null;
+  const [improvementCounts, setImprovementCounts] = useState<Record<ImprovementStatus, number> | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [body, setBody] = useState("");
@@ -85,9 +90,10 @@ export function ProjectDialog({
     // on screen must not land over the one that is.
     let live = true;
     readProjectAction(projectId)
-      .then(({ project, document, entries: history }) => {
+      .then(({ project, document, entries: history, improvementCounts: counts }) => {
         if (!live) return;
         setName(project.name);
+        setImprovementCounts(counts);
         setDescription(project.description);
         setArchived(project.archived);
         setBody(document?.body ?? "");
@@ -274,6 +280,33 @@ export function ProjectDialog({
                     Every attached teammate reads this from its next message.
                   </p>
                 </div>
+
+                {improvementCounts && (
+                  <div
+                    className="mt-4 flex flex-wrap gap-4 text-sm"
+                    aria-label="Project improvement counts"
+                  >
+                    {IMPROVEMENT_STATUS_VALUES.map((status) => (
+                      <span key={status}>
+                        {IMPROVEMENT_WORKFLOW[status].label}:{" "}
+                        <RollingNumber value={improvementCounts[status]} />
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {!creating && projectId && (
+                  <Button
+                    variant="ghost"
+                    className="mt-2 px-0 underline underline-offset-4"
+                    onClick={() =>
+                      leave(() =>
+                        router.push(`/improvements?project=${encodeURIComponent(projectId)}`),
+                      )
+                    }
+                  >
+                    Review project improvements
+                  </Button>
+                )}
 
                 {/* Where Linear puts milestones: what this project has decided, and
                 when. Empty on a new one, and it says so rather than hiding. */}

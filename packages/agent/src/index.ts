@@ -35,6 +35,8 @@ export { answerConversationTurn } from "./turn-answer";
 export { evaluateCase } from "./evaluation";
 export type { TriageDecisionResult } from "./improvement-decisions";
 export { registerRuntimeHost, DEFAULT_PLATFORM_PROMPT } from "./host";
+// Outbound subscriptions validate URLs through the runtime's shared egress policy.
+export { validateOutboundWebhookUrl } from "./outbound-webhooks";
 export type { RuntimeHost } from "./host";
 
 // Conversation Turn: the one entrypoint for answering a user message.
@@ -108,7 +110,9 @@ export {
   sweepExpiredObjectAccess,
   sweepExpiredTraces,
   sweepExpiredTranscripts,
+  sweepDataRetention,
 } from "./scheduled";
+export type { SweepDataRetentionReport, SweptPolicyResult } from "./scheduled";
 // The pre-flight's nightly drift replay (#953): the cron tick over the
 // labelled baseline, tested without a request beside the other scheduled jobs.
 export { runPreflightDriftReplay } from "./preflight-drift";
@@ -146,6 +150,14 @@ export { enqueueDraftProposalJob } from "./jobs";
 // first time a Member opens that Document and cached on its row. Best-effort:
 // no credential or a model error returns null and the card shows an Excerpt.
 export { summariseDocument } from "./summarise-document";
+
+// The Chat summary an escalation carries (#1081): one classifier-tier call on
+// the Organization's own connections, masked and metered; null on any failure.
+export { summariseEscalation } from "./escalation-summary";
+
+// Quick Texts (#1085): a saved reply resolved against the Conversation a
+// Member is answering, with every unresolved token emptied.
+export { resolveQuickText } from "./template";
 
 // The memories backfill (#933): queue extraction for one Source's Documents
 // that need it, skipping what is already fresh or already queued. Nothing
@@ -201,6 +213,10 @@ export {
   testConnectorAction,
   testConnectorConnection,
 } from "./connector-request";
+// The "Create a ticket" Support Channel (#1088, #1089): one submission filed
+// through the catalogued Create case / Create record action, literally.
+export { fileTicket } from "./ticket-filing";
+export type { TicketFilingOutcome } from "./ticket-filing";
 export type {
   ConnectorError,
   ConnectorErrorCode,
@@ -286,3 +302,17 @@ export type {
 export { agUiResponse, agUiThreadKey, parseAgUiTurn } from "./ag-ui";
 export { teammateExecutionOptions } from "./teammate-execution-config";
 export { teammateComputer } from "./teammate-computer";
+
+export { discoverRemoteMcpTools } from "./remote-mcp-client";
+export { remoteMcpActions } from "./remote-mcp-tools";
+
+export { recordRemoteMcpApprovalOutcome } from "./remote-mcp-approval";
+
+/** Library duplicate warning shares the metered hybrid search. */
+export { findFaqDuplicates } from "./faq-duplicates";
+
+/**
+ * Starts a queued Improvement replay after the response. The validation insert
+ * already queued the durable job; this only spares it the wait for cron.
+ */
+export { scheduleImprovementReplay } from "./jobs";

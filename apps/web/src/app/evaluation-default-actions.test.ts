@@ -29,7 +29,7 @@ describe("Eval defaults actions", () => {
     await db.updateAssistant(assistant.id, { tools: { builtIns: { searchKnowledge: false }, evaluationModels: { reranker: { provider: "voyage", modelId: "voyage/rerank-2.5-lite" } } } });
     const model = { provider: "google", modelId: "gemini-3.5-flash" };
     expect(await saveEvaluationDefaultAction({ assistantId: assistant.id, stage: "answer", model })).toEqual({ ok: true });
-    expect(requireMember).toHaveBeenCalledWith("edit");
+    expect(requireMember).toHaveBeenCalledWith("evaluations:run", expect.anything());
     expect(await db.getAssistant(assistant.id)).toMatchObject({ modelProvider: "google", modelId: model.modelId, modelSource: null, tools: { builtIns: { searchKnowledge: false }, evaluationModels: { answer: model, reranker: { provider: "voyage" } } } });
     expect((await evaluationDefaultContextAction(assistant.id, "answer")).current).toEqual(model);
   });

@@ -1,8 +1,9 @@
 "use client";
 
-import { RollInText } from "@/components/motion/roll-in-text";
+import { RollInText, RollRow } from "@/components/motion/roll-in-text";
 
 import { useState, useTransition } from "react";
+import { useBrowserTimezone, localExportHour } from "@/lib/hooks/use-browser-timezone";
 import { Download } from "lucide-react";
 import type { ExportJobFormat, ExportJobKind, InsightsFilter } from "@agent-hub/core";
 import { DialogBody, DialogSection,
@@ -17,6 +18,10 @@ import { DialogBody, DialogSection,
   Input,
   Label,
 } from "@agent-hub/ui";
+import { createExportScheduleAction } from "@/app/(admin)/insights/exports/schedule-actions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import { useUnsavedChanges } from "@/components/ui/use-unsaved-changes";
 import { requestInsightsExportAction } from "@/app/(admin)/insights/exports/actions";
 import { AssistantFilterDropdown } from "@/components/insights/assistant-filter-dropdown";
 import { DateRangeDropdown } from "@/components/insights/date-range-dropdown";
@@ -66,7 +71,7 @@ function Choice({
       <span className="text-muted-foreground text-xs font-medium">{label}</span>
       <Select value={value} onValueChange={(v) => onChange(v as string)}>
         <SelectTrigger>
-          <SelectValue>{(v: string) => options.find((o) => o.value === v)?.label ?? v}</SelectValue>
+          <SelectValue>{(v: string) => <RollInText text={options.find((o) => o.value === v)?.label ?? v} />}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (
@@ -88,17 +93,32 @@ function Choice({
 export function CreateExportDialog({
   assistants,
   defaultFilter,
+  scheduleMembers,
+  onScheduled,
 }: {
   assistants: AssistantOption[];
   defaultFilter: InsightsFilter;
+  scheduleMembers?: Array<{ userId: string; email: string }>;
+  onScheduled?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [filter, setFilter] = useState(defaultFilter);
-  const [kind, setKind] = useState<ExportJobKind>("insights_overview");
+  const [kind, setKind] = useState<Exclude<ExportJobKind, "audit_log">>("insights_overview");
   const [format, setFormat] = useState<ExportJobFormat>("csv");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const [cadence, setCadence] = useState("weekly");
+  const [weekday, setWeekday] = useState(1);
+  const [day, setDay] = useState(1);
+  const [hour, setHour] = useState(8);
+  const [recipientMemberIds, setRecipientMemberIds] = useState<string[]>([]);
+  const timezone = useBrowserTimezone();
+  const localHour = localExportHour(hour, timezone);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const dirty = open && (Boolean(name) || JSON.stringify(filter) !== JSON.stringify(defaultFilter) || kind !== "insights_overview" || format !== "csv" || cadence !== "weekly" || weekday !== 1 || day !== 1 || hour !== 8 || recipientMemberIds.length > 0);
+  const { leave } = useUnsavedChanges({ dirty, saving: pending, confirmDelete });
+  const close = () => { if (!pending) leave(() => { setOpen(false); reset(); }); };
 
   function reset() {
     setName("");
@@ -106,6 +126,7 @@ export function CreateExportDialog({
     setKind("insights_overview");
     setFormat("csv");
     setError("");
+    setCadence("weekly"); setWeekday(1); setDay(1); setHour(8); setRecipientMemberIds([]);
   }
 
   function submit(event: React.FormEvent) {
@@ -118,6 +139,11 @@ export function CreateExportDialog({
       Object.entries(filter).filter(([, value]) => value !== "")
     ) as Record<string, string>;
     startTransition(async () => {
+      if (scheduleMembers) {
+        const result = await createExportScheduleAction({ name, kind, format, filters, hour, recipientMemberIds, cadence: cadence === "weekly" ? { kind: "weekly", weekday } : { kind: "monthly", day } });
+        if (!result.ok) { setError(result.error); return; }
+        toast.success("Export schedule saved"); setOpen(false); reset(); onScheduled?.(); return;
+      }
       const result = await requestInsightsExportAction({ name, kind, format, filters });
       if (!result.ok) {
         setError(result.error);
@@ -130,21 +156,20 @@ export function CreateExportDialog({
   }
 
   return (
-    <Dialog
+    <><Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) reset();
+        if (next) setOpen(true); else close();
       }}
     >
       <DialogTrigger render={<Button className="h-8 rounded-lg px-3" />}>
-        <Download className="size-4" /> New export
+        <Download className="size-4" /><RollInText text={scheduleMembers ? "Schedule" : "New export"} />
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <form onSubmit={submit} className="grid gap-5">
           <DialogHeader>
-            <DialogTitle className="text-lg">Create export</DialogTitle>
-            <DialogDescription>Runs in the background.</DialogDescription>
+            <DialogTitle className="text-lg"><RollInText text={scheduleMembers ? "Schedule export" : "Create export"} /></DialogTitle>
+            <DialogDescription>{scheduleMembers ? "Each run creates a private export and emails the selected Members a sign-in link." : "Runs in the background."}</DialogDescription>
           </DialogHeader>
 
           <DialogBody>
@@ -182,11 +207,11 @@ export function CreateExportDialog({
                   These filters will be applied in your report:
                 </legend>
                 <div className="flex flex-wrap gap-2">
-                  <DateRangeDropdown
+                  {!scheduleMembers && <DateRangeDropdown
                     from={filter.from}
                     to={filter.to}
                     onChange={(from, to) => setFilter({ ...filter, from, to })}
-                  />
+                  />}
                   <AssistantFilterDropdown
                     assistants={assistants}
                     value={filter.assistantId}
@@ -245,13 +270,25 @@ export function CreateExportDialog({
               </fieldset>
             </DialogSection>
 
+            {scheduleMembers && <DialogSection>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Choice label="Cadence" value={cadence} options={[{ value: "weekly", label: "Weekly" }, { value: "monthly", label: "Monthly" }]} onChange={setCadence} />
+                {cadence === "weekly" ? <Choice label="Weekday (UTC)" value={String(weekday)} options={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((label, index) => ({ value: String(index), label }))} onChange={value => setWeekday(Number(value))} /> : <label className="grid gap-1 text-sm">Day of month (UTC)<Input type="number" min={1} max={31} value={day} onChange={event => setDay(Number(event.target.value))} /></label>}
+                <label className="grid gap-1 text-sm">Hour (UTC)<Input type="number" min={0} max={23} value={hour} onChange={event => setHour(Number(event.target.value))} /></label>
+                <p className="text-muted-foreground self-end text-sm"><RollInText text={localHour ? `Your local time: ${localHour}` : "Loading your local time…"} /></p>
+              </div>
+              <p className="text-muted-foreground mt-3 text-xs">{cadence === "weekly" ? "Each report covers the last 7 closed UTC days." : "Each report covers the previous calendar month. Days beyond a month's end use its last day."}</p>
+              <p className="mt-4 text-sm font-medium">Email Members</p>
+              <div className="mt-2 grid gap-2">{scheduleMembers.map((member, index) => <RollRow key={member.userId} index={index}><label className="flex items-center gap-2 text-sm"><Checkbox checked={recipientMemberIds.includes(member.userId)} onCheckedChange={checked => setRecipientMemberIds(ids => checked === true ? [...ids, member.userId] : ids.filter(id => id !== member.userId))} /><RollInText text={member.email} /></label></RollRow>)}</div>
+            </DialogSection>}
+
             <DialogSection>
               <div className="grid gap-2">
                 <span className="text-sm font-medium">Select export type</span>
                 <RadioGroup
                   aria-label="Export type"
                   value={kind}
-                  onValueChange={(value) => setKind(value as ExportJobKind)}
+                  onValueChange={(value) => setKind(value as Exclude<ExportJobKind, "audit_log">)}
                   options={KIND_OPTIONS}
                 />
               </div>
@@ -275,7 +312,7 @@ export function CreateExportDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={close}
             >
               Cancel
             </Button>
@@ -285,6 +322,6 @@ export function CreateExportDialog({
           </DialogFooter>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog>{confirmDeleteModal}</>
   );
 }

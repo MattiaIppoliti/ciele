@@ -11,6 +11,8 @@ export async function streamTransportTeammateTurn(options: {
   teammate: Teammate;
   memberId: string;
   role: Role;
+  /** An API key's Capabilities (its Role ∩ its creator's), ADR-0028. */
+  capabilities?: readonly string[];
   threadId: string;
   turnId: string;
   message: string;
@@ -63,6 +65,7 @@ export async function streamTransportTeammateTurn(options: {
       organizationId: teammate.organizationId,
       userId: memberId,
       role,
+      capabilities: options.capabilities,
     }),
   ]);
   return streamConversationTurn({

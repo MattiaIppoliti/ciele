@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 export type AgentCodeLanguage =
   | "bash"
+  | "css"
   | "diff"
   | "json"
   | "text"
@@ -47,10 +48,22 @@ function getAgentCodeHighlighter() {
   if (!agentCodeHighlighter) {
     agentCodeHighlighter = createHighlighter({
       themes: [LIGHT_THEME, DARK_THEME],
-      langs: ["bash", "diff", "json", "tsx", "typescript"],
+      langs: ["bash", "css", "diff", "json", "tsx", "typescript"],
     });
   }
   return agentCodeHighlighter;
+}
+
+const LANGUAGE_ALIASES: Record<string, AgentCodeLanguage> = {
+  bash: "bash", sh: "bash", shell: "bash", zsh: "bash",
+  css: "css", diff: "diff", json: "json",
+  tsx: "tsx", jsx: "tsx",
+  ts: "typescript", typescript: "typescript", js: "typescript", javascript: "typescript",
+};
+
+/** The grammar for a free-form label (`"sh"`, `"ts"`), or `"text"` when there is none. */
+export function agentCodeLanguage(label: string | undefined): AgentCodeLanguage {
+  return (label && LANGUAGE_ALIASES[label.toLowerCase()]) || "text";
 }
 
 function tokenCacheKey(code: string, language: AgentCodeLanguage) {
@@ -77,7 +90,8 @@ export function useAgentCodeTokens(
   }
 
   useEffect(() => {
-    if (tokenCache.get(key)) return;
+    // Plain text has nothing to colour; don't load the highlighter for it.
+    if (language === "text" || tokenCache.get(key)) return;
 
     let cancelled = false;
     getAgentCodeHighlighter().then((highlighter) => {

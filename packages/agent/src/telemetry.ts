@@ -1,6 +1,7 @@
 import type { RuntimeEventInput } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { reportError } from "@agent-hub/diagnostics";
+import { activeTurnClock } from "./turn-clock";
 
 /**
  * Runtime telemetry (ADR-0011: AI observability within budget).
@@ -14,6 +15,12 @@ export async function recordRuntimeEvent(
   db: Db,
   event: RuntimeEventInput
 ): Promise<void> {
+  // A chat turn records where its time went (#1112). Read here, where every
+  // turn path already ends, rather than threaded into each caller.
+  // A job's clock is not a turn's, so a turn a job records without opening
+  // its own clock carries no timings rather than the job's.
+  const clock = event.kind === "chat_turn" && !event.timings ? activeTurnClock() : undefined;
+  if (clock?.kind === "turn") event = { ...event, timings: clock.summary() };
   try {
     await db.recordRuntimeEvent(event);
   } catch (error) {

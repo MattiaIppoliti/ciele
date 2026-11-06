@@ -1,0 +1,191 @@
+---
+title: Webhooks
+description: Erhalten Sie signierte Organization-Ereignisse in Ihren Systemen.
+---
+
+import { WebhookEvents } from '@/components/webhook-events';
+
+Ein Abonnement für ausgehende Webhooks sendet Ereignisse der Organisation an
+eine von Ihnen kontrollierte URL. Owner und Admin Members verwalten Abonnements.
+
+Diese Funktion unterscheidet sich von der **HTTP Webhook** Flow-Aktion. Diese
+Aktion wartet auf einen Callback, bevor der Flow fortgesetzt wird.
+
+## Ein Abonnement hinzufügen
+
+1. Öffnen Sie **Settings → Webhooks**.
+2. Wählen Sie **Add subscription** aus.
+3. Geben Sie einen Namen und eine HTTPS-URL ein.
+4. Wählen Sie die Events aus, die Sie empfangen möchten.
+5. Wählen Sie **Save** aus.
+6. Kopieren Sie das Signing Secret in die sichere Konfiguration Ihres Receivers.
+   Ciele zeigt dieses Secret nur einmal an.
+
+Wählen Sie **Pause** aus, um die Zustellung zu stoppen. Wählen Sie **Resume**
+aus, um fortzufahren. Löschen Sie ein Abonnement, um dessen Konfiguration und
+Zustellprotokoll zu entfernen.
+
+Die Produktionsbereitstellung lehnt HTTP-, Loopback- und private
+Netzwerkadressen ab. Development-Hosts können HTTP und Loopback über die
+bestehende Egress-Richtlinie der Deployment-Umgebung zulassen.
+
+## Bereitstellung testen und prüfen
+
+Wählen Sie **Send test event**. Ciele stellt ein synthetisches
+`conversation.escalated`-Ereignis in die Warteschlange und zeigt den
+Antwortstatus des ersten Versuchs an.
+
+Wählen Sie **Deliveries** aus, um die letzten 100 Zustellungen zu prüfen. Jede
+Zeile zeigt das Event, die Anzahl der Versuche, den letzten HTTP-Status und die
+Uhrzeit an. Wählen Sie **Refresh** aus, um das aktuelle Ergebnis zu laden.
+
+Ein Test verwendet dieselben Prüfungen für Signatur, Warteschlange und Egress
+wie ein echtes Event. Es enthält Beispiel-IDs anstelle der Daten eines echten
+Visitors.
+
+## Wiederholungsversuche behandeln
+
+Ciele sendet jedes Event als JSON-POST. Der Envelope enthält `id`, `type`,
+`createdAt`, `organizationId` und `data`.
+
+Geben Sie innerhalb von 10 Sekunden eine 2xx-Antwort zurück. Eine Antwort, die
+nicht im Bereich 2xx liegt, ein Netzwerkfehler oder ein Timeout führen zu einem
+erneuten Versuch.
+
+Bei Wiederholungsversuchen kommen exponentielle Verzögerungen zum Einsatz – von
+einer Minute bis zu einer Stunde – innerhalb eines 24-Stunden-Zustellfensters.
+Bei jedem Wiederholungsversuch bleibt das ursprüngliche `id` des Ereignisses
+erhalten. Speichern Sie diese ID, um doppelte Zustellungen zu erkennen, bevor
+Sie ein Event erneut verarbeiten.
+
+Wenn bei einer Zustellung alle Wiederholungsversuche aufgebraucht sind, wird ein
+Alert ausgelöst, der das Abonnement nennt. Die nächste erfolgreiche Zustellung
+an dieses Abonnement löscht den Alert.
+
+### Den Worker konfigurieren
+
+Der Background Worker muss mindestens alle fünf Minuten ausgeführt werden, um
+eine rechtzeitige Zustellung und Wiederholungsversuche zu gewährleisten. Der im
+Lieferumfang enthaltene Self-Hosted Worker verwendet diesen Zeitplan bereits.
+
+Der standardmäßige gehostete Wartungsplan wird täglich ausgeführt. Es kann
+innerhalb des 24-Stunden-Fensters keine wiederholten Zustellversuche
+durchführen.
+
+Planen Sie bei gehosteten Bereitstellungen Aufrufe von
+`/api/cron/finalize-crawls` mindestens alle fünf Minuten ein. Führen Sie für
+Vercel Hobby den eigenständigen externen Docker-Worker des Repositorys aus. Es
+startet nur einen Scheduler und verwendet den authentifizierten Drain der
+gehosteten App.
+
+Senden Sie `Authorization: Bearer CRON_SECRET`. Speichern Sie diese
+Bereitstellungsanmeldeinformationen im Secret Store des Schedulers. Der Endpoint
+entleert das Ledger für zuverlässige Zustellungen.
+
+Erstellen Sie eine private Umgebungsdatei außerhalb des Checkouts mit `APP_URL`
+(dem gehosteten HTTPS-Ursprung ohne abschließenden Schrägstrich) und
+`CRON_SECRET`. Starten Sie den Worker vom Repository-Root aus auf einem externen
+Docker-Host:
+
+```sh
+docker compose --env-file /secure/ciele-worker.env -f deploy/docker-compose.hosted-worker.yml up -d --build
+```
+
+Überprüfen Sie alle fünf Minuten die Worker-Protokolle auf einen erfolgreichen
+Drain. Senden Sie anschließend über Settings ein Test-Event und vergewissern Sie
+sich, dass das zugehörige Delivery Log `delivered` anzeigt. Der Worker muss
+weiter ausgeführt werden, damit Wiederholungsversuche fortgesetzt werden können.
+
+
+## Signatur verifizieren
+
+Behalten Sie den Raw Body der Anfrage bei. Führen Sie vor der Verifizierung kein
+Parsing und keine erneute Serialisierung von JSON durch.
+
+Der `Ciele-Signature`-Header hat das Format `t=TIMESTAMP,v1=HEX_DIGEST`. Der
+Zeitstempel verwendet Unix-Sekunden.
+
+Berechnen Sie HMAC-SHA256 mit dem Signing Secret über den Timestamp, einen Punkt
+und den exakten Raw Body. Lehnen Sie Zeitstempel ab, die mehr als fünf Minuten
+von der aktuellen Zeit abweichen. Vergleichen Sie die Digest-Bytes in konstanter
+Zeit.
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verifyCieleSignature(rawBody, header, secret, now = Date.now()) {
+  const parts = /^t=(\d+),v1=([a-f0-9]{64})$/.exec(header ?? "");
+  if (!parts) return false;
+  const timestamp = Number(parts[1]);
+  if (!Number.isSafeInteger(timestamp)) return false;
+  if (Math.abs(now / 1000 - timestamp) > 300) return false;
+  const expected = createHmac("sha256", secret)
+    .update(`${parts[1]}.${rawBody}`)
+    .digest();
+  const received = Buffer.from(parts[2], "hex");
+  return timingSafeEqual(expected, received);
+}
+```
+
+Lesen Sie das Secret aus dem Secret Store Ihres Empfängers aus. Lehnen Sie die
+Anfrage ab, bevor Sie ihre Payload verarbeiten, falls die Verifizierung
+fehlschlägt.
+
+## Ereignisdaten
+
+Payloads enthalten Metadaten. Sie schließen Nachrichtentext, Transkripte, Werte
+aus Eskalationsformularen und Besucher-IDs aus.
+
+Konversationsnamen verwenden die Conversation ID, da ein Chat-Titel Text des
+Besuchers enthalten kann. Titel von Verbesserungen, die aus dem Chat oder der
+Flow-Eingabe abgeleitet sind, verwenden den Schlüssel `IMP` der Verbesserung.
+Andere Titel beschreiben die konfigurierte Entität.
+
+Die Quelle einer Verbesserung ist `flow_action`, `escalation` oder `manual`.
+Bestehende automatisierte Verifizierungs- und Wartungspfade verwenden `system`.
+
+Die folgenden Felddeklarationen und Beispiele stammen aus demselben
+Event-Katalog, der die Bereitstellung validiert.
+
+<WebhookEvents />
+
+## API, CLI und MCP
+
+Das Webhooks Developer Panel zeigt API- und Tool-Beispiele für die aktuelle
+Bereitstellung an. Änderungen am Abonnement müssen in Ciele AI bestätigt werden.
+**Ordinary Teammates** erhalten keine Tools zur Verwaltung von Webhooks.
+
+`webhook.json` erstellen:
+
+```json
+{
+  "name": "Support events",
+  "url": "https://support.example.com/ciele/events",
+  "eventTypes": ["conversation.escalated", "feedback.negative"]
+}
+```
+
+```sh
+ciele webhooks list
+ciele webhooks create --file webhook.json --yes
+ciele webhooks deliveries SUBSCRIPTION_ID
+ciele webhooks test SUBSCRIPTION_ID --yes
+ciele webhooks pause SUBSCRIPTION_ID --yes
+ciele webhooks resume SUBSCRIPTION_ID --yes
+ciele webhooks delete SUBSCRIPTION_ID --yes
+```
+
+Verwenden Sie `ciele webhooks update SUBSCRIPTION_ID --file patch.json --yes`,
+um ausgewählte Felder zu ändern. Setzen Sie `paused` im Patch, um über den
+Update-Endpoint zu pausieren oder fortzufahren.
+
+Die REST-Endpoints beginnen bei `/api/v1/webhooks`. Jedes Abonnement verfügt
+über die Unterressourcen `/deliveries` und `/test`.
+
+Das MCP-Tool `manage_configuration` unterstützt die Aktionen `webhook_list`,
+`webhook_create`, `webhook_update`, `webhook_pause`, `webhook_resume`,
+`webhook_delete`, `webhook_deliveries` und `webhook_test`.
+
+Der Standalone Worker führt außerdem alle fünf Minuten geplante Insights-Exporte
+durch. Beide Drains verwenden dieselbe authentifizierte Anwendungs-URL und
+dasselbe Cron-Secret.

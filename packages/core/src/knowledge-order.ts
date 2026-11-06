@@ -36,6 +36,7 @@ function text(a: string, b: string): number {
 }
 
 interface OrgKnowledgeSourceRow {
+  usage?: { cited30: number };
   id: string;
   name: string;
   status: SourceStatus;
@@ -50,6 +51,9 @@ export function compareOrgKnowledgeSources(
   return (a, b) => {
     let primary: number;
     switch (order.sort) {
+      case "cited30":
+        primary = (a.usage?.cited30 ?? 0) - (b.usage?.cited30 ?? 0);
+        break;
       case "name":
         primary = text(a.name, b.name);
         break;

@@ -15,7 +15,7 @@ const ctx = (db: Db, ports: OperationPorts, over: Partial<OperationContext> = {}
   ...over,
 });
 
-async function seedApproval(db: Db, channelId?: string) {
+async function seedApproval(db: Db, channelId?: string, operation = "platform.run") {
   const assistant = await createAssistantOp.run(ctx(db, {}, { role: "owner" }), { title: "Gate" });
   const conversation = await db.createConversation({
     assistantId: assistant.id,
@@ -28,7 +28,7 @@ async function seedApproval(db: Db, channelId?: string) {
     ...(channelId ? { conversationId: null, channelId } : { conversationId: conversation.id }),
     teammateId: "tm-ciele",
     requestedBy: DEMO_MEMBER.userId,
-    operation: "platform.run",
+    operation,
     input: { name: "assistants.delete", input: { id: assistant.id } },
     label: "Run assistants.delete",
     reversibility: "irreversible",
@@ -95,21 +95,35 @@ describe("approvals.decide", () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
+  it("records a safe MCP failure after releasing the run claim", async () => {
+    const db = getMockDb();
+    const approval = await seedApproval(db, undefined, "mcp.synthetic");
+    const record = vi.fn(async () => {});
+    const run = vi.fn(async () => { throw new Error("Bearer private-fixture-secret"); });
+    await expect(decideActionApprovalOp.run(ctx(db, { runApprovedTeammateAction: run, afterActionApprovalDecided: record }), { id: approval.id, decision: "approved" })).rejects.toThrow("private-fixture-secret");
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ id: approval.id }), expect.objectContaining({ result: expect.objectContaining({ isError: true }) }));
+    expect(JSON.stringify(record.mock.calls)).not.toContain("private-fixture-secret");
+    expect((await db.table("actionApprovals").get(approval.id))?.executedAt).toBeNull();
+  });
+
   it("refuses a second click while the first run is still going", async () => {
     const db = getMockDb();
-    const approval = await seedApproval(db);
+    const approval = await seedApproval(db, undefined, "mcp.synthetic");
     let finish!: () => void;
     const run = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
-    const ports = { runApprovedTeammateAction: run };
+    const record = vi.fn(async () => {});
+    const ports = { runApprovedTeammateAction: run, afterActionApprovalDecided: record };
 
     const first = decideActionApprovalOp.run(ctx(db, ports), { id: approval.id, decision: "approved" });
     await vi.waitFor(() => expect(run).toHaveBeenCalledOnce());
     await expect(
       decideActionApprovalOp.run(ctx(db, ports), { id: approval.id, decision: "approved" })
     ).rejects.toMatchObject({ code: "conflict" });
+    expect(record).not.toHaveBeenCalled();
     finish();
     await expect(first).resolves.toEqual({ status: "approved", ran: true });
     expect(run).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledOnce();
   });
 
   it("does not turn a rejection into a retry of an approved row", async () => {

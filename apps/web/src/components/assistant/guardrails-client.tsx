@@ -157,6 +157,8 @@ function GuardrailForm({
               one, this check cannot run and follows its failure setting below.
             </p>
           )}
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.alsoScoreAnswers ?? false} onCheckedChange={value => setDraft({ ...draft, alsoScoreAnswers: value === true })} />Also score answers</label>
+          <p className="text-muted-foreground text-xs">Scores generated answers after they are saved. Answers are never blocked or delayed.</p>
           <Label>Block on these categories</Label>
           <p className="text-muted-foreground text-xs">
             Pick none to block anything the model <code>omni-moderation-latest</code> flags.

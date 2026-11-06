@@ -181,8 +181,9 @@ describe("middleware local connector relay", () => {
       expect(response.headers.get("x-middleware-next")).toBe("1");
       expect(response.headers.get("location")).toBeNull();
     }
+    // No route serves a lookalike, so it reaches the 404 page, not /login.
     const lookalike = await middleware(new NextRequest("https://ciele.example.com/components-private"));
-    expect(lookalike.status).toBe(307);
+    expect(lookalike.headers.get("location")).toBeNull();
   });
 
   it("lets the OAuth handoff preserve its full continuation through its own sign-in gate", async () => {
@@ -353,6 +354,15 @@ describe("middleware local connector relay", () => {
       expect(response.headers.get("location")).toBe(
         "https://ciele.example.com/login?next=%2Finsights"
       );
+    });
+
+    it("lets an unknown path reach the 404 page instead of /login", async () => {
+      const response = await middleware(
+        new NextRequest("https://ciele.example.com/it/old-page")
+      );
+
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("x-middleware-next")).toBe("1");
     });
 
     it("clears a stale hint on the fast path too", async () => {

@@ -33,6 +33,33 @@ Verbatim Message actions and Basic replies do not contain a Thinking trace. Sear
 
 API integration calls also appear in the trace. Their events show which endpoint supported the answer.
 
+## Take over a Conversation
+
+You can answer a Visitor yourself. Open the Conversation and select **Take over**. You must be an Editor, an Admin, an Owner or a Support Agent.
+
+When you hold a Conversation:
+
+- The Assistant does not answer. Each Visitor message is saved and shown in the Inbox, but no Flow runs and no model is called.
+- A reply box shows below the transcript. Your reply goes to the open Widget with your display name. The Visitor does not have to send a message first.
+- The Widget and the Inbox show a line when you join and when you leave.
+- Other Members see who holds the Conversation. Only one Member can hold it at a time.
+
+Select **Release** to give the Conversation back to the Assistant. The next Visitor message starts a normal turn. An Admin or an Owner can release a Conversation that a colleague holds.
+
+Your replies are operator messages. They are not AI answers, so Insights, answer verification and feedback do not count them. The JSON export and the printed transcript mark them with the sender `Operator` and your name.
+
+The Widget checks for your replies every few seconds while you hold the Conversation. It also checks every 15 seconds for 5 minutes after the Visitor sends a message, so it can show that you joined. An idle Widget sends no extra requests.
+
+## Quick Texts
+
+Quick Texts are saved replies for the reply box. Editors, Admins and Owners create, edit and delete them in **Settings** > **Quick Texts**. Each Quick Text has a title, a body and an optional folder.
+
+To insert a Quick Text, type **/** in the reply box. Continue to type to filter the list by title. Select a Quick Text, or press Enter, to put its body where you typed **/**. You can change the text before you send it.
+
+A body can use the template variables that Flow actions use, for example `{{user.name}}`. Ciele fills them in from the Conversation that you answer. A variable that has no value becomes empty text.
+
+Every Member who can reply can use every Quick Text. You can also manage Quick Texts with the API, the `ciele quick-texts` CLI command and the `manage_configuration` MCP tool.
+
 ## Create quality work
 
 Use the available Improvement action when an answer needs correction. The new item links back to the affected Conversation message.

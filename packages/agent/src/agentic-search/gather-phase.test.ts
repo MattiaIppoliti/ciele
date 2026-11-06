@@ -142,6 +142,17 @@ describe("runGatherPhase", () => {
     expect(recorded).toEqual([{ inputTokens: 8, outputTokens: 3 }]);
   });
 
+  it("marks the instructions and the conversation tail as prompt-cache breakpoints", async () => {
+    // Up to 8 gather steps resend the same instructions and tools; the
+    // breakpoints let every step after the first read them from the cache.
+    const model = gatherModel(["thinking"]);
+    await runGatherPhase(gatherInput(model));
+    const prompt = model.doStreamCalls[0]!.prompt;
+    const breakpoint = { anthropic: { cacheControl: { type: "ephemeral" } } };
+    expect(prompt[0]).toMatchObject({ role: "system", content: "gather", providerOptions: breakpoint });
+    expect(prompt.at(-1)).toMatchObject({ role: "user", providerOptions: breakpoint });
+  });
+
   it("flags a content-filter finish as a refusal and skips the response messages", async () => {
     const result = await runGatherPhase(
       gatherInput(gatherModel([], { unified: "content-filter" }))

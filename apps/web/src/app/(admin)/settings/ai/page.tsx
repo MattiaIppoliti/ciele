@@ -2,7 +2,6 @@ import { canEditTeammate, EVALUATION_STAGES, type EvaluationStage } from "@agent
 import { TeammateDefaultModelSettings } from "@/components/settings/teammate-default-model-settings";
 import { DefaultModelSettings } from "@/components/settings/default-model-settings";
 import { availableEvaluationModels, evaluationModelsForStage } from "@/lib/evaluation-models";
-import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AiSettingsClient } from "@/components/settings/ai-settings-client";
@@ -20,8 +19,7 @@ import {
   isPlatformOwner,
   listPlatformEvalModels,
 } from "@/lib/platform";
-import { canManageMembers } from "@/lib/rbac";
-import { canChangeRoles } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { connectorInstallationScope } from "@/lib/local-connector-installer";
 import { DEFAULT_PLATFORM_PROMPT } from "@agent-hub/agent";
 import {
@@ -33,9 +31,10 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function AiSettingsPage() {
-  const { session, organizationId, role, db } = await requirePageMember();
+  const { session, organizationId, role, db, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
   const owner = isPlatformOwner(session.email);
-  const canManage = canManageMembers(role);
+  const canManage = can(access, "providers:manage");
   // Organization provider settings require its admin role. A platform admin
   // without it reaches this page only for the platform-wide cards: the shared
   // model catalog and the platform prompt, never this org's connections.
@@ -61,7 +60,6 @@ export default async function AiSettingsPage() {
   if (!canManage) {
     return (
       <SettingsPanel
-        icon={Sparkles}
         title="AI Provider"
         description="Applies to every organization."
       >
@@ -116,7 +114,6 @@ export default async function AiSettingsPage() {
 
   return (
     <SettingsPanel
-      icon={Sparkles}
       title="AI Provider"
 
     >
@@ -129,7 +126,7 @@ export default async function AiSettingsPage() {
       <AiSettingsClient
           connections={connections.map((c) => ({ ...c, encryptedKey: null }))}
           canManage={canManage}
-          canEnablePersonalSubscriptions={canChangeRoles(role)}
+          canEnablePersonalSubscriptions={can(access, "personalSubscriptions:manage")}
           personalSubscriptionsAllowed={personalSubscriptionsAllowed}
           localSubscriptionTestEnabled={localSubscriptionTestEnabled}
           localSubscriptionStatuses={localSubscriptionStatuses}

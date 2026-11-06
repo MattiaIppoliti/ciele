@@ -1,3 +1,4 @@
+import { SourceUsageCard } from "./source-usage-card";
 
 import { RollInText } from "@/components/motion/roll-in-text";
 import { ExternalLink } from "lucide-react";
@@ -21,6 +22,7 @@ import { formatDay } from "@/lib/format";
  */
 export function SourceDocumentsView({
   source,
+  usage = null,
   documents,
   memoryCounts,
   total,
@@ -31,8 +33,10 @@ export function SourceDocumentsView({
   backLabel,
   assistantId,
   canEdit,
+  qualityAvailable = false,
 }: {
   source: Source;
+  usage?: import("@agent-hub/core").SourceUsageStats | null;
   documents: SourceDocumentListItem[];
   /** Live memories per Document path (#932); absent reads as none. */
   memoryCounts: Record<string, number>;
@@ -47,6 +51,7 @@ export function SourceDocumentsView({
   assistantId?: string;
   /** Editors get the backfill lever (#933) and the header menu; a Viewer reads. */
   canEdit: boolean;
+  qualityAvailable?: boolean;
 }) {
   return (
     <div className="touch-scroll-clearance @container flex h-full flex-col overflow-y-auto">
@@ -99,6 +104,7 @@ export function SourceDocumentsView({
           )}
         </div>
       </header>
+      <div className="px-6 pb-4"><SourceUsageCard usage={usage} /></div>
 
       <div className="min-h-0 flex-1 px-6 pb-6">
         <SourceDocumentsTable
@@ -110,6 +116,7 @@ export function SourceDocumentsView({
           params={params}
           basePath={basePath}
           canEdit={canEdit}
+          qualityAvailable={qualityAvailable}
         />
       </div>
     </div>

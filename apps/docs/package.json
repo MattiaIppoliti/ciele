@@ -17,6 +17,7 @@
     "test": "node --test scripts/*.test.mjs && node scripts/check-ste.mjs && node scripts/check-links.mjs"
   },
   "dependencies": {
+    "@agent-hub/core": "workspace:*",
     "@agent-hub/ui": "workspace:*",
     "fumadocs-core": "^16.11.5",
     "fumadocs-mdx": "^15.2.0",

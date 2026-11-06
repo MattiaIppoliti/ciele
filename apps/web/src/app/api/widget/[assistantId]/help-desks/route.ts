@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { desksWithAvailableOperator } from "@ciele/ops";
 import { listEscalationDesks } from "@/lib/escalation-desks";
 import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
 
@@ -20,7 +21,8 @@ export async function GET(
   const payload = await listEscalationDesks(
     db,
     config.assistant.organizationId,
-    config.assistant.helpDeskSettings?.selectedIds ?? []
+    config.assistant.helpDeskSettings?.selectedIds ?? [],
+    await desksWithAvailableOperator(db, config.assistant.organizationId)
   );
 
   return Response.json({ helpDesks: payload }, { headers: cors });

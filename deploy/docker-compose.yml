@@ -267,6 +267,9 @@ services:
       CHAT_MAX_CONCURRENT_TURNS_PER_ORG: ${CHAT_MAX_CONCURRENT_TURNS_PER_ORG:-}
       CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER: ${CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER:-}
       CHAT_TURN_QUEUE_WAIT_MS: ${CHAT_TURN_QUEUE_WAIT_MS:-}
+      # The hosted MCP endpoint, /api/mcp: 1 refuses every mutating tool
+      # action before a request leaves, as it does for the stdio server.
+      CIELE_MCP_READ_ONLY: ${CIELE_MCP_READ_ONLY:-}
       SLACK_APPLICATION_CLIENT_ID: ${SLACK_APPLICATION_CLIENT_ID:-}
       SLACK_APPLICATION_CLIENT_SECRET: ${SLACK_APPLICATION_CLIENT_SECRET:-}
       SLACK_APPLICATION_APP_ID: ${SLACK_APPLICATION_APP_ID:-}
@@ -287,6 +290,8 @@ services:
       # CIELE_PUBLIC_ORIGIN or NEXT_PUBLIC_APP_URL unless this says so; empty
       # is the default and means "refuse" (#801, CYB-16).
       CIELE_ALLOW_INSECURE_HTTP: ${CIELE_ALLOW_INSECURE_HTTP:-}
+      # Proxies in front that append to X-Forwarded-For; empty is none.
+      CIELE_TRUSTED_PROXY_HOPS: ${CIELE_TRUSTED_PROXY_HOPS:-}
       CRON_SECRET: ${CRON_SECRET:?run ./deploy/bootstrap.sh first}
       PLATFORM_OWNER_EMAIL: ${PLATFORM_OWNER_EMAIL:-}
       # AI providers. Any one of these makes assistants answer; with none set

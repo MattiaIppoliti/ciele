@@ -43,13 +43,14 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-Der gehostete Endpoint verfügt über keinen Schalter für den schreibgeschützten
-Modus: Seine Berechtigungen entsprechen der Role des Schlüssels. Ein
-Viewer-Schlüssel ist jedoch kein reiner Read-only-Agent – das Überprüfen von
-Konversationen gilt als Curation, sodass er eine Konversation anheften, Feedback
-hinterlassen und eine Konversation löschen kann. Verwenden Sie einen lokalen
-stdio-Server mit `CIELE_MCP_READ_ONLY=1`, wenn der Agent überhaupt nichts ändern
-darf.
+Die Berechtigungen des gehosteten Endpunkts entsprechen der Role des Schlüssels.
+Ein Viewer-Schlüssel ist jedoch kein reiner Read-only-Agent. Das Überprüfen von
+Konversationen zählt als Kuration, daher kann ein Viewer-Schlüssel eine
+Konversation anheften, Feedback hinterlassen und eine Konversation löschen. Eine
+selbst gehostete Bereitstellung kann `CIELE_MCP_READ_ONLY=1` so konfigurieren,
+dass jede Mutation für jeden Schlüssel abgelehnt wird. Für einen Agenten, der
+nichts ändern darf, verwenden Sie einen lokalen stdio-Server mit
+`CIELE_MCP_READ_ONLY=1`.
 
 ## Eine lokale Verbindung vorbereiten
 
@@ -218,7 +219,7 @@ copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
 Fügen Sie die drei Ciele-Umgebungsvariablen über die Copilot-MCP-Konfiguration
-hinzu. Fügen Sie den API-Schlüssel nicht in das Versionsverwaltungssystem ein.
+hinzu. Fügen Sie den API-Schlüssel nicht in das Versionskontrollsystem ein.
 
 Informationen zum aktuellen Konfigurationsformat finden Sie im
 [GitHub Copilot CLI MCP guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers).
@@ -239,7 +240,7 @@ List all Ciele Assistants. For each Assistant, list its enabled Flows.
 Identify duplicate or unclear Flow names. Do not change data.
 ```
 
-Verwenden Sie diesen Prompt, um die Knowledge Ingestion zu überprüfen:
+Verwenden Sie diesen Prompt, um die Knowledge-Erfassung zu überprüfen:
 
 ```text
 List the Sources linked to Assistant <assistant-id>.

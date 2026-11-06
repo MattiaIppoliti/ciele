@@ -1,68 +1,100 @@
 ---
 title: Conservazione dei dati
-description: Imposta per quanto tempo vengono conservate le conversazioni e le tracce di ragionamento e mantieni una conversazione in sospeso.
+description: Imposta per quanto tempo vengono conservate conversazioni, messaggi, miglioramenti e registri di audit, e mantieni una conversazione in sospeso.
 ---
 
-Un'organizzazione imposta due finestre di conservazione in **Settings**, nella
-scheda **General**. Entrambe sono disattivate per impostazione predefinita:
-nulla viene eliminato finché un amministratore non seleziona una finestra.
+Un'organizzazione imposta i propri periodi di conservazione in **Settings**,
+nella scheda **Data retention**. Ogni tipo di dato ha un periodo **Keep for** e
+un interruttore **Auto-delete**. **Auto-delete** è disattivato per impostazione
+predefinita per conversazioni, messaggi e miglioramenti: nulla viene eliminato
+finché un amministratore non lo attiva.
 
-## Le due finestre
+## I tipi di dati
 
-| Impostazione | Cosa fa il processo di pulizia notturna dopo il periodo di conservazione |
+| Tipo di dati | Cosa fa il processo di pulizia notturna al termine del periodo |
 | --- | --- |
-| **Reasoning trace retention** | Rimuove il pannello Thinking dai messaggi meno recenti. I messaggi rimangono. |
-| **Conversation retention** | Elimina l'intera conversazione, incluso il transcript. Elimina inoltre le memorie a lungo termine relative a un Visitor che non sono state aggiornate durante la finestra. Elimina inoltre l'attività di Projects e Tasks risalente a un periodo precedente alla finestra. |
+| **Conversations** | Elimina l'intera conversazione e i relativi messaggi. Elimina inoltre le memorie a lungo termine relative a un Visitor che non sono state aggiornate durante il periodo. Elimina inoltre l'attività di Projects e Tasks risalente a un periodo precedente a quello specificato. |
+| **Messages** | Elimina i messaggi vecchi dalle conversazioni che vengono mantenute. La trascrizione in **Inbox** mostra che i messaggi precedenti sono stati eliminati. |
+| **Improvements** | Elimina i miglioramenti che non sono stati aggiornati durante il periodo, indipendentemente dal loro stato. |
+| **Audit records** | Elimina le voci dell'audit log che sono più vecchie del periodo specificato. Questo tipo è **Always on**. Il periodo predefinito è di 180 giorni. |
 
-Le due finestre sono indipendenti. Un'Organization può impostare uno dei due,
-entrambi o nessuno dei due. Ad esempio, puoi conservare le trascrizioni per un
-anno, ma rimuovere le tracce di ragionamento dopo 30 giorni.
+Ogni periodo è compreso tra 1 mese e 5 anni. Un mese corrisponde a 30 giorni e
+un anno a 365 giorni. Un periodo al di fuori di questi limiti genera un errore e
+**Save changes** rimane non disponibile.
 
-Un processo di pulizia viene eseguito una volta a notte. Misura la finestra a
-partire dall'ultimo messaggio della conversazione, non dal primo. Una
-conversazione ancora in uso non viene eliminata, indipendentemente da quanto
-tempo fa sia iniziata. Lo sweep è definitivo: una conversazione eliminata non
-finisce nel cestino.
+I tipi di dati sono indipendenti. Ad esempio, puoi conservare le conversazioni
+per due anni ma eliminare i messaggi dopo sei mesi.
 
-<Callout type="warn" title="Conversation retention deletes data">
-After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+## Come vengono misurati i periodi
+
+- Il periodo di una conversazione inizia con il suo ultimo messaggio, non con il
+  primo. Con un periodo di 30 giorni, una conversazione iniziata 3 mesi fa e che
+  ha ricevuto l'ultimo messaggio 10 giorni fa viene conservata per altri 20
+  giorni.
+- Il periodo di un messaggio inizia quando il messaggio viene inviato.
+- Il periodo di un miglioramento inizia con il suo ultimo aggiornamento.
+
+## Cosa comporta l'eliminazione
+
+- Lo sweep viene eseguito una volta a notte.
+- L'eliminazione è permanente. I dati eliminati non finiscono in un cestino e
+  non puoi recuperarli.
+- I dati eliminati non vengono più visualizzati in **Inbox**, in **Insights**,
+  negli esport, nella cronologia delle chat o in **Improvements**. L'audit log
+  non registra mai il contenuto dei messaggi o delle conversazioni.
+- Quando lo sweep elimina un messaggio, i miglioramenti collegati rimangono. Non
+  mostrano più quel messaggio.
+- Quando disattivi **Auto-delete**, lo sweep si interrompe. I dati
+  precedentemente eliminati dallo sweep non vengono ripristinati.
+
+<Callout type="warn" title="Retention deletes data">
+Export what you must keep before you turn on **Auto-delete** or shorten a period.
 </Callout>
 
-## Imposta una finestra temporale
+## Imposta un periodo
 
 1. Apri **Settings**.
-2. Rimani nella scheda **General**.
-3. Seleziona una finestra sotto **Reasoning trace retention** o **Conversation
-   retention**.
-4. Seleziona **Save changes**.
+2. Seleziona la scheda **Data retention**.
+3. Attiva **Auto-delete** per il tipo di dati.
+4. Inserisci un numero sotto **Keep for** e seleziona **Days**, **Months** o
+   **Years**.
+5. Seleziona **Save changes**.
 
-Se la nuova finestra è più breve di quella corrente, Ciele ti chiede di
-confermare. Il prossimo nightly sweep elimina i dati più vecchi.
+Se la modifica avvia un'eliminazione o accorcia un periodo, Ciele ti chiede di
+confermare. Il successivo nightly sweep elimina i dati più vecchi. Seleziona
+**Cancel** per tornare alle impostazioni salvate.
 
 Solo un membro che può gestire altri membri può modificare queste impostazioni.
+Ogni modifica viene riportata nell'audit log.
+
+## Tracce del ragionamento
+
+La scheda **General** contiene un'altra finestra, **Reasoning trace retention**.
+Dopo tale finestra, lo sweep notturno rimuove il pannello Thinking dai messaggi
+meno recenti. I messaggi rimangono.
 
 ## Conservazione per obblighi legali
 
-Un legal hold esonera una conversazione dallo sweep di conservazione delle
-conversazioni. Usalo quando un obbligo di conservazione si applica a una singola
-conversazione, senza disattivare la conservazione per tutte le altre
-conversazioni.
+Un legal hold esonera una conversazione dallo sweep di conservazione. Lo sweep
+non elimina la conversazione né i relativi messaggi. Utilizza un hold quando un
+obbligo di conservazione si applica a una singola conversazione, senza
+disattivare la retention per tutte le altre conversazioni.
 
 1. Apri **Inbox** e seleziona la conversazione.
 2. Apri il pannello details.
 3. Seleziona **Place legal hold** nella scheda **Retention**.
 
 Il blocco rimane attivo finché un membro non seleziona **Release legal hold**.
-Ogni membro vede lo stato di blocco. Solo un membro che può gestire altri membri
-può applicare o rimuovere un blocco.
+Ogni membro vede lo stato di blocco. Solo un membro che può gestire i membri può
+applicare o rimuovere uno stato di blocco.
 
-Una conversazione in stato di blocco non può essere eliminata. Questo vale per
+Una conversazione in sospensione non può essere eliminata. Questo vale per
 l'Inbox, l'API, il retention sweep e l'eliminazione dell'assistente proprietario
 della conversazione. Per eliminare una conversazione in sospeso o il relativo
 assistente, devi prima annullare la sospensione.
 
 ## Installazioni self-hosted
 
-Il processo di pulizia notturna viene eseguito dallo scheduler incluso. Non è
-necessaria alcuna configurazione aggiuntiva. Lo sweep chiama
+Il processo di pulizia notturna viene eseguito dal **scheduler** incluso. Non è
+necessaria alcuna configurazione aggiuntiva. Il processo di sweep chiama
 `/api/cron/sweep-retention` con la credenziale `CRON_SECRET`.

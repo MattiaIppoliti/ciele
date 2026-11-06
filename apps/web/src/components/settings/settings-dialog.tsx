@@ -22,6 +22,7 @@ import {
   settingsScopeFromPath,
   settingsTabFromPath,
   tabsForScope,
+  type SettingsAccess,
   type SettingsTab,
   SETTINGS_HOME,
   PERSONAL_SETTINGS_HOME,
@@ -69,24 +70,37 @@ export function SettingsDialog({
   const router = useRouter();
   const active = settingsTabFromPath(pathname);
   const scope = settingsScopeFromPath(pathname);
-  const tabs = tabsForScope(scope);
-  const cross = crossScopeLink(scope);
+  // Null until the layout's read lands: an unknown role is not a role with no
+  // access, and reading it as one emptied the Organization rail.
+  const [access, setAccess] = useState<SettingsAccess | null>(null);
+  const tabs = tabsForScope(scope, access);
+  const cross = crossScopeLink(scope, access);
   const activeTab = tabs.find((tab) => tab.slug === active);
   const dialogTitle = activeTab?.label ?? scopeTitle(scope);
   // Leaving the personal scope for the Organization one is only offered where
   // there is something to manage; the reverse is always available.
   // Hidden until the role is known, so a Member never sees a link they would
   // only be redirected back from; only the personal scope waits on it.
-  const [mayManageOrg, setMayManageOrg] = useState(false);
   useEffect(() => {
     let live = true;
     // The layout resolves a failed read to null, so this never rejects.
-    session.then((data) => live && setMayManageOrg(data?.canManageOrg ?? false));
+    session.then(
+      (data) =>
+        live &&
+        setAccess({
+          manageOrg: data?.canManageOrg ?? false,
+          viewMembers: data?.canViewMembers ?? false,
+          editBusinessHours: data?.canEditBusinessHours ?? false,
+        }),
+    );
     return () => {
       live = false;
     };
   }, [session]);
-  const showCross = scope === "personal" ? mayManageOrg : true;
+  const showCross =
+    scope === "personal"
+      ? access !== null && tabsForScope("organization", access).length > 0
+      : true;
 
   const navigateAway = useCallback(() => {
     // One back step leaves the dialog because switching tabs *replaces* the
@@ -159,7 +173,7 @@ export function SettingsDialog({
             data-modal-layout="settings"
             data-mobile-settings
             showCloseButton={false}
-            className={`flex h-dvh w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border bg-background p-0 shadow-strong outline-none duration-150 sm:h-[calc(100dvh-4rem)] sm:w-[calc(100vw-4rem)] sm:max-h-[46rem] sm:max-w-6xl sm:flex-row sm:rounded-xl ${
+            className={`flex h-dvh w-screen max-w-none -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border bg-background p-0 shadow-strong outline-none duration-150 sm:h-[calc(100dvh-5rem)] sm:w-[calc(100vw-5rem)] sm:max-h-[60rem] sm:max-w-[90rem] sm:flex-row sm:rounded-xl ${
               exiting
                 ? "animate-out fade-out zoom-out-95"
                 : "animate-in fade-in zoom-in-95"
@@ -185,7 +199,7 @@ export function SettingsDialog({
                   active={activeTab}
                   cross={showCross ? cross : null}
                 />
-                <HoverHighlight className="hidden min-h-0 min-w-0 flex-1 overflow-y-auto px-2 sm:block">
+                <HoverHighlight className="no-scrollbar hidden min-h-0 min-w-0 flex-1 overflow-y-auto px-2 sm:block">
                   <div className="flex flex-col gap-0.5">
                     {tabs.map((tab) => (
                       <RailRow
@@ -224,7 +238,7 @@ export function SettingsDialog({
                 <X className="size-4" />
               </CieleButton>
 
-              <div className="settings-scroll min-h-0 flex-1 overflow-y-auto px-5 py-6 pb-24 sm:px-8 sm:py-7">
+              <div className="settings-scroll no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-6 pb-24 sm:px-8 sm:py-7">
                 {children}
               </div>
             </div>
@@ -259,7 +273,11 @@ function RailMenu({
   /** The other scope, or null where it is not offered. */
   cross: SettingsTab | null;
 }) {
-  const current = active ?? tabs[0]!;
+  // A role with nothing to open in this scope (a Viewer on a tab that is
+  // about to redirect it) has no tabs; the menu then offers only the way out.
+  const current = active ?? tabs[0];
+  const trigger = current ?? cross;
+  if (!trigger) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -270,8 +288,8 @@ function RailMenu({
           />
         }
       >
-        <AnimatedIcon icon={current.icon} size={16} className="shrink-0" />
-        <span className="truncate">{current.label}</span>
+        <AnimatedIcon icon={trigger.icon} size={16} className="shrink-0" />
+        <span className="truncate">{trigger.label}</span>
         <ChevronDown className="text-muted-foreground size-3.5 shrink-0" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60">
@@ -285,16 +303,16 @@ function RailMenu({
                 onClick={(event) => onNavigate(event, tab.href)}
               />
             }
-            aria-current={tab.slug === current.slug ? "page" : undefined}
+            aria-current={tab.slug === current?.slug ? "page" : undefined}
           >
             <tab.icon className="size-4" />
             <span className="min-w-0 flex-1 truncate">{tab.label}</span>
-            {tab.slug === current.slug && <Check className="size-4" />}
+            {tab.slug === current?.slug && <Check className="size-4" />}
           </DropdownMenuItem>
         ))}
         {cross && (
           <>
-            <DropdownMenuSeparator />
+            {tabs.length > 0 && <DropdownMenuSeparator />}
             <DropdownMenuItem
               render={
                 <IntentLink
@@ -345,15 +363,7 @@ function RailRow({
       }`}
     >
       <AnimatedIcon icon={tab.icon} size={16} className="shrink-0" />
-      <span className="min-w-0 flex-1 truncate">
-        {tab.label}
-        {/* The hint is a second line under the label. */}
-        {tab.hint && (
-          <span className="text-muted-foreground block truncate text-xs font-normal">
-            {tab.hint}
-          </span>
-        )}
-      </span>
+      <span className="min-w-0 flex-1 truncate">{tab.label}</span>
       {crossScope && <ArrowUpRight className="size-3.5 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover/settings-link:translate-x-0.5 group-hover/settings-link:-translate-y-0.5 group-focus-visible/settings-link:translate-x-0.5 group-focus-visible/settings-link:-translate-y-0.5 motion-reduce:transition-none motion-reduce:transform-none" />}
     </IntentLink>
   );

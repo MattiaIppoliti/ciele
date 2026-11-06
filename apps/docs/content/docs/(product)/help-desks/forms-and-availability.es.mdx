@@ -1,34 +1,50 @@
 ---
 title: Formularios y disponibilidad
-description: Recopila los datos de escalamiento necesarios y muestra cuándo hay un canal disponible.
+description: Recopila los datos de escalamiento necesarios y muestra cuándo está disponible un canal.
 ---
 
 ## Añade campos al formulario
 
-Añade solo los datos que necesite el equipo receptor. Marca un campo como
+Añade únicamente los datos que necesita el equipo receptor. Marca un campo como
 obligatorio cuando el canal no pueda funcionar sin él.
 
-Prueba el formulario como visitante. Confirma que los campos obligatorios
-impidan un envío incompleto.
+Prueba el formulario como Visitor. Confirma que los campos obligatorios impiden
+enviar el formulario si está incompleto.
 
 ## Adjuntar datos de la conversación
 
-Un servicio de asistencia puede adjuntar información de conversación configurada
-a una escalada. Los datos disponibles pueden incluir un resumen, un historial,
-datos de usuario y metadatos.
+Un Help Desk puede adjuntar a una escalada la información configurada de la
+conversación. Los datos disponibles pueden incluir un resumen, el historial, los
+datos del usuario y los metadatos.
 
-Selecciona los datos mínimos que necesita el equipo receptor. Revisa la
-selección teniendo en cuenta tus requisitos de privacidad.
+Selecciona los datos mínimos que requiere el equipo receptor. Revisa la
+selección en función de tus requisitos de privacidad.
 
 ## Configura la disponibilidad
 
-Establece el horario y la zona horaria del canal. El widget muestra si el canal
-está disponible y puede mostrar su próxima hora disponible.
+Configura el horario del canal y la zona horaria. El widget indica si el canal
+está disponible y puede mostrar su próxima hora de disponibilidad.
 
 Utiliza la zona horaria del equipo que recibe la escalada. Prueba el límite al
-principio y al final de una ventana de disponibilidad.
+inicio y al final de un intervalo de disponibilidad.
 
-## Entrega de correo electrónico
+## Entrega de correos electrónicos
 
 El canal de correo electrónico requiere un transporte Resend configurado. Cuando
-falta, Ciele informa de que el correo electrónico no se ha enviado.
+no está presente, Ciele informa de que el correo electrónico no se ha enviado.
+
+
+## Reutilizar el horario comercial de la organización
+
+Selecciona **Business hours** en la pestaña Availability de un canal y, a
+continuación, elige un horario con nombre. Crea y edita horarios en
+[Settings](/organization). El horario semanal, la zona horaria y los días
+festivos proceden de ese horario. Varios canales pueden usar el mismo horario.
+Un día festivo los cierra a todos, y la siguiente apertura del Widget omite las
+fechas de cierre.
+
+**Always available** y **Limited availability** mantienen su comportamiento
+actual. La disponibilidad limitada mantiene sus propios periodos semanales y su
+propia zona horaria. La configuración de los canales nuevos comienza con la zona
+horaria predeterminada de la organización. No puedes eliminar un horario
+mientras un canal lo esté utilizando. El rechazo indica el nombre del canal.

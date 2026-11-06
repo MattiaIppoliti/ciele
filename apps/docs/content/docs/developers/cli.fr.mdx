@@ -3,18 +3,18 @@ title: Ciele CLI
 description: Gérez Ciele depuis un terminal ou une tâche automatisée.
 ---
 
-La commande `ciele` utilise les mêmes opérations d'API que la console
-d'administration. La CLI prend en charge le service hébergé ainsi que les
-installations auto-hébergées.
+La commande `ciele` utilise les mêmes opérations d’API que l’admin console. La
+CLI prend en charge le service hébergé ainsi que les installations
+auto-hébergées.
 
-## Prérequis
+## Configuration requise
 
 - Utilisez Node.js 22.6 ou une version ultérieure.
-- Créez une [clé API d'organisation](/developers/api-keys).
+- Créez une [clé API d’organisation](/developers/api-keys).
 
 ## Installation
 
-Compilez et installez le package autonome à partir d'une copie du dépôt :
+Compilez et installez le package autonome à partir d’une copie locale du dépôt :
 
 ```bash
 pnpm --dir packages/cli pack --pack-destination ./dist
@@ -22,14 +22,14 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-Le tarball inclut ses dépendances d'exécution. La commande installée n'a plus
+L’archive tar inclut ses dépendances d’exécution. La commande installée n’a plus
 besoin du dépôt.
 
 Une fois que `@ciele/cli` est publié sur npm, `npm install --global @ciele/cli`
 installe le même artefact.
 
 Les contributeurs peuvent également exécuter `node packages/cli/bin/ciele.mjs`
-sans l'installer.
+sans l’installer.
 
 ## Se connecter
 
@@ -49,17 +49,17 @@ ciele login \
 ciele doctor
 ```
 
-La commande `login` valide la clé avant d'écrire `~/.ciele/config.json`. Sur les
+La commande `login` valide la clé avant d’écrire `~/.ciele/config.json`. Sur les
 systèmes pris en charge, le mode du fichier est `0600`.
 
-La CLI résout une clé dans l'ordre suivant :
+La CLI résout une clé dans l’ordre suivant :
 
-1. L'option `--api-key`.
-2. La variable d'environnement `CIELE_API_KEY`.
+1. L’option `--api-key`.
+2. La variable d’environnement `CIELE_API_KEY`.
 3. Le fichier de configuration enregistré.
 
-La CLI utilise le même ordre pour `--base-url`, `CIELE_BASE_URL` et l'origine
-enregistrée. L'origine hébergée est la valeur par défaut finale.
+La CLI utilise le même ordre pour `--base-url`, `CIELE_BASE_URL` et l’origine
+enregistrée. L’origine hébergée est la valeur par défaut finale.
 
 ## Utiliser la sortie de l'automatisation
 
@@ -67,12 +67,12 @@ Ajoutez `--json` à une commande pour obtenir une sortie lisible par machine.
 
 | Exit code | Signification |
 | --- | --- |
-| `0` | L'opération s'est terminée. |
+| `0` | L’opération s’est terminée. |
 | `1` | Le serveur a renvoyé une erreur. |
-| `2` | La commande saisie n'est pas valide. |
-| `3` | Échec de l'authentification. |
+| `2` | La commande saisie n’est pas valide. |
+| `3` | Échec de l’authentification. |
 
-`ciele doctor` vérifie la découverte de l'API, la compatibilité de l'API, la
+`ciele doctor` vérifie la découverte de l’API, la compatibilité de l’API, la
 clé, son Role et son Organization.
 
 ## Commandes relatives à l'assistant et aux connaissances
@@ -96,10 +96,10 @@ les connaissances à la portée d'un Assistant. Les commandes sont
 
 ### Ajouter des connaissances sans Collection
 
-Un nouvel Assistant n'a pas de Collection, car la liste des Collections affiche
-uniquement les Collections qui contiennent ses Sources. Dans ce cas, utilisez
+Un nouvel Assistant n’a pas de Collection, car la liste des Collections
+n’affiche que les Collections qui contiennent ses Sources. Dans ce cas, utilisez
 `sources add-org`. Cela place la Source dans la Knowledge Library de
-l'Organisation.
+l’Organisation.
 
 ```bash
 ciele sources add-org --url https://example.com/help --assistants <assistant-id>
@@ -107,7 +107,7 @@ ciele sources add-org --file handbook.pdf --assistants <assistant-id>
 ciele sources add-org --text "Opening hours are 09:00 to 17:00." --assistants <assistant-id>
 ```
 
-Indiquez l'un des éléments suivants : `--url`, `--file` ou `--text`. La commande
+Indiquez l’un des éléments suivants : `--url`, `--file` ou `--text`. La commande
 nécessite `--assistants` pour la même raison que les autres commandes add.
 
 ### Liens vers les sources
@@ -121,10 +121,10 @@ ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
 ciele sources direct-access <source-id> on --assistant <assistant-id>
 ```
 
-`sources list-org` répertorie toutes les Sources appartenant à l'Organisation,
-pour l'ensemble des Assistants.
+`sources list-org` répertorie toutes les Sources appartenant à l’Organisation,
+pour l’ensemble des Assistants.
 
-`sources link` remplace l'ensemble des liens. Une liste vide supprime tous les
+`sources link` remplace l’ensemble des liens. Une liste vide supprime tous les
 liens, et la Source cesse de répondre.
 
 `sources direct-access` détermine si cet Assistant spécifique peut fournir le
@@ -142,49 +142,50 @@ ciele knowledge search "How do I connect Salesforce?" --json
 ```
 
 Avec `--assistant`, la recherche utilise uniquement les Sources liées à cet
-Assistant. Sans cela, la recherche utilise l'ensemble de la Library. `--json`
-affiche les résultats avec leur rank, leur score et leurs ID.
+Assistant. Sans cela, la recherche utilise l’ensemble de la Library. `--json`
+présente les résultats avec leur rang, leur score et leurs ID.
 
 ### Poser une question à un Assistant
 
 `assistants ask` envoie une question à un Assistant publié. La commande affiche
-la réponse, les Sources citées par la réponse et l'ID de la Conversation.
+la réponse, les Sources citées par la réponse et l’ID de la Conversation.
 
 ```bash
 ciele assistants ask <assistant-id> "How do I connect Salesforce?"
 ciele assistants ask <assistant-id> "And ServiceNow?" --conversation <conversation-id>
 ```
 
-Utilisez `--conversation` avec l'ID d'une réponse antérieure pour poursuivre
+Utilisez `--conversation` avec l’ID d’une réponse précédente pour poursuivre
 cette Conversation. Seule la clé API qui a démarré une Conversation peut la
 poursuivre. Avec un ID différent, la question démarre une nouvelle Conversation.
 
 Chaque question utilise un tour de modèle et crée une Conversation. La boîte de
-réception l'affiche avec l'étiquette **API key** lorsque vous réglez le filtre
+réception l’affiche avec l’étiquette **API key** lorsque vous réglez le filtre
 **Staff conversations** sur **Include staff** ou **Staff only**. La commande se
-termine avec un code d'erreur lorsque l'Assistant n'a pas pu répondre.
+termine avec un code d’erreur lorsque l’Assistant n’a pas pu répondre.
 
 ## Commandes de flux
 
-### Découvrez ce qu'un Flow peut contenir
+### Découvrez ce qu’un Flow peut contenir
 
 `ciele flows catalog` affiche les déclencheurs, les actions et les types de
 conditions de ce déploiement Ciele. Il indique également quelles actions chaque
-déclencheur autorise. Lisez-le avant d'écrire un fichier Flow. Le serveur refuse
-un trigger, une action ou un type de condition qui ne figure pas dans la liste.
+déclencheur autorise. Lisez-le avant de rédiger un fichier Flow. Le serveur
+refuse un trigger, une action ou un type de condition qui ne figure pas dans la
+liste.
 
-C'est le déploiement qui fournit cette réponse, et non la CLI. Une version plus
-ancienne de la CLI utilisée avec une version plus récente de Ciele affiche les
-nouvelles listes.
+C’est le déploiement qui fournit cette réponse, et non la CLI. Une CLI plus
+ancienne utilisée avec une version plus récente de Ciele affiche les nouvelles
+listes.
 
 ```bash
 ciele flows catalog
 ```
 
-### Vérifiez un Flow avant de l'enregistrer
+### Vérifiez un Flow avant de l’enregistrer
 
 `flows draft` vérifie une modification apportée à un Flow. `flows validate`
-vérifie un Flow complet. Aucune de ces commandes n'effectue d'enregistrement.
+vérifie un Flow complet. Aucune de ces commandes n’effectue d’enregistrement.
 Les deux vous montrent le Flow que Ciele stockerait.
 
 ```bash
@@ -192,10 +193,10 @@ ciele flows draft --file patch.json --summary "add a refund branch"
 ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
 ```
 
-Utilisez-les principalement pour une raison : lorsqu'un Flow écrit dans un
+Utilisez-les principalement pour une raison : lorsqu’un Flow écrit dans un
 connecteur, Ciele ajoute une action de revue humaine avant cette écriture. Ces
-deux commandes vous montrent l'action ajoutée. Un enregistrement le fait de
-manière silencieuse.
+deux commandes vous montrent l’action ajoutée. Une opération de sauvegarde le
+fait de manière silencieuse.
 
 ### Observer un flux HTTP
 
@@ -206,16 +207,16 @@ entrant.
 ciele flows runs <flow-id> --limit 20
 ```
 
-Les conversations n'incluent pas ces exécutions, car un appel entrant n'est pas
+Les conversations n’incluent pas ces exécutions, car un appel entrant n’est pas
 une conversation.
 
 ## Commandes Teammate
 
 ### Attribuer des capacités à un Teammate
 
-Un nouveau Teammate IA peut répondre aux questions. Il ne peut agir que si vous
-lui attribuez un domaine, et il n'effectue aucun travail en autonomie tant que
-vous ne lui avez pas assigné une Routine.
+Un nouveau Teammate IA peut répondre aux questions. Il ne peut agir tant que
+vous ne lui avez pas attribué un domaine, et il n’effectue aucun travail en
+autonomie tant que vous ne lui avez pas assigné une Routine.
 
 ```bash
 ciele teammates grants <teammate-id>
@@ -224,9 +225,9 @@ ciele teammates routines <teammate-id>
 ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --cadence daily --hour 8
 ```
 
-`set-grants` envoie l'ensemble complet des domaines à chaque fois.
+`set-grants` envoie l’ensemble complet des domaines à chaque fois.
 `--domains ""` les supprime tous. Cette commande nécessite une clé API disposant
-du rôle Admin ou d'un rôle supérieur, car elle permet à un agent de modifier vos
+du rôle Admin ou d’un rôle supérieur, car elle permet à un agent de modifier vos
 données. Les autres commandes Teammate nécessitent le rôle Editor.
 
 Un Teammate peut avoir un maximum de cinq Routines.
@@ -234,7 +235,7 @@ Un Teammate peut avoir un maximum de cinq Routines.
 ### Configurer un coéquipier en une seule commande
 
 `teammates create` crée un Teammate qui répond aux questions. Il ne peut pas
-agir et n'effectue aucun travail en mode non supervisé. `teammates provision`
+agir et n’effectue aucun travail en mode non supervisé. `teammates provision`
 exécute les trois étapes ensemble.
 
 ```bash
@@ -243,12 +244,12 @@ ciele teammates provision --name "Triage" \
   --routine "Triage new feedback:daily:8"
 ```
 
-L'ordre est le suivant : create, puis grant, puis schedule. Si une étape échoue,
-la commande vous indique où elle s'est arrêtée. Le teammate reste utilisable
-jusqu'à ce stade.
+L’ordre est : create, puis grant, puis schedule. Si une étape échoue, la
+commande vous indique où elle s’est arrêtée. Le teammate reste utilisable
+jusqu’à ce stade.
 
-Une clé sans le rôle Admin peut créer le collègue. Elle ne peut pas accorder un
-domaine. La commande indique ensuite qu'elle s'est arrêtée à l'étape grants.
+Une clé sans le rôle Admin peut créer le coéquipier. Elle ne peut pas accorder
+un domaine. La commande indique ensuite qu’elle s’est arrêtée à l’étape grants.
 
 ### Projets et mémoire
 
@@ -264,8 +265,8 @@ ciele teammates memory <teammate-id>
 ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
 ```
 
-`set-document` et `set-memory` remplacent le texte complet. Ciele conserve le
-texte précédent dans l'historique du document.
+`set-document` et `set-memory` remplacent le texte intégral. Ciele conserve le
+texte précédent dans l’historique du document.
 
 ### Tâches
 
@@ -291,15 +292,15 @@ ciele tasks delete <task-id> --yes
 `set-milestones` remplace la liste complète. Pour conserver un jalon, envoyez-le
 à nouveau avec son ID. `tasks delete` supprime également les sous-tâches, les
 commentaires et les fichiers de la tâche. `tasks update --archive` masque la
-tâche et ses sous-tâches. `--restore` les affiche à nouveau. Lorsqu'il y a
+tâche et ses sous-tâches. `--restore` les affiche à nouveau. Lorsqu’il y a
 davantage de tâches, `tasks list` affiche le curseur de la page suivante.
 `tasks delete-label` supprime le Label de chaque tâche. Les tâches restent.
 
-Il n'existe aucune commande pour votre propre couche de mémoire. Une clé API
-agit comme le membre qui l'a créée ; ainsi, une commande ici afficherait le
+Il n’existe pas de commande pour votre propre couche de mémoire. Une clé API
+agit comme le membre qui l’a créée ; ainsi, une commande ici afficherait le
 document privé de ce membre. Dans la console, accédez à Settings, puis à Memory.
 
-## Commandes relatives aux opérations et à l'organisation
+## Commandes relatives aux opérations et à l’organisation
 
 ```bash
 ciele conversations list --assistant <assistant-id>
@@ -311,12 +312,19 @@ ciele help-desks list
 ciele teammates list
 ciele channels list
 ciele skills list
+ciele quick-texts list
 ciele goals list <assistant-id>
 ciele alerts list
 ciele organization get
 ciele members list
+ciele members set-role <user-id> --role-id <role-id>
+ciele members set-assistants <user-id> --scope selected --assistants <assistant-id>:editor
+ciele roles list
+ciele roles create --name "Content reviewer" --capabilities knowledge:view,knowledge:edit
+ciele roles set-defaults --member <role-id>
 ciele invites list
 ciele api-keys list
+ciele audit-log list --action members.updateRole --from 2026-10-01
 ciele providers list
 ciele sso connection
 ```
@@ -324,8 +332,12 @@ ciele sso connection
 Les commandes qui suppriment des données nécessitent `--yes`. Le flux de
 comportement par défaut (Default behavior Flow) ne peut pas être supprimé.
 
+`--role` prend le nom d'un rôle prédéfini. `--role-id` prend l'ID de n'importe
+quel rôle, y compris un rôle personnalisé. `ciele roles list` affiche les ID.
+`ciele whoami` indique également le nombre de capacités associées à la clé.
+
 Exécutez `ciele help` pour chaque groupe de commandes et chaque option acceptée.
-Ajoutez `--file` lorsqu'une commande accepte une entrée JSON complète ou un
+Ajoutez `--file` lorsqu’une commande accepte une entrée JSON complète ou un
 patch.
 
 ## Exemple de vérification CI
@@ -336,5 +348,49 @@ export CIELE_BASE_URL="https://ciele.example.edu"
 ciele publish status "$ASSISTANT_ID" --json
 ```
 
-Stockez toutes les valeurs dans le magasin de secrets CI. N'inscrivez pas de clé
+Stockez toutes les valeurs dans le magasin de secrets CI. N’écrivez pas de clé
 dans un fichier de workflow.
+
+## Bundles d’Assistant portable
+
+Export écrit un bundle JSON versionné sur la sortie standard. Import crée un
+nouvel Assistant et renvoie un rapport des références de destination non
+résolues.
+
+```bash
+ciele assistants export <assistant-id> > assistant.json
+ciele assistants import assistant.json
+```
+
+Les bundles excluent les identifiants et les données des visiteurs.
+L’importation nécessite un accès en modification. Configurez les identifiants et
+les références manquants avant de publier le nouvel Assistant.
+
+## Exports d'Insights planifiés
+
+Créez un calendrier à partir d’une définition JSON. La cadence hebdomadaire
+utilise `weekday`, de zéro pour le dimanche à six pour le samedi.
+
+```json
+{
+  "name": "Weekly Insights",
+  "kind": "insights_overview",
+  "format": "csv",
+  "filters": {},
+  "cadence": { "kind": "weekly", "weekday": 1 },
+  "hour": 8,
+  "recipientMemberIds": ["member-uuid"]
+}
+```
+
+```bash
+ciele exports create --file schedule.json --yes
+ciele exports list
+ciele exports update <schedule-id> --file patch.json --yes
+ciele exports pause <schedule-id> --yes
+ciele exports resume <schedule-id> --yes
+ciele exports delete <schedule-id> --yes
+```
+
+La cadence mensuelle utilise `{"kind":"monthly","day":1}`. L’heure est exprimée
+en UTC. Les destinataires doivent être des Members actifs de l’Organisation.

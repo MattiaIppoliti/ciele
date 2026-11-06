@@ -26,7 +26,7 @@ async function requireManageableView(ctx: OperationContext, viewId: string): Pro
 
 export const createSavedViewOp = defineOperation({
   name: "savedViews.create",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ projectId: id, name, layout, query: z.unknown() }),
   entities: ({ projectId }) => [{ kind: "project" as const, id: projectId }],

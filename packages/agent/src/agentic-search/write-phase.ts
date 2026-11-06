@@ -1,6 +1,6 @@
 import { streamText } from "ai";
 import type { LanguageModel, ModelMessage, ToolResultPart } from "ai";
-import type { ChatReplyPart, RuntimeEvent } from "../types";
+import type { ChatReplyPart, RuntimeEvent, UsageTotals } from "../types";
 import { recordStreamUsage } from "../usage";
 import { errorMessageOf } from "../telemetry";
 
@@ -56,7 +56,7 @@ export interface WritePhaseInput {
   streaming: boolean;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
-  recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
+  recordUsage?: (usage: UsageTotals) => void;
 }
 
 export interface WritePhaseResult {
@@ -154,33 +154,57 @@ export async function runWritePhase(
   input: WritePhaseInput
 ): Promise<WritePhaseResult> {
   const { streaming, emit } = input;
-  const write = streamText({
-    model: input.chatModel,
-    system: input.system,
-    messages: writePhaseMessages(input.projectContext ? await input.projectContext(input.system) : input.messages),
-    abortSignal: input.signal,
-  });
-
+  let messages = writePhaseMessages(
+    input.projectContext ? await input.projectContext(input.system) : input.messages
+  );
   let text = "";
   let textOpen = false;
   let finishReason: string | null = null;
-  for await (const chunk of write.fullStream) {
-    if (chunk.type === "text-delta") {
-      if (streaming && !textOpen) {
-        emit({ type: "text-start", action: "search_knowledge" });
-        textOpen = true;
+  // Two attempts at most. A first call refused for its context length, before
+  // any text, retries on the newer half of the transcript; a first answer cut
+  // by the output limit continues once. A second cut keeps `length`, which
+  // the caller turns into the length notice.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const write = streamText({
+      model: input.chatModel,
+      system: input.system,
+      messages,
+      maxOutputTokens: attempt === 0 ? 8_192 : 16_384,
+      abortSignal: input.signal,
+    });
+    try {
+      for await (const chunk of write.fullStream) {
+        if (chunk.type === "text-delta") {
+          if (streaming && !textOpen) {
+            emit({ type: "text-start", action: "search_knowledge" });
+            textOpen = true;
+          }
+          text += chunk.text;
+          if (streaming) emit({ type: "text-delta", delta: chunk.text });
+        } else if (chunk.type === "finish") {
+          finishReason = chunk.finishReason;
+        } else if (chunk.type === "error") {
+          throw chunk.error instanceof Error
+            ? chunk.error
+            : new Error(errorMessageOf(chunk.error));
+        }
       }
-      text += chunk.text;
-      if (streaming) emit({ type: "text-delta", delta: chunk.text });
-    } else if (chunk.type === "finish") {
-      finishReason = chunk.finishReason;
-    } else if (chunk.type === "error") {
-      throw chunk.error instanceof Error
-        ? chunk.error
-        : new Error(errorMessageOf(chunk.error));
+    } catch (error) {
+      const detail = errorMessageOf(error);
+      if (attempt === 0 && !text && /context.{0,30}(length|window|limit)|prompt.{0,20}(long|large)/i.test(detail)) {
+        messages = messages.slice(-Math.max(1, Math.floor(messages.length / 2)));
+        continue;
+      }
+      throw error;
     }
+    await recordStreamUsage(write.totalUsage, input.recordUsage);
+    if (finishReason !== "length" || attempt === 1) break;
+    messages = [
+      ...messages,
+      { role: "assistant", content: text },
+      { role: "user", content: "Continue exactly where the answer stopped. Do not repeat earlier text." },
+    ];
   }
   if (textOpen) emit({ type: "text-end" });
-  await recordStreamUsage(write.totalUsage, input.recordUsage);
   return { text, finishReason };
 }

@@ -5,16 +5,51 @@ description: Control who can read, edit, publish, and administer an Organization
 
 ## Roles
 
-| Role | Current permission level |
+A Role is a set of capabilities. A capability is one thing that a member can do, for example **Create and edit Flows** (`flows:edit`). Each Organization starts with six built-in Roles.
+
+| Role | Default capabilities |
 | --- | --- |
 | Viewer | Reads Organization and product data. |
+| Data Viewer | Reads Insights and the Assistants that Insights shows. |
+| Support Agent | Reads like a Viewer. Also takes over Conversations, replies to Visitors, uses Quick Texts and staffs Help Desks as an operator. |
 | Editor | Changes Assistant content and configuration. |
-| Admin | Publishes Assistants and manages members and API keys. |
-| Owner | Changes Roles and manages owners. |
+| Admin | Publishes Assistants and manages members, Roles, API keys and integrations. |
+| Owner | Has all capabilities. Manages owners and personal AI subscriptions. |
 
-The application applies more specific capability checks to individual operations.
+The navigation of a Support Agent shows only **Inbox**, **Help Desks**, **My Tasks**, **Notifications** and **Settings**. If a Support Agent opens a different page with a direct link, Ciele shows a permission message.
 
-The **Roles** section at the bottom of **Settings > Members** shows a table of what each Role can do.
+## Edit and create Roles
+
+Open **Settings > Roles**. The list shows each Role, its number of capabilities and who has it.
+
+To create a Role:
+
+1. Select **New role**.
+2. In **Start from**, select a Role to copy, or select **Nothing**.
+3. Enter a name and a description.
+4. In **Available on**, select **Organization**, **Assistant**, or both.
+5. Select the capabilities. Select a group box to select all capabilities in that group. Use the search box to find a capability.
+6. Select **Create role**.
+
+When you select a capability, Ciele also selects the capabilities that it needs. For example, **Create and edit Flows** needs **View Flows** and **View Assistants**. A capability that another selected capability needs stays selected. The row shows which capability needs it. Clear that capability first.
+
+You can edit every built-in Role except Owner. An edited built-in Role shows **Edited**. Select **Reset to default** to restore its default capabilities.
+
+The rules:
+
+- You cannot give a Role a capability that you do not have. This applies when you edit a Role, give a Role to a member, invite with a Role, or create an API key.
+- You cannot give a Teammate access to an area that your Role cannot use.
+- You cannot edit the Role that you have. An Owner can edit all Roles except Owner.
+- You cannot delete a built-in Role. You cannot delete a custom Role while a member, an invitation or an active API key has it. Give them another Role first.
+- When Ciele adds a capability, the built-in Roles that you did not edit get it if it is part of their defaults. Edited and custom Roles do not get it.
+
+To manage Roles, a member needs the **Manage Roles** capability. Admins have it by default. All changes show in the audit log.
+
+## Default Roles
+
+Two Roles are defaults. The **Organization default** is the first Role in the invitation form. The **Assistant default** is the first Role when you give a member access to an Assistant. At first, these are Editor and Viewer.
+
+To change them, open **Settings > Roles** and select **Manage defaults**. You cannot delete a default Role. Select another default first.
 
 ## Invite members
 
@@ -33,12 +68,43 @@ Ciele does not create a second invitation for an address that has an open invita
 
 ## Change a member
 
-An Admin can manage members below the Owner tier. An Owner can manage all tiers.
+In **Settings > Members**, select a Role in the **Role** column. The list shows the Roles that you can give. Only an Owner can make a member an Owner or change an Owner.
 
 A member cannot edit or remove their own row from the member list. Use another authorized member for that operation.
 
 ## API-key Roles
 
-An Admin or Owner can create an Organization API key. The selected Role cannot be higher than the creator's Role.
+A member with the **Manage API keys** capability can create an Organization API key. The key can have any Role, also a custom Role. The Role cannot have a capability that the creator does not have.
 
-Revoke a key when its client no longer needs access. Ciele keeps the revoked record for audit information. An Admin or Owner can delete a revoked key to remove its record.
+A key can do only what its Role and its creator can both do now. If the creator loses a capability, the key loses it too.
+
+Revoke a key when its client no longer needs access. Ciele keeps the revoked record for audit information. You can delete a revoked key to remove its record.
+
+## Manage access to one Assistant
+
+An Owner or Admin opens an Assistant, then selects **More options → Manage access**.
+The list shows each Member's Organization Role and any override.
+Select **Denied** or a Role, then confirm the change. The list shows each Role that is available on Assistants, also custom Roles.
+Select **Organization Role** to clear the override. Owners always keep access.
+
+A Role on an Assistant replaces the Organization Role on that Assistant. It can give more or less than the Organization Role. It applies only to capabilities for Assistants, for example Flows, knowledge and the Inbox. Capabilities for the Organization, for example Members and API keys, do not change.
+
+Denied hides the Assistant from lists, search, Find and the Developer Panel.
+The same restriction applies to its child settings and Knowledge links.
+A Member's API keys, Teammates and Ciele AI act within that Member's access.
+API keys also retain their own Role ceiling. An override never raises that ceiling.
+
+Changing access is consequential. Ciele AI asks for approval before the change.
+Ordinary Teammates cannot change access. The Developer Panel shows the API, CLI and MCP commands for these operations.
+
+## Limit a member to some Assistants
+
+On the **Members** tab, the **Assistants** column shows what each member can reach. Select **Manage assistants** under a member to change it.
+
+- **All assistants** gives the member their Organization Role on every Assistant, now and in the future. You can still set an override for each Assistant.
+- **Only selected assistants** gives the member access only to the Assistants that you select. Select a Role for each one from the Roles that are available on Assistants. The Role can be higher or lower than the Organization Role.
+
+A member with **Only selected assistants** does not see a new Assistant until you add it. When that member creates an Assistant, they get access to it at their Organization Role.
+The restriction is the same as **Denied** for every Assistant that is not selected.
+
+Owners always have access to every Assistant. Each change shows in the audit log.

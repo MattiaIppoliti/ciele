@@ -60,7 +60,7 @@ function teammate(over: Partial<Teammate> = {}): Teammate {
     sourceIds: [],
     modelProvider: "anthropic",
     modelId: "claude-opus-4-8",
-    capabilityCeiling: "edit",
+    actionCeiling: "edit",
     systemKind: null,
     assistantId: null,
     approvalBypass: false,

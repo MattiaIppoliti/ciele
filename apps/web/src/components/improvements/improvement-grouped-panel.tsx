@@ -9,10 +9,17 @@ import {
   type PointerEvent,
 } from "react";
 import { Grip } from "lucide-react";
+import { useWorkspaceSplit } from "@/components/ui/workspace-panel";
 
 type Axis = "width" | "height";
 
-/** The preview's two resize edges, confined to the available admin panel. */
+/**
+ * The preview's two resize edges, confined to the available admin panel.
+ *
+ * While a detail is docked beside the list, the width edge and the detail's
+ * edge are one divider: the list fills what the detail leaves, and dragging
+ * its edge resizes the detail, so neither side stands still while the other moves.
+ */
 export function ImprovementGroupedPanel({
   children,
 }: {
@@ -25,11 +32,14 @@ export function ImprovementGroupedPanel({
     pointer: number;
     start: number;
     size: number;
+    /** The docked detail's width when the drag began. */
+    detail?: number;
   } | null>(null);
   const [available, setAvailable] = useState({ width: 1024, height: 720 });
   const [chosen, setChosen] = useState<Partial<Record<Axis, number>>>({});
   const [measuredWidth, setMeasuredWidth] = useState(1024);
   const [resizing, setResizing] = useState(false);
+  const split = useWorkspaceSplit();
 
   useLayoutEffect(() => {
     const outer = host.current;
@@ -63,7 +73,14 @@ export function ImprovementGroupedPanel({
         available[axis],
       ),
     );
+  /** The list width a detail width leaves, and back. */
+  const listWidthFor = (detail: number) =>
+    split ? available.width + split.detailWidth - detail : detail;
   function resize(axis: Axis, value: number) {
+    if (axis === "width" && split) {
+      split.resizeDetail(listWidthFor(value));
+      return;
+    }
     setChosen((current) => ({
       ...current,
       [axis]: Math.max(minimum(axis), Math.min(value, available[axis])),
@@ -78,20 +95,27 @@ export function ImprovementGroupedPanel({
       pointer: event.pointerId,
       start: axis === "width" ? event.clientX : event.clientY,
       size: panel.current?.getBoundingClientRect()[axis] ?? size(axis),
+      detail: split?.detailWidth,
     };
+    if (axis === "width") split?.setDragging(true);
     setResizing(true);
   }
   function move(event: PointerEvent<HTMLDivElement>) {
     const active = drag.current;
     if (!active || active.pointer !== event.pointerId) return;
-    resize(
-      active.axis,
-      active.size +
-        (active.axis === "width" ? event.clientX : event.clientY) -
-        active.start,
-    );
+    const delta =
+      (active.axis === "width" ? event.clientX : event.clientY) - active.start;
+    if (active.axis === "width" && split && active.detail !== undefined) {
+      split.resizeDetail(active.detail - delta);
+      return;
+    }
+    resize(active.axis, active.size + delta);
   }
   function stop() {
+    if (drag.current?.detail !== undefined) {
+      split?.setDragging(false);
+      split?.commitDetail();
+    }
     drag.current = null;
     setResizing(false);
   }
@@ -101,6 +125,17 @@ export function ImprovementGroupedPanel({
     const step = event.shiftKey ? 40 : 10;
     if (![lower, higher, "Home", "End"].includes(event.key)) return;
     event.preventDefault();
+    if (axis === "width" && split) {
+      split.resizeDetail(
+        event.key === "Home"
+          ? split.maxDetailWidth
+          : event.key === "End"
+            ? split.minDetailWidth
+            : split.detailWidth + (event.key === lower ? step : -step),
+      );
+      split.commitDetail();
+      return;
+    }
     resize(
       axis,
       event.key === "Home"
@@ -123,12 +158,12 @@ export function ImprovementGroupedPanel({
         data-resizing={resizing || undefined}
         className="squircle-card bg-card relative flex [container-type:inline-size] max-h-full max-w-full flex-col rounded-2xl border p-2 shadow-light data-[resizing]:select-none"
         style={{
-          width: chosen.width === undefined ? "100%" : size("width"),
+          width: split || chosen.width === undefined ? "100%" : size("width"),
           height: size("height"),
         }}
       >
         <div
-          className="min-h-0 flex-1 overflow-auto overscroll-contain pb-3"
+          className="no-scrollbar min-h-0 flex-1 overflow-auto overscroll-contain pb-3"
           data-slot="improvement-grouped-scroll"
         >
           {children(measuredWidth)}
@@ -140,18 +175,33 @@ export function ImprovementGroupedPanel({
             tabIndex={0}
             aria-label={`Resize improvements ${axis}`}
             aria-orientation={axis === "width" ? "vertical" : "horizontal"}
-            aria-valuemin={Math.round(minimum(axis))}
-            aria-valuemax={Math.round(available[axis])}
-            aria-valuenow={Math.round(size(axis))}
+            aria-valuemin={Math.round(
+              axis === "width" && split
+                ? listWidthFor(split.maxDetailWidth)
+                : minimum(axis),
+            )}
+            aria-valuemax={Math.round(
+              axis === "width" && split
+                ? listWidthFor(split.minDetailWidth)
+                : available[axis],
+            )}
+            aria-valuenow={Math.round(
+              axis === "width" && split ? available.width : size(axis),
+            )}
             onPointerDown={(event) => start(axis, event)}
             onPointerMove={move}
             onPointerUp={stop}
             onPointerCancel={stop}
             onLostPointerCapture={stop}
             onKeyDown={(event) => key(axis, event)}
-            onDoubleClick={() =>
-              setChosen((current) => ({ ...current, [axis]: undefined }))
-            }
+            onDoubleClick={() => {
+              if (axis === "width" && split) {
+                split.resizeDetail(640);
+                split.commitDetail();
+                return;
+              }
+              setChosen((current) => ({ ...current, [axis]: undefined }));
+            }}
             className={`group absolute z-10 touch-none rounded-full outline-none focus-visible:bg-primary/15 ${axis === "width" ? "top-4 right-0 bottom-4 w-3 cursor-col-resize" : "right-4 bottom-0 left-4 h-3 cursor-row-resize"}`}
           >
             <span

@@ -4,6 +4,7 @@ import {
   publicRuntimeEvent,
   type TurnTrace,
 } from "./stream";
+import { activeTurnClock } from "./turn-clock";
 import type { ChatReplyPart, RuntimeEvent } from "./types";
 
 type AuditedCall = {
@@ -43,6 +44,9 @@ export function createTurnObserver(
           ok: false,
         });
       } else if (event.type === "tool-end") {
+        // Every tool's end passes here, so this is where tool time stops
+        // being "unclocked" (#1112).
+        activeTurnClock()?.toolEnd(event.callId, event.tool, event.durationMs);
         const call = auditedCalls.get(event.callId);
         if (call) {
           call.ok = event.ok;

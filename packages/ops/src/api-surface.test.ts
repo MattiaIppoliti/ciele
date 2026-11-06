@@ -20,6 +20,9 @@ import {
   searchKnowledgeOp,
 } from "./knowledge";
 import { readUsageMetersOp, readUsageSpendersOp } from "./usage";
+import { listAuditLogOp } from "./audit-log";
+import { getMemberAssistantAccessOp, setAssistantAccessOp, setMemberAssistantScopeOp } from "./assistant-access";
+import { updateMemberRoleOp } from "./organization";
 import { createTaskOp, deleteTaskOp, getTaskOp, listTasksOp, updateTaskOp } from "./tasks";
 import { createTaskCommentOp, listTaskCommentsOp } from "./task-comments";
 import { createTaskLabelOp, listTaskLabelsOp } from "./task-labels";
@@ -66,6 +69,11 @@ import {
   removeChannelTeammateOp,
   updateChannelOp,
 } from "./channels";
+import {
+  createHelpDeskOp,
+  disconnectTicketingIntegrationOp,
+  setTicketingTargetOp,
+} from "./help-desks";
 
 /**
  * The operations /api/v1 exposes, run on the Db /api/v1 actually gives them.
@@ -536,6 +544,52 @@ describe("the Flows authoring and operator reads over an API key", () => {
     expect(run.ran).toEqual(["respond"]);
   });
 
+  it("reads the audit log through the pinned view, with the change a key made described", async () => {
+    const ctx = keyContext(pinned());
+    await updateMemberRoleOp.run({ ...ctx, apiKeyId: "key-audit", surface: "api" }, { userId: "u-marianna", role: "editor" });
+    const [entry] = await listAuditLogOp.run(ctx, { operations: ["members.updateRole"], limit: 5 });
+    expect(entry).toMatchObject({
+      organizationId: DEMO_ORG.id,
+      operation: "members.updateRole",
+      apiKeyId: "key-audit",
+      surface: "api",
+      targetLabel: "marianna.nobile@example.com",
+      changes: { Role: { before: "Viewer", after: "Editor" } },
+    });
+    await updateMemberRoleOp.run(ctx, { userId: "u-marianna", role: "viewer" });
+  });
+
+  it("limits a Member to selected Assistants through the pinned view, and refuses what has no meaning", async () => {
+    const ctx = keyContext(pinned());
+    const assistant = await createAssistantOp.run(ctx, { title: "Scope probe" });
+    await setMemberAssistantScopeOp.run(ctx, { userId: "u-marianna", scope: "selected", access: [{ assistantId: assistant.id, role: "editor" }] });
+    expect(await getMemberAssistantAccessOp.run(ctx, { userId: "u-marianna" })).toEqual({
+      userId: "u-marianna",
+      scope: "selected",
+      // The row lands on the built-in Editor, by name and by id.
+      access: [expect.objectContaining({ assistantId: assistant.id, role: "editor", roleName: "Editor" })],
+    });
+    const [entry] = await listAuditLogOp.run(ctx, { operations: ["members.assistantScope.set"], limit: 1 });
+    expect(entry).toMatchObject({ targetLabel: "marianna.nobile@example.com", targetDetail: "1 selected assistant" });
+    await expect(
+      setMemberAssistantScopeOp.run(ctx, { userId: DEMO_MEMBER.userId, scope: "selected", access: [] })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    await expect(
+      setMemberAssistantScopeOp.run(ctx, { userId: "u-marianna", scope: "selected", access: [{ assistantId: assistant.id, role: "denied" }] })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    await expect(
+      setMemberAssistantScopeOp.run(ctx, { userId: "u-marianna", scope: "all", access: [{ assistantId: "not-ours", role: "admin" }] })
+    ).rejects.toMatchObject({ code: "not_found" });
+    // The Assistant's own Manage access reads the same scope: no Denied there.
+    await expect(
+      setAssistantAccessOp.run(ctx, { assistantId: assistant.id, userId: "u-marianna", role: "denied" })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    await setAssistantAccessOp.run(ctx, { assistantId: assistant.id, userId: "u-marianna", role: null });
+    const [cleared] = await listAuditLogOp.run(ctx, { operations: ["assistants.access.set"], limit: 1 });
+    expect(cleared?.changes?.[`Access to ${assistant.title}`]).toEqual({ before: "Editor", after: "No access" });
+    await setMemberAssistantScopeOp.run(ctx, { userId: "u-marianna", scope: "all", access: [] });
+  });
+
   it("reads usage through the pinned view, and says so when nothing is metered", async () => {
     const ctx = keyContext(pinned());
     // No enterprise port wired, which is every open-source deployment: the read
@@ -633,5 +687,26 @@ describe("knowledge memories over the pinned Db", () => {
 
     const restored = await restoreKnowledgeMemoryOp.run(ctx, { id: memory.id });
     expect(restored.forgottenAt).toBeNull();
+  });
+});
+
+describe("the help desk ticketing target over an API key (#1088)", () => {
+  it("sets and clears the target on the pinned Db", async () => {
+    const inner = getMockDb();
+    const ctx = keyContext(pinned(inner));
+    const desk = await createHelpDeskOp.run(ctx, { name: "Key ticket desk" });
+    const connection = await inner.createApplicationConnection({
+      organizationId: DEMO_ORG.id,
+      provider: "salesforce",
+      name: "Key Salesforce",
+      sealedCredentials: "sealed",
+    });
+    const set = await setTicketingTargetOp.run(ctx, {
+      helpDeskId: desk.id,
+      connectionId: connection.id,
+    });
+    expect(set.ticketingTarget).toEqual({ provider: "salesforce", connectionId: connection.id });
+    const cleared = await disconnectTicketingIntegrationOp.run(ctx, { helpDeskId: desk.id });
+    expect(cleared.ticketingTarget).toBeNull();
   });
 });

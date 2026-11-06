@@ -17,6 +17,7 @@ export interface ExportTable {
 }
 
 export const EXPORT_KIND_LABELS: Record<ExportJobKind, string> = {
+  audit_log: "Audit log",
   insights_overview: "Aggregated insights",
   insights_datapoints: "Datapoints",
   insights_languages: "Languages",
@@ -67,7 +68,7 @@ function languagesTable(overview: InsightsOverview): ExportTable {
   };
 }
 
-export function insightsExportTable(kind: ExportJobKind, overview: InsightsOverview): ExportTable {
+export function insightsExportTable(kind: Exclude<ExportJobKind, "audit_log">, overview: InsightsOverview): ExportTable {
   switch (kind) {
     case "insights_overview":
       return overviewTable(overview);

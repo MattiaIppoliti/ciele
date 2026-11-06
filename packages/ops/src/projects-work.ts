@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { isImprovementWorkflowUnavailable } from "@agent-hub/db";
 import type {
+  ImprovementStatus,
   Project,
   ProjectInput,
   ProjectMilestone,
@@ -118,7 +120,7 @@ async function seatCaller(ctx: OperationContext, projectId: string): Promise<voi
 
 export const listProjectsOp = defineOperation({
   name: "projects.list",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ includeArchived: z.boolean().optional() }),
   entities: () => [],
@@ -128,25 +130,36 @@ export const listProjectsOp = defineOperation({
     readableProjects(ctx, { includeArchived: input.includeArchived ?? true }),
 });
 
+/** A Project with its decisions and how many of its Improvements sit in each stage. */
+export type ProjectView = {
+  project: Project;
+  improvementCounts: Record<ImprovementStatus, number> | null;
+} & MemoryDocumentView;
+
 export const getProjectOp = defineOperation({
   name: "projects.get",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
-  run: async (ctx, { id: projectId }): Promise<{ project: Project } & MemoryDocumentView> => {
+  run: async (ctx, { id: projectId }): Promise<ProjectView> => {
     const { project } = await requireReadableProject(ctx, projectId);
-    const document = await ctx.db.getMemoryDocument(ctx.organizationId, {
-      scope: "project",
-      projectId,
-    });
-    return { project, ...(await readWithHistory(ctx, document)) };
+    const [document, improvementCounts] = await Promise.all([
+      ctx.db.getMemoryDocument(ctx.organizationId, { scope: "project", projectId }),
+      // Null while the filtered count's migration has not landed: the Project
+      // stays readable, only its stage counts are missing.
+      ctx.db.countImprovementsByStatus(ctx.organizationId, { projectId }).catch((error: unknown) => {
+        if (isImprovementWorkflowUnavailable(error)) return null;
+        throw error;
+      }),
+    ]);
+    return { project, improvementCounts, ...(await readWithHistory(ctx, document)) };
   },
 });
 
 export const createProjectOp = defineOperation({
   name: "projects.create",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: projectFieldsSchema.partial().extend({
     name: z.string().trim().min(1).max(120),
@@ -182,7 +195,7 @@ export const createProjectOp = defineOperation({
 
 export const updateProjectOp = defineOperation({
   name: "projects.update",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id: z.string().min(1), patch: projectPatchSchema }),
   entities: ({ id: projectId }) => [
@@ -232,7 +245,7 @@ export const updateProjectOp = defineOperation({
 /** What deleting a Project takes with it, for the confirmation that names the counts (#1046). */
 export const projectDeletionSummaryOp = defineOperation({
   name: "projects.deletionSummary",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ id }),
   entities: () => [],
@@ -248,7 +261,7 @@ export const projectDeletionSummaryOp = defineOperation({
 
 export const deleteProjectOp = defineOperation({
   name: "projects.delete",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: ({ id: projectId }) => [
@@ -277,7 +290,7 @@ export const deleteProjectOp = defineOperation({
 
 export const listProjectMembersOp = defineOperation({
   name: "projects.members.list",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ id }),
   entities: () => [],
@@ -291,7 +304,7 @@ export const listProjectMembersOp = defineOperation({
  */
 export const setProjectMembersOp = defineOperation({
   name: "projects.members.set",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "consequential",
   input: z.object({ id, userIds: z.array(z.string().min(1).max(64)).min(1).max(500) }),
   entities: ({ id: projectId }) => [
@@ -328,7 +341,7 @@ export const setProjectMembersOp = defineOperation({
 
 export const listMilestonesOp = defineOperation({
   name: "projects.milestones.list",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ id }),
   entities: () => [],
@@ -348,7 +361,7 @@ export const milestonesBodySchema = z.object({ milestones: milestonesSchema });
 /** Replaces the Milestone list: rows with an id are kept and edited, the rest created. */
 export const setMilestonesOp = defineOperation({
   name: "projects.milestones.set",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id, milestones: milestonesSchema }),
   entities: ({ id: projectId }) => [{ kind: "project" as const, id: projectId }, { kind: "taskList" as const }],
@@ -386,7 +399,7 @@ export const setMilestonesOp = defineOperation({
  */
 export const duplicateProjectOp = defineOperation({
   name: "projects.duplicate",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({ id }),
   entities: () => [{ kind: "projectList" as const }, { kind: "taskList" as const }],

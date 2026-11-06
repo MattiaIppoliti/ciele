@@ -144,7 +144,7 @@ const configuration = z.object({
 
 export const createApplicationImportOp = defineOperation({
   name: "applications.imports.create",
-  capability: "edit",
+  capability: "applications:edit",
   effect: "write",
   input: configuration.extend({ connectionId: z.string().min(1) }),
   entities: (_input, result: Touched & { id: string }) => touched(result),
@@ -172,7 +172,7 @@ export const createApplicationImportOp = defineOperation({
 
 export const updateApplicationImportConfigurationOp = defineOperation({
   name: "applications.imports.configure",
-  capability: "edit",
+  capability: "applications:edit",
   effect: "write",
   input: configuration.extend({ importId: z.string().min(1) }),
   entities: (_input, result: Touched) => touched(result),
@@ -218,7 +218,7 @@ export const updateApplicationImportConfigurationOp = defineOperation({
  */
 export const setApplicationImportAssistantsOp = defineOperation({
   name: "applications.imports.assistants.set",
-  capability: "edit",
+  capability: "applications:edit",
   effect: "write",
   input: z.object({ importId: z.string().min(1), assistantIds: z.array(z.string().min(1)) }),
   entities: (_input, result: Touched) => touched(result),
@@ -233,7 +233,7 @@ export const setApplicationImportAssistantsOp = defineOperation({
 /** Pausing cancels what is queued; resuming a daily Import schedules it now. */
 export const setApplicationImportEnabledOp = defineOperation({
   name: "applications.imports.enabled.set",
-  capability: "edit",
+  capability: "applications:edit",
   effect: "write",
   input: z.object({ importId: z.string().min(1), enabled: z.boolean() }),
   entities: (_input, result: Touched) => touched(result),
@@ -257,7 +257,7 @@ export const setApplicationImportEnabledOp = defineOperation({
 
 export const syncApplicationImportNowOp = defineOperation({
   name: "applications.imports.sync",
-  capability: "edit",
+  capability: "applications:edit",
   effect: "write",
   input: z.object({ importId: z.string().min(1) }),
   entities: (_input, result: Touched) => touched(result),
@@ -314,7 +314,7 @@ export interface ApplicationImportDocumentRow {
  */
 export const listApplicationImportDocumentsOp = defineOperation({
   name: "applications.imports.documents.list",
-  capability: "member",
+  capability: "applications:view",
   effect: "read",
   input: z.object({
     importId: z.string().min(1),
@@ -399,7 +399,7 @@ export const listApplicationImportDocumentsOp = defineOperation({
 /** Cancels the Import's queued syncs first, so none runs against a deleted row. */
 export const deleteApplicationImportOp = defineOperation({
   name: "applications.imports.delete",
-  capability: "edit",
+  capability: "applications:edit",
   effect: "consequential",
   input: z.object({ importId: z.string().min(1) }),
   entities: (_input, result: Touched) => touched(result),

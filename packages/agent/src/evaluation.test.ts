@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { defaultChannelAvailability } from "@agent-hub/core";
 import { getMockDb, resetMockDb } from "@agent-hub/db";
 import { evaluateCase, evaluationModel } from "./evaluation";
 
@@ -132,4 +133,20 @@ describe("pre-flight evaluation model", () => {
       "No credential is available for this provider.",
     );
   });
+});
+
+
+it("uses live holidays when evaluating synthetic answers", async () => {
+  process.env.OPENAI_API_KEY = "test-key-no-network";
+  const db = getMockDb();
+  const organization = (await db.listOrganizations())[0];
+  const assistant = await db.createAssistant(organization.id, { title: "Eval hours" });
+  const today = new Date().toISOString().slice(0, 10);
+  const schedule = await db.saveBusinessHours(organization.id, null, { name: "Closed evaluation office", timezone: "UTC", hours: defaultChannelAvailability().hours, holidays: [{ id: "today", name: "Closure", startDate: today, endDate: today, yearly: false }], isDefault: false });
+  const office = await db.createFlow(assistant.id, { name: "Office", description: "office opening", actions: ["custom_message"], customMessage: "OPEN", conditions: [{ id: "gate", kind: "schedule", mode: "business_hours", businessHoursId: schedule.id, direction: "during" }] });
+  const fallback = await db.createFlow(assistant.id, { name: "Fallback", actions: ["custom_message"], customMessage: "CLOSED" });
+  const result = await evaluateCase({ db, assistant, flows: [office, { ...fallback, isDefault: true }], connections: [], example: { id: "hours-eval", inputs: { question: "office opening" }, reference_outputs: { answer_contains: ["CLOSED"] } }, candidate: { provider: "openai", modelId: "gpt-5.4-mini" }, stage: "answer" });
+  expect(result.error).toBeNull();
+  expect(result.flowId).toBe(fallback.id);
+  expect(result.accuracy).toBe(true);
 });

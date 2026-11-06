@@ -199,7 +199,7 @@ describe("AG-UI transport", () => {
       { type: "text-start", action: "search_knowledge" },
       { type: "text-delta", delta: "Hello" },
       { type: "text-end" },
-      { type: "done", conversationId: "owned", messageId: "saved" },
+      { type: "done", conversationId: "owned", messageId: "saved", outcome: "answered" },
     ];
     const response = agUiResponse(
       bytes(native.map((event) => JSON.stringify(event)).join("\n") + "\n"),

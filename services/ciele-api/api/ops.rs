@@ -7,7 +7,7 @@
 //! answered back-to-back calls in 0.16 to 0.30 s as a Function and in about
 //! 1 s as a container.
 
-use ciele_api::{init_tracing, router, state_from_env};
+use ciele_api::{app_from_env, init_tracing};
 use tower::ServiceBuilder;
 use vercel_runtime::Error;
 use vercel_runtime::axum::VercelLayer;
@@ -15,9 +15,7 @@ use vercel_runtime::axum::VercelLayer;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     init_tracing();
-    let state = state_from_env().await?;
-    let app = ServiceBuilder::new()
-        .layer(VercelLayer::new())
-        .service(router(state));
-    vercel_runtime::run(app).await
+    let app = app_from_env().await?;
+    let service = ServiceBuilder::new().layer(VercelLayer::new()).service(app);
+    vercel_runtime::run(service).await
 }

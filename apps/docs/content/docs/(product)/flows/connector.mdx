@@ -12,7 +12,7 @@ Available actions:
 | Provider | Actions |
 | --- | --- |
 | ServiceNow | Create record, Update record, List records, Delete record |
-| Salesforce | Get Contact records, Get Case records, Get User records, Get Product records |
+| Salesforce | Get Contact records, Get Case records, Get User records, Get Product records, Create case, Update case |
 | Slack | Post message, Create channel, Join public channel, List public channels |
 | OneDrive | Create file, Copy file, Find files in folder, Get file content, Get file metadata, Create share link, Delete file |
 | Google Drive | Create file, Copy file, Find files in folder, Get file content, Get file metadata, Create share link, Delete file |
@@ -39,9 +39,23 @@ A OneDrive or Google Drive connection belongs to one Member. The connector runs 
 
 If the provider has no connection, connect it under **Knowledge → Applications** first. For Slack, the panel can open the sign-in window directly.
 
+## Salesforce cases
+
+**Create case** opens a Case in the connected Salesforce org. **Update case** changes an existing Case.
+
+- The fields are **Subject**, **Description**, **Priority**, **Status**, **Origin**, **Requester email**, and **Requester name**. Each field accepts template variables.
+- **Create case** sets **Origin** to `Web` by default. A blank field keeps the Salesforce default.
+- **Requester email** and **Requester name** go into the web email and web name fields of the Case. A Visitor who is not a Salesforce Contact can open a Case.
+- **Update case** needs a **Case id**. Usually this is `{{connector.case_id}}` from an earlier **Create case**. Only the fields that you fill in change.
+- The Salesforce user who connected the application must have the **Create** permission on Cases for **Create case**, and the **Edit** permission for **Update case**. The connection needs no new scope.
+
+If Salesforce refuses the Case, for example because a required field is empty or a validation rule fails, the action fails. The Salesforce message shows in **Run node** and in the conversation trace. The Flow continues with its usual failure rule.
+
+After a write, Ciele reads the Case number. If that read fails, the write still succeeds and keeps the Case id and link. The number is empty. Use **Get Case records** with that id and the `CaseNumber` field to read it later.
+
 ## Fields loaded from the system
 
-Some fields load their values from the connected system: ServiceNow tables and columns, Salesforce fields, Slack channels. Select **Load options** to fetch them. You can still type a value.
+Some fields load their values from the connected system: ServiceNow tables and columns, Salesforce fields, the Salesforce Case picklists (Priority, Status, Origin), Slack channels. Select **Load options** to fetch them. You can still type a value.
 
 ## Needs setup
 
@@ -58,9 +72,10 @@ An action writes its results to template variables for later actions in the same
 
 | Action | Variables |
 | --- | --- |
-| ServiceNow Create or Update record | `{{connector.sys_id}}`, `{{connector.number}}` |
+| ServiceNow Create or Update record | `{{connector.sys_id}}`, `{{connector.number}}`, `{{connector.url}}` (a link to the record) |
 | ServiceNow List records | `{{connector.count}}`, `{{connector.first_sys_id}}`, `{{connector.records}}` |
 | Salesforce Get records | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.records}}`, `{{connector.api_usage}}` |
+| Salesforce Create or Update case | `{{connector.case_id}}`, `{{connector.case_number}}`, `{{connector.case_url}}` (a link to the Case in Salesforce) |
 | Slack Post message | `{{connector.ts}}`, `{{connector.channel}}` |
 | Slack Create or Join channel | `{{connector.id}}`, `{{connector.name}}` |
 | Drive Create or Get metadata, Google Drive Copy | `{{connector.id}}`, `{{connector.name}}`, `{{connector.web_url}}` |

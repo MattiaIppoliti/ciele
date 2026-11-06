@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CONNECTOR_FILENAME } from "./src/lib/local-connector-installer";
-import { COMPONENT_FAMILIES, catalogPath } from "./src/components/component-catalog/catalog";
+import { COMPONENT_FAMILIES, MERGED_ICON_SLUGS, catalogPath } from "./src/components/component-catalog/catalog";
 
 const appDir = dirname(fileURLToPath(import.meta.url));
 
@@ -67,7 +67,15 @@ const nextConfig: NextConfig = {
   // the list takes a redeploy. A path the service does not serve is ignored.
   async rewrites() {
     const base = process.env.CIELE_RUST_API_URL?.replace(/\/+$/, "");
-    const served = new Set(["/api/v1/alerts", "/api/v1/task-labels", "/api/v1/improvements"]);
+    const served = new Set([
+      "/api/v1/alerts",
+      "/api/v1/task-labels",
+      "/api/v1/improvements",
+      "/api/v1/whoami",
+      "/api/v1/skills",
+      "/api/v1/help-desks",
+      "/api/v1/invites",
+    ]);
     const routes = (process.env.CIELE_RUST_DIRECT_ROUTES ?? "")
       .split(",")
       .map((route) => route.trim())
@@ -96,6 +104,11 @@ const nextConfig: NextConfig = {
       ...COMPONENT_FAMILIES.filter((family) => family.kind === "block").map((family) => ({
         source: `/components/${family.slug}`,
         destination: catalogPath(family),
+        permanent: true,
+      })),
+      ...MERGED_ICON_SLUGS.map((slug) => ({
+        source: `/components/${slug}`,
+        destination: "/components/icons",
         permanent: true,
       })),
       { source: "/knowledge", destination: "/library", permanent: true },

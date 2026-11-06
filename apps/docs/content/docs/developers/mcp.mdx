@@ -27,7 +27,9 @@ Authorization: Bearer ciele_sk_...
 An unknown or absent key is refused with `401` before any tool is listed.
 
 <Callout title="The key Role is the permission boundary">
-The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
+The permissions of the hosted endpoint are the Role of the key. The operations layer refuses a mutation that the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation.
+
+A self-hosted deployment can set `CIELE_MCP_READ_ONLY=1` on the application. Then the hosted endpoint refuses every mutation action for every key. For one read-only agent on a shared deployment, use `CIELE_MCP_READ_ONLY=1` on a stdio server.
 </Callout>
 
 ## Protocol revisions
@@ -62,8 +64,8 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 
 The read-only check occurs inside the MCP process. A refused mutation does not make an API request.
 
-<Callout type="warn" title="These variables apply to the local server only">
-A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
+<Callout type="warn" title="These variables on a deployment">
+A Ciele web container obeys `CIELE_MCP_READ_ONLY`. Then the hosted endpoint refuses mutation actions for every key. The container ignores `CIELE_MCP_MODERN_ONLY`, and the hosted endpoint always accepts 2025-revision clients.
 </Callout>
 
 <Callout title="Recommended first connection">
@@ -83,13 +85,13 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_improvements` | List, read, or update Improvements. |
 | `manage_memories` | Inspect settings and perform scoped Memory erasure. |
 | `manage_sso` | Manage identity claims and the Organization SSO connection. |
-| `manage_help_desks` | Manage Help Desks, channels, ordering, and ServiceNow. |
+| `manage_help_desks` | Manage Help Desks, channels, ordering, and the ticketing target. |
 | `manage_teammates` | Manage AI Teammates, their grants, their Routines and their memory. `provision` does the full setup in one action. |
 | `manage_projects` | Manage Projects, their milestones, and the memory document of each Project. |
 | `manage_tasks` | List, read, create, change, and delete Tasks. Comment on Tasks and manage task Labels. |
 | `manage_channels` | Read and shape the teammate channels you are in. |
-| `manage_configuration` | Manage Skills, Assistant Skill selection, Goals, and Alerts. |
-| `manage_organization` | Manage Organization settings, Members, Invites, and API keys. Read the usage meters and spenders of the plan. |
+| `manage_configuration` | Manage Skills, Assistant Skill selection, Goals, Alerts, and Quick Texts. |
+| `manage_organization` | Manage Organization settings, Members, Roles and their capabilities, Invites, and API keys. Read the usage meters and spenders of the plan, and the audit log. |
 | `manage_integrations` | Manage Assistant API integrations and model providers. |
 
 The server registers seventeen tools: one identity tool and sixteen domain tools. Each domain tool uses an `action` field for its operations.

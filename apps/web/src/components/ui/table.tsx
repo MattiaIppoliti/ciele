@@ -26,6 +26,10 @@ function TableCard({
     <TableHistoryContext value={history}>
       <div data-slot="table-card" role="region" aria-label={typeof title === "string" ? title : "Results"}
         className={cn("@container/table-card bg-table-frame relative flex w-full flex-col rounded-3xl border",
+          // The sheet has its own border. Flush against the frame's, the two
+          // read as a doubled edge with two radii; 4px in, at the concentric
+          // radius (frame minus inset minus border), it reads as one sheet in a tray.
+          "[&>[data-slot=table-container]]:mx-1 [&>[data-slot=table-container]]:mb-1 [&>[data-slot=table-container]]:w-auto [&>[data-slot=table-container]]:rounded-[calc(var(--radius-3xl)-5px)]",
           "[&>[data-slot=table-container]]:order-1 [&>[data-slot=table-bulk-bar]]:order-2 [&>[data-slot=table-view-footer]]:order-3 [&>[data-slot=table-card-footer]]:order-4", className)}
         onKeyDown={(event) => {
           onKeyDown?.(event);
@@ -71,7 +75,7 @@ function Table({ className, fixed, empty, ...props }: React.ComponentProps<"tabl
     <TableViewProvider empty={empty} headingType={TableHeader} bodyType={TableBody}>
       <table role="table" data-slot="table" data-empty={empty ? "true" : undefined}
         className={cn(
-          "w-[var(--table-width,100%)] caption-bottom text-sm",
+          "w-[max(var(--table-width,100%),100%)] caption-bottom text-sm",
           "[&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:w-max [&:has(col[data-column=actions])_td:not([colspan]):last-child>div]:ml-auto",
           "[&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r",
           // The first two columns stay in view while the sheet scrolls sideways:
@@ -80,6 +84,10 @@ function Table({ className, fixed, empty, ...props }: React.ComponentProps<"tabl
           // cell (the empty state) is never pinned.
           "[&_tr>*:first-child:not([colspan])]:sticky [&_tr>*:first-child:not([colspan])]:left-0 [&_tr>*:first-child:not([colspan])]:z-[2]",
           "[&_tr>*:nth-child(2):not([colspan])]:sticky [&_tr>*:nth-child(2):not([colspan])]:left-[var(--table-sticky-left,0px)] [&_tr>*:nth-child(2):not([colspan])]:z-[2]",
+          // A sticky cell does not paint its share of a collapsed border
+          // reliably (the Owner | Admin line in the Roles table vanished), so
+          // the pinned columns draw their right edge as an inset shadow.
+          "[&_tr>*:nth-child(-n+2):not(:last-child):not([colspan]):not([data-cell-focus=true]):not(:focus-visible)]:shadow-[inset_-1px_0_0_var(--border)]",
           // A column being moved rides the pointer, header and cells alike,
           // above its neighbours and the pinned columns.
           "[&_[data-column-dragging=true]]:!z-30 [&_[data-column-dragging=true]]:[transform:translateX(var(--column-drag-x,0px))] [&_th[data-column-dragging=true]]:shadow-[var(--elevation-strong)] [&_td[data-column-dragging=true]]:shadow-[inset_1px_0_0_var(--border),inset_-1px_0_0_var(--border)]",
@@ -125,7 +133,7 @@ function TableHead({ className, children, ...props }: React.ComponentProps<"th">
     "data-column-dragging": position && view?.draggingColumn === position.original || undefined,
     // The work Table's measures (DESIGN.md §4): 34px headers in `text-xs`,
     // 36px rows, 10px gutters, so a Library sheet and a Tasks sheet read alike.
-    className: cn("text-muted-foreground relative h-[34px] px-2.5 text-left align-middle text-xs font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0", className), ...props };
+    className: cn("text-muted-foreground relative h-[34px] px-2.5 text-left align-middle text-xs font-medium whitespace-nowrap last:pr-1.5 [&:has([role=checkbox])]:pr-0", className), ...props };
   const value = <div data-table-value className={cn("flex items-center gap-2", className?.includes("text-right") && "justify-end")}>
     <ColumnDragHandle />{children}
   </div>;

@@ -1,51 +1,86 @@
 ---
 title: Conservación de datos
-description: Configura cuánto tiempo se conservan las conversaciones y los rastros de razonamiento, y retén una conversación.
+description: Establece cuánto tiempo se conservan las conversaciones, los mensajes, las mejoras y los registros de auditoría, y retén una conversación.
 ---
 
-Una organización establece dos períodos de retención en **Settings**, en la
-pestaña **General**. Ambos están desactivados de forma predeterminada: no se
-elimina nada hasta que un administrador seleccione un período.
+Una organización establece sus periodos de conservación en **Settings**, en la
+pestaña **Data retention**. Cada tipo de datos tiene un período **Keep for** y
+un conmutador **Auto-delete**. **Auto-delete** está desactivado de forma
+predeterminada para conversaciones, mensajes y mejoras: no se elimina nada hasta
+que un administrador lo active.
 
-## Los dos períodos de retención
+## Los tipos de datos
 
-| Ajuste | Qué hace la limpieza nocturna una vez transcurrido el período |
+| Tipo de datos | Qué hace la limpieza nocturna una vez transcurrido el periodo |
 | --- | --- |
-| **Reasoning trace retention** | Elimina el panel Thinking de los mensajes antiguos. Los mensajes se mantienen. |
-| **Conversation retention** | Elimina toda la conversación, incluida la transcripción. También elimina los recuerdos a largo plazo sobre un Visitor que no se hayan actualizado durante el periodo establecido. También elimina la actividad de Projects y Tasks que sea anterior al periodo de la ventana. |
+| **Conversations** | Elimina toda la conversación y sus mensajes. También elimina los recuerdos a largo plazo sobre un Visitor que no se hayan actualizado durante el periodo. También elimina la actividad de Projects y Tasks que sea anterior al periodo. |
+| **Messages** | Elimina los mensajes antiguos de las conversaciones que se mantienen. La transcripción en **Inbox** muestra que se eliminaron los mensajes anteriores. |
+| **Improvements** | Elimina las mejoras que no se actualizaron durante el periodo, sea cual sea su estado. |
+| **Audit records** | Elimina las entradas del registro de auditoría que sean anteriores al periodo. Este tipo es **Always on**. El periodo predeterminado es de 180 días. |
 
-Las dos ventanas son independientes. Una organización puede establecer uno,
-ambos o ninguno. Por ejemplo, puedes conservar las transcripciones durante un
-año, pero eliminar los rastros de razonamiento pasados 30 días.
+Cada periodo dura entre 1 mes y 5 años. Un mes son 30 días y un año son 365
+días. Si el período está fuera de estos límites, se muestra un error y **Save
+changes** sigue no estando disponible.
 
-Se ejecuta una limpieza una vez por noche. Calcula el período a partir del
-último mensaje de la conversación, no del primero. Una conversación que aún esté
-en uso no se elimina, independientemente de cuándo haya comenzado. La limpieza
-es permanente: una conversación eliminada no va a ninguna papelera.
+Los tipos de datos son independientes. Por ejemplo, puedes conservar las
+conversaciones durante dos años, pero eliminar los mensajes transcurridos seis
+meses.
 
-<Callout type="warn" title="Conversation retention deletes data">
-After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+## Cómo se calculan los periodos
+
+- El periodo de una conversación comienza con su último mensaje, no con su
+  primer mensaje. Con un periodo de 30 días, una conversación que comenzó hace 3
+  meses y recibió su último mensaje hace 10 días se conserva durante 20 días
+  más.
+- El periodo de un mensaje comienza cuando se envía el mensaje.
+- El periodo de una mejora comienza en su última actualización.
+
+## Qué implica la eliminación
+
+- La limpieza se ejecuta una vez por noche.
+- La eliminación es permanente. Los datos eliminados no van a ninguna papelera y
+  no puedes recuperarlos.
+- Los datos eliminados ya no aparecen en **Inbox**, en **Insights**, en las
+  exportaciones, en el historial de chat ni en **Improvements**. El registro de
+  auditoría nunca registra el contenido de los mensajes ni de las
+  conversaciones.
+- Cuando la limpieza elimina un mensaje, las mejoras vinculadas se mantienen. Ya
+  no muestran ese mensaje.
+- Cuando desactives **Auto-delete**, la limpieza se detiene. Los datos que la
+  limpieza eliminó anteriormente no vuelven.
+
+<Callout type="warn" title="Retention deletes data">
+Export what you must keep before you turn on **Auto-delete** or shorten a period.
 </Callout>
 
-## Establece un período
+## Establece un periodo
 
 1. Abre **Settings**.
-2. Quédate en la pestaña **General**.
-3. Selecciona un intervalo en **Reasoning trace retention** o **Conversation
-   retention**.
-4. Selecciona **Save changes**.
+2. Selecciona la pestaña **Data retention**.
+3. Activa **Auto-delete** para el tipo de datos.
+4. Escribe un número en **Keep for** y selecciona **Days**, **Months** o
+   **Years**.
+5. Selecciona **Save changes**.
 
-Si la nueva ventana es más corta que la ventana actual, Ciele te pide que lo
-confirmes. La próxima limpieza nocturna eliminará los datos más antiguos.
+Si el cambio inicia una eliminación o acorta un período, Ciele te pide que lo
+confirmes. La siguiente limpieza nocturna eliminará los datos más antiguos.
+Selecciona **Cancel** para volver a la configuración guardada.
 
 Solo un miembro con permiso para gestionar miembros puede cambiar estos ajustes.
+Cada cambio aparece en el registro de auditoría.
+
+## Trazas de razonamiento
+
+La pestaña **General** tiene una ventana más, **Reasoning trace retention**.
+Después de ese período, la limpieza nocturna elimina el panel Thinking de los
+mensajes antiguos. Los mensajes se mantienen.
 
 ## Retención legal
 
-Una retención legal exime a una conversación de la limpieza de retención de
-conversaciones. Úsala cuando exista una obligación de conservación que afecte a
-una conversación concreta, sin desactivar la retención para todas las demás
-conversaciones.
+Una retención legal exime a una conversación de la limpieza de retención. La
+limpieza no elimina la conversación ni sus mensajes. Utiliza una retención
+cuando exista una obligación de conservación que afecte a una conversación, sin
+desactivar la retención para todas las demás conversaciones.
 
 1. Abre **Inbox** y selecciona la conversación.
 2. Abre el panel de detalles.
@@ -58,10 +93,10 @@ permiso para gestionar miembros puede aplicar o retirar una retención.
 No se puede eliminar una conversación en espera. Esto se aplica a la bandeja de
 entrada (Inbox), a la API, a la limpieza de retención (retention sweep) y a la
 eliminación del asistente propietario de la conversación. Para eliminar una
-conversación retenida o su asistente, primero debes cancelar la retención.
+conversación retenida o su asistente, primero debes anular la retención.
 
 ## Instalaciones autoalojadas
 
-La limpieza nocturna se ejecuta desde el programador incluido. No se necesita
+La limpieza nocturna se ejecuta desde el programador incluido. No se requiere
 ninguna configuración adicional. La limpieza llama a `/api/cron/sweep-retention`
 con la credencial `CRON_SECRET`.

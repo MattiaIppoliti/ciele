@@ -125,10 +125,10 @@ describe("Projects", () => {
   });
 
   it("declares the capability each surface enforces", () => {
-    expect(listProjectsOp.capability).toBe("member");
-    expect(createProjectOp.capability).toBe("edit");
-    expect(deleteProjectOp.capability).toBe("edit");
-    expect(writeProjectDocumentOp.capability).toBe("edit");
+    expect(listProjectsOp.capability).toBe("projects:view");
+    expect(createProjectOp.capability).toBe("projects:edit");
+    expect(deleteProjectOp.capability).toBe("projects:edit");
+    expect(writeProjectDocumentOp.capability).toBe("projects:edit");
   });
 });
 

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_ORG, getMockDb } from "@agent-hub/db";
-import { listEscalationDesks } from "./escalation-desks";
-import { channelSetupError } from "./support-channels";
+import {
+  listEscalationDesks,
+  ticketConfirmationText,
+  TICKET_NOT_FILED,
+} from "./escalation-desks";
+import { channelKindUnavailable, channelSetupError } from "./support-channels";
 
 const db = getMockDb();
 
@@ -91,6 +95,23 @@ describe("listEscalationDesks, channel projection", () => {
     expect(JSON.stringify(byKind.api_endpoint)).not.toContain("secret-token");
   });
 
+  it("makes a ticket channel a form once the desk has a ticketing target (#1088)", async () => {
+    const desk = await db.createHelpDesk(DEMO_ORG.id, { name: "Ticket Target Desk" });
+    await db.createSupportChannel(desk.id, {
+      kind: "ticket",
+      name: "Open a ticket",
+      config: {},
+      form: FORM,
+    });
+    await db.setTicketingTarget(desk.id, { provider: "salesforce", connectionId: "conn-sf" });
+
+    const [projected] = await listEscalationDesks(db, DEMO_ORG.id, [desk.id]);
+    expect(projected.channels[0].form).toMatchObject({
+      fields: [{ id: "email", label: "Email" }],
+    });
+    expect(JSON.stringify(projected)).not.toContain("conn-sf");
+  });
+
   it("strips hidden and file fields from the visitor-facing form (#316)", async () => {
     const desk = await db.createHelpDesk(DEMO_ORG.id, { name: "Form Fields Desk" });
     await db.createSupportChannel(desk.id, {
@@ -152,5 +173,24 @@ describe("channelSetupError", () => {
   it("has nothing to require on ticketing-backed kinds", () => {
     expect(channelSetupError("ticket", {})).toBeNull();
     expect(channelSetupError("salesforce_chat", {})).toBeNull();
+  });
+});
+
+describe("ticketConfirmationText (#1088)", () => {
+  it("follows the desk's confirmation with the number the Visitor can quote", () => {
+    expect(ticketConfirmationText("We got it.", { number: "00001026" })).toBe(
+      "We got it.\n\nYour ticket number is 00001026."
+    );
+    expect(ticketConfirmationText("", null)).toMatch(/^Thanks!/);
+    expect(TICKET_NOT_FILED).toMatch(/couldn't confirm your ticket/);
+  });
+});
+
+describe("channelKindUnavailable", () => {
+  it("offers Create a ticket only to a desk with a ticketing target", () => {
+    expect(channelKindUnavailable("ticket", { ticketingReady: false })).toMatch(/ticketing target/);
+    expect(channelKindUnavailable("ticket", { ticketingReady: true })).toBeNull();
+    expect(channelKindUnavailable("salesforce_chat", { ticketingReady: true })).toMatch(/not available/);
+    expect(channelKindUnavailable("email", { ticketingReady: false })).toBeNull();
   });
 });

@@ -2,9 +2,11 @@ import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  APP_ROOT_SEGMENT_PREFIXES,
   CONSOLE_PATH_PREFIXES,
   MARKETING_PATH_PREFIXES,
   MARKETING_SITEMAP_PATHS,
+  isAppRoute,
   isConsolePath,
   isMarketingPath,
 } from "./console-routes";
@@ -12,6 +14,8 @@ import {
 const ADMIN_GROUP = fileURLToPath(
   new URL("../app/(admin)/", import.meta.url),
 );
+
+const APP_DIR = fileURLToPath(new URL("../app/", import.meta.url));
 
 const MARKETING_GROUP = fileURLToPath(
   new URL("../app/(marketing)/", import.meta.url),
@@ -115,6 +119,56 @@ describe("marketing routes", () => {
   it("leaves the console, the root and lookalike paths alone", () => {
     for (const path of ["/", "/assistants", "/security-report", "/homepage"]) {
       expect(isMarketingPath(path)).toBe(false);
+    }
+  });
+});
+
+/**
+ * `isAppRoute` decides between a /login redirect and the 404 page for a
+ * signed-out request, so a route segment missing from it would 404 instead of
+ * asking for sign-in. Reading the root off disk keeps the two in step.
+ */
+describe("app routes", () => {
+  it("lists every top-level segment outside the route groups that serves a route", () => {
+    const servesRoute = (dir: string) =>
+      readdirSync(`${APP_DIR}${dir}`, { recursive: true })
+        .filter((path): path is string => typeof path === "string")
+        .some((path) => /(?:^|\/)(?:page|route)\.tsx?$/.test(path));
+
+    const onDisk = readdirSync(APP_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith("("))
+      .map((entry) => entry.name)
+      .filter(servesRoute)
+      .map((name) => `/${name}`);
+
+    // A dotted folder (`install.sh`, `llms.txt`) is a file route, matched
+    // exactly rather than as a segment prefix.
+    const files = onDisk.filter((path) => path.includes("."));
+    for (const file of files) expect(isAppRoute(file)).toBe(true);
+
+    expect([...APP_ROOT_SEGMENT_PREFIXES].sort()).toEqual(
+      onDisk.filter((path) => !files.includes(path)).sort(),
+    );
+  });
+
+  it("knows the console, the public site, auth, the API and root files", () => {
+    for (const path of [
+      "/",
+      "/assistants/abc",
+      "/pricing",
+      "/login",
+      "/api/v1/assistants",
+      "/widget/abc",
+      "/robots.txt",
+      "/install.sh",
+    ]) {
+      expect(isAppRoute(path)).toBe(true);
+    }
+  });
+
+  it("leaves unknown and lookalike paths to the 404 page", () => {
+    for (const path of ["/it", "/blog/post", "/wp-login.php", "/apis", "/settings-old"]) {
+      expect(isAppRoute(path)).toBe(false);
     }
   });
 });

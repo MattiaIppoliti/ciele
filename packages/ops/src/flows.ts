@@ -1,6 +1,8 @@
 import { z } from "zod";
-import type { Flow, FlowAction, FlowActionSettings, FlowTrigger } from "@agent-hub/core";
+import { requireBusinessHours } from "./business-hours";
+import type { Flow, FlowCondition, FlowAction, FlowActionSettings, FlowTrigger } from "@agent-hub/core";
 import {
+  isProactiveTrigger,
   actionAllowedForTrigger,
   flowTriggerKind,
   mergeFlowSecrets,
@@ -62,6 +64,11 @@ function assertActionSteps(actions: FlowAction[] | undefined, settings: FlowActi
   }
 }
 
+async function assertFlowConditions(ctx: OperationContext, trigger: FlowTrigger, conditions: readonly FlowCondition[]) {
+  if (isProactiveTrigger(trigger) && conditions.length) throw new OperationError("invalid_input", "Proactive Flows cannot have conditions");
+  for (const condition of conditions) if (condition.kind === "schedule" && condition.mode === "business_hours") await requireBusinessHours(ctx, condition.businessHoursId);
+}
+
 /** Flow id → Flow whose Assistant belongs to the caller's org, or not_found. */
 async function requireFlow(ctx: OperationContext, id: string): Promise<Flow> {
   const flow = await ctx.db.getFlow(id);
@@ -91,7 +98,7 @@ async function requireFlow(ctx: OperationContext, id: string): Promise<Flow> {
  */
 export const flowCatalogOp = defineOperation({
   name: "flows.catalog",
-  capability: "member",
+  capability: "flows:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -119,7 +126,7 @@ export const flowCatalogOp = defineOperation({
 
 export const listFlowsOp = defineOperation({
   name: "flows.list",
-  capability: "member",
+  capability: "flows:view",
   effect: "read",
   input: z.object({ assistantId: z.string().min(1) }),
   entities: () => [],
@@ -131,7 +138,8 @@ export const listFlowsOp = defineOperation({
 
 export const getFlowOp = defineOperation({
   name: "flows.get",
-  capability: "member",
+  capability: "flows:view",
+  assistant: async (ctx, input) => (await ctx.db.getFlow((input as { id: string }).id))?.assistantId ?? null,
   effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
@@ -140,12 +148,13 @@ export const getFlowOp = defineOperation({
 
 export const createFlowOp = defineOperation({
   name: "flows.create",
-  capability: "edit",
+  capability: "flows:edit",
   effect: "write",
   input: z.object({ assistantId: z.string().min(1), input: flowInputSchema }),
   entities: ({ assistantId }) => [{ kind: "flows" as const, assistantId }],
   run: async (ctx, { assistantId, input }) => {
     await requireAssistant(ctx, assistantId);
+    await assertFlowConditions(ctx, input.trigger ?? "message", input.conditions ?? []);
     assertTriggerActions(input.trigger ?? "message", input.actions);
     assertActionSteps(input.actions, input.actionSettings);
     const normalized = input.actionSettings === undefined ? input : {
@@ -158,7 +167,8 @@ export const createFlowOp = defineOperation({
 
 export const updateFlowOp = defineOperation({
   name: "flows.update",
-  capability: "edit",
+  capability: "flows:edit",
+  assistant: async (ctx, input) => (await ctx.db.getFlow((input as { id: string }).id))?.assistantId ?? null,
   effect: "write",
   input: z.object({ id: z.string().min(1), patch: flowPatchSchema }),
   entities: (_input, result: Flow) => [
@@ -166,6 +176,7 @@ export const updateFlowOp = defineOperation({
   ],
   run: async (ctx, { id, patch }) => {
     const stored = await requireFlow(ctx, id);
+    await assertFlowConditions(ctx, patch.trigger ?? stored.trigger ?? "message", patch.conditions ?? stored.conditions);
     assertActionSteps(patch.actions ?? stored.actions, patch.actionSettings ?? stored.actionSettings);
     // A patch may move the trigger, the actions, or only one of the two,
     // the rule applies to the pair that will be stored.
@@ -195,7 +206,8 @@ export const updateFlowOp = defineOperation({
 
 export const deleteFlowOp = defineOperation({
   name: "flows.delete",
-  capability: "edit",
+  capability: "flows:delete",
+  assistant: async (ctx, input) => (await ctx.db.getFlow((input as { id: string }).id))?.assistantId ?? null,
   effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: Flow) => [
@@ -226,7 +238,7 @@ export const deleteFlowOp = defineOperation({
  */
 export const draftFlowOp = defineOperation({
   name: "flows.draft",
-  capability: "edit",
+  capability: "flows:edit",
   effect: "read",
   input: z.object({
     /** One sentence for the transcript: what changed and why. */
@@ -240,9 +252,11 @@ export const draftFlowOp = defineOperation({
     patch: flowPatchSchema,
   }),
   entities: () => [],
-  run: async (_ctx, { summary, currentTrigger, patch: raw }) => {
+  run: async (ctx, { summary, currentTrigger, patch: raw }) => {
     // Enabling is the Editor's switch on the list, never part of a draft.
     const { enabled: _enabled, ...patch } = raw;
+    if (patch.conditions !== undefined && patch.trigger === undefined && currentTrigger === undefined) throw new OperationError("invalid_input", "Pass currentTrigger when drafting conditions without changing the trigger");
+    await assertFlowConditions(ctx, patch.trigger ?? currentTrigger ?? "message", patch.conditions ?? []);
     if (patch.actions !== undefined) assertActionSteps(patch.actions, patch.actionSettings);
     if (patch.trigger !== undefined || patch.actions !== undefined) {
       assertTriggerActions(patch.trigger ?? currentTrigger ?? "message", patch.actions);
@@ -266,7 +280,7 @@ export const draftFlowOp = defineOperation({
 
 export const proposeFlowOp = defineOperation({
   name: "flows.propose",
-  capability: "edit",
+  capability: "flows:edit",
   effect: "read",
   input: z.object({
     assistantId: z.string().min(1),
@@ -277,6 +291,7 @@ export const proposeFlowOp = defineOperation({
   entities: () => [],
   run: async (ctx, { assistantId, rationale, flow }) => {
     await requireAssistant(ctx, assistantId);
+    await assertFlowConditions(ctx, flow.trigger ?? "message", flow.conditions ?? []);
     assertTriggerActions(flow.trigger ?? "message", flow.actions);
     assertActionSteps(flow.actions, flow.actionSettings);
     const gate = flow.actions && (flow.trigger ?? "message") !== "http_request"
@@ -299,7 +314,7 @@ export const proposeFlowOp = defineOperation({
  */
 export const listHttpFlowRunsOp = defineOperation({
   name: "flows.http.runs",
-  capability: "member",
+  capability: "flows:view",
   effect: "read",
   input: z.object({
     flowId: z.string().min(1),
@@ -314,7 +329,7 @@ export const listHttpFlowRunsOp = defineOperation({
 
 export const reorderFlowsOp = defineOperation({
   name: "flows.reorder",
-  capability: "edit",
+  capability: "flows:edit",
   effect: "write",
   input: z.object({
     assistantId: z.string().min(1),

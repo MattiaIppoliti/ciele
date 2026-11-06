@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { AssistantTopBarActions } from "@/components/assistant/assistant-topbar-actions";
 import { PreviewPanelLauncher } from "@/components/assistant/preview-panel-launcher";
 import { getSession } from "@/lib/auth";
-import { canEdit, canPublish } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
+import { requireAssistantPageAccess } from "@/lib/authz";
 import { connectorInstallationScope } from "@/lib/local-connector-installer";
 import { getAssistantCached } from "./get-assistant";
 
@@ -26,7 +27,8 @@ export default async function AssistantLayout({
     getSession(),
   ]);
   if (!assistant) notFound();
-  const role = session?.role ?? null;
+  // The Member's Role on this Assistant decides what its top bar offers.
+  const { access } = await requireAssistantPageAccess(id);
   const connectorScope = session?.organization
     ? connectorInstallationScope(session.organization.id, session.userId)
     : null;
@@ -36,11 +38,12 @@ export default async function AssistantLayout({
       <AssistantTopBarActions
         assistantId={assistant.id}
         assistantTitle={assistant.title}
-        canEdit={canEdit(role)}
-        canDelete={canPublish(role)}
+        canEdit={can(access, "assistants:edit")}
+        canDelete={can(access, "assistants:delete")}
+        canManageAccess={can(access, "assistants:access")}
       />
       <div className="flex min-h-0 flex-1">
-        <section className="touch-scroll-clearance @container min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</section>
+        <section className="touch-scroll-clearance no-scrollbar @container min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</section>
         <PreviewPanelLauncher
           assistant={assistant}
           connectorScope={connectorScope}

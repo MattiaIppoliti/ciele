@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
 import { GuardrailsClient } from "@/components/assistant/guardrails-client";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { requirePageMember } from "@/lib/authz";
-import { canEdit } from "@/lib/rbac";
+import { requirePageMember, requireAssistantPageAccess } from "@/lib/authz";
+import { can } from "@/lib/rbac";
 import { getAssistantCached } from "../get-assistant";
 
 export default async function GuardrailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { role, db, organizationId } = await requirePageMember();
+  const { db, organizationId } = await requirePageMember();
+  const { access } = await requireAssistantPageAccess(id);
   const assistant = await getAssistantCached(id);
   if (!assistant) notFound();
   // Moderation runs on the Organization's OpenAI connection; the form warns
@@ -18,14 +18,13 @@ export default async function GuardrailsPage({ params }: { params: Promise<{ id:
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
-        icon={ShieldCheck}
         title="Guardrails"
 
       />
       <GuardrailsClient
         assistantId={id}
         initial={assistant.guardrails ?? []}
-        canEdit={canEdit(role)}
+        canEdit={can(access, "assistants:edit")}
         hasOpenAiConnection={connections.some((c) => c.provider === "openai")}
       />
     </div>

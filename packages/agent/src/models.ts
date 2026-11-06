@@ -25,7 +25,9 @@ import { currentModelId, gatewayModelId } from "./catalog";
 import { bindModelCapacity, contextBudgetMiddleware } from "./context-budget";
 import { getRuntimeHost } from "./host";
 import { piiMaskingMiddleware } from "./pii-masking";
+import { turnClockMiddleware } from "./turn-clock";
 import { capacityRetryMiddleware } from "./rate-limit-retry";
+import { streamWatchdogMiddleware } from "./stream-watchdog";
 
 export { MODEL_CATALOG } from "./catalog";
 
@@ -471,6 +473,15 @@ export function providerAvailability(
  * masking scope (`pii-masking.ts`). It is the outermost middleware, so a
  * retried request resends the masked prompt and the context budget measures
  * what is actually sent.
+ *
+ * Every model reports its wall time to an active turn clock (`turn-clock.ts`,
+ * #1112). It sits outside the capacity retry, so a call that waited out a 429
+ * counts as model wait, which is what it was.
+ *
+ * A hosted model also runs through the stream watchdog (`stream-watchdog.ts`),
+ * between the turn clock and the capacity retry: a body that goes silent after
+ * the 200 is cancelled after 90s, and retried once when it went silent before
+ * any content, the retry passing through the capacity retry too.
  */
 export function buildModel(
   provider: Provider,
@@ -505,8 +516,8 @@ export function buildModel(
       ? createLocalSubscriptionModel({ provider: credential.provider, modelId, cliModelId: modelId, run: credential.run })
       : buildHostedModel(provider, modelId, credential),
     middleware: credential.kind === "local_subscription"
-      ? [piiMaskingMiddleware(), contextBudgetMiddleware(capacity)]
-      : [piiMaskingMiddleware(), contextBudgetMiddleware(capacity), capacityRetryMiddleware()],
+      ? [piiMaskingMiddleware(), contextBudgetMiddleware(capacity), turnClockMiddleware()]
+      : [piiMaskingMiddleware(), contextBudgetMiddleware(capacity), turnClockMiddleware(), streamWatchdogMiddleware(), capacityRetryMiddleware()],
   });
   bindModelCapacity(model, capacity);
   return model;

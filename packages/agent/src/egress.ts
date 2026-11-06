@@ -214,6 +214,8 @@ export interface EgressFetchOptions extends EgressPolicy {
   maxResponseBytes: number;
   /** Redirect hops to follow, each re-validated and re-pinned. Default 0: any 3xx fails. */
   maxRedirects?: number;
+  /** Return a 3xx response without following it; default keeps the redirect refusal. */
+  redirect?: "manual" | "error";
   signal?: AbortSignal;
 }
 
@@ -236,7 +238,9 @@ export async function egressFetch(
   const maxRedirects = options.maxRedirects ?? 0;
   let currentUrl = rawUrl;
   for (let hop = 0; ; hop += 1) {
+    options.signal?.throwIfAborted();
     const target = await validateEgressTarget(currentUrl, options);
+    options.signal?.throwIfAborted();
     const response = await pinnedRequest(target, {
       method: options.method,
       headers: options.headers,
@@ -245,7 +249,7 @@ export async function egressFetch(
       maxResponseBytes: options.maxResponseBytes,
       signal: options.signal,
     });
-    if (response.status < 300 || response.status >= 400) {
+    if (response.status < 300 || response.status >= 400 || options.redirect === "manual") {
       return { response, finalUrl: target.url.toString() };
     }
     const location = response.headers.get("location");

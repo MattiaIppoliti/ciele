@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { listSourceDocumentsOp } from "@ciele/ops";
 import { SourceDocumentsView } from "@/components/knowledge/source-documents-view";
 import { requirePageMember } from "@/lib/authz";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { runPageOperation } from "@/lib/operations";
 import { isKnowledgeTabSlug } from "@/lib/knowledge-hub";
 import {
@@ -32,7 +32,8 @@ export default async function LibrarySourceDocumentsPage({
   const { tab, sourceId } = await params;
   if (!isKnowledgeTabSlug(tab)) notFound();
   const search = parseSourceDocumentsParams(await searchParams);
-  const { role } = await requirePageMember();
+  const { role, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
 
   const page = await runPageOperation(listSourceDocumentsOp, {
     sourceId,
@@ -40,11 +41,14 @@ export default async function LibrarySourceDocumentsPage({
     ascending: search.ascending,
     sort: search.sort || undefined,
     status: search.status || undefined,
+    trustTier: search.trustTier,
   });
 
   return (
     <SourceDocumentsView
       source={page.source}
+      usage={page.usage}
+      qualityAvailable={page.qualityAvailable}
       documents={page.items}
       memoryCounts={page.memoryCounts}
       total={page.total}
@@ -52,7 +56,7 @@ export default async function LibrarySourceDocumentsPage({
       params={search}
       basePath={libraryDocumentsHref(page.source.kind, page.source.id)}
       backHref={`/library/${tab}`}
-      canEdit={canEdit(role)}
+      canEdit={can(access, "knowledge:edit")}
       backLabel="Library"
     />
   );

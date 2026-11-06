@@ -175,13 +175,17 @@ their channels, availability computed per-channel in its own timezone
   Tools & Skills (no deploy), or add an Adapter in `ACTION_HANDLERS`
   (admin-wired flow capabilities).
 - **Skills**, the org-facing prompt-template surface: reusable playbooks
-  attached per assistant, layered into the system prompt, snapshotted into
-  Publications.
-- **MCP**, an MCP client would slot in as a tool *provider*: at turn start,
-  list the connected server's tools and spread them into the toolset
-  `buildToolset` returns. The event protocol (`tool-start`/`tool-end`)
-  already covers their progress UX. Nothing else changes, that's the point
-  of the registry seam.
+  attached per assistant, snapshotted into Publications. Up to 4,000
+  characters in total they are layered into the system prompt whole; past
+  that the gather phase gets one line per Skill and a `useSkill` tool that
+  returns a body on demand (`skills.ts`).
+- **MCP**, the client side is a tool *provider*: an Organization registers
+  MCP Server Connections in Settings, each tool carries a policy (Run freely,
+  Ask first, Off) pinned to its definition hash, and `remoteMcpActions`
+  (`remote-mcp-tools.ts`) turns the tools a Teammate or a published Assistant
+  may reach into Teammate actions. Descriptions are capped at 2,048
+  characters, results are fenced as untrusted and read in windows, and an
+  Ask first tool waits on the approval gate.
 - **Plugins**, the Flow Builder is the plugin surface: a flow bundles
   trigger + conditions + a pipeline of actions, per assistant, hot-swappable
   without deploys.

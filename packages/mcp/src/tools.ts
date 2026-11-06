@@ -3,7 +3,7 @@ import type { CieleClient } from "@ciele/client";
 
 /**
  * The ciele MCP tool set (#629): coarse domain tools with an `action`
- * discriminator, 10 tools, not one per endpoint, so an agent picks reliably.
+ * discriminator, 17 tools, not one per endpoint, so an agent picks reliably.
  * Every v1-perimeter operation is reachable through one of these.
  *
  * Handlers return plain JSON-able data; the server layer (server.ts) wraps
@@ -81,7 +81,9 @@ const READ_ACTIONS = new Set([
   "list_collections",
   "list_sources",
   "list_org_sources",
+  "get_access",
   "get_source",
+  "list_documents", "get_faq", "faq_history", "check_faq_duplicates", "source_usage",
   "export",
   "export_faqs",
   "subjects",
@@ -154,7 +156,10 @@ export function buildTools(client: CieleClient): CieleTool[] {
       description:
         "Ask an Assistant a question with `ask` (id + question): it answers as its published widget would, Flows and knowledge search included, and returns the answer with the Sources it cited; pass the returned conversationId to ask a follow-up. It creates a Conversation, so read-only mode refuses it; to read the knowledge without an answer use manage_knowledge `search`. Also list, read, create, update, duplicate or delete the Organization's Assistants. `list` supports limit/cursor; `update` takes a `patch` object; `delete` is permanent and needs an admin-tier key.",
       schema: {
-        action: z.enum(["ask", "list", "get", "create", "update", "delete", "duplicate"]),
+        action: z.enum(["export", "import", "get_access", "set_access", "clear_access", "ask", "list", "get", "create", "update", "delete", "duplicate"]),
+        bundle: z.record(z.string(), z.unknown()).optional().describe("Portable Assistant bundle (import)"),
+        userId: z.string().optional().describe("Member id (access overrides)"),
+        role: z.enum(["denied","viewer","editor","admin"]).optional().describe("Assistant access override"),
         id: z.string().optional().describe("Assistant id (ask/get/update/delete/duplicate)"),
         question: z.string().optional().describe("What to ask the Assistant (ask)"),
         conversationId: z
@@ -170,6 +175,15 @@ export function buildTools(client: CieleClient): CieleTool[] {
       mutates: byAction,
       run: async (args) => {
         switch (args.action) {
+          case "export": return client.assistants.exportBundle(need(args, "id"));
+          case "import": return client.assistants.importBundle(needObject(args, "bundle"));
+          case "get_access": return client.assistants.access(need(args,"id"));
+          case "set_access": {
+            const role = args.role;
+            if (role !== "denied" && role !== "viewer" && role !== "editor" && role !== "admin") throw new ToolInputError("An access role is required");
+            await client.assistants.setAccess(need(args,"id"),need(args,"userId"),role); return { updated:true };
+          }
+          case "clear_access": await client.assistants.clearAccess(need(args,"id"),need(args,"userId")); return { cleared:true };
           case "list":
             return client.assistants.list({
               limit: optNum(args, "limit"),
@@ -308,6 +322,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           "list_sources",
           "list_org_sources",
           "get_source",
+          "list_documents", "review_document", "remove_review", "get_faq", "update_faq", "faq_history", "restore_faq", "check_faq_duplicates", "source_usage",
           "add_text",
           "add_url",
           "add_file",
@@ -334,6 +349,8 @@ export function buildTools(client: CieleClient): CieleTool[] {
           .describe(
             "Required for list_sources/add_text/add_url/add_file/add_faq/import_faqs; the add_org_* actions take none"
           ),
+        documentId: z.string().optional(),
+        versionId: z.string().optional(),
         sourceId: z.string().optional().describe("Required for get_source/delete_source/recrawl"),
         name: z
           .string()
@@ -375,6 +392,15 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.knowledge.collections(need(args, "assistantId"));
           case "list_sources":
             return client.knowledge.sources(need(args, "collectionId"));
+          case "list_documents": return client.knowledge.sourceDocuments(need(args, "sourceId"));
+          case "review_document": return client.knowledge.reviewDocument(need(args, "sourceId"), need(args, "documentId"));
+          case "remove_review": await client.knowledge.removeDocumentReview(need(args, "sourceId"), need(args, "documentId")); return { removed: true };
+          case "get_faq": return client.knowledge.getFaq(need(args, "sourceId"));
+          case "update_faq": return client.knowledge.updateFaq(need(args, "sourceId"), { question: need(args, "question"), answer: need(args, "answer") });
+          case "faq_history": return client.knowledge.faqHistory(need(args, "sourceId"));
+          case "restore_faq": return client.knowledge.restoreFaq(need(args, "sourceId"), need(args, "versionId"));
+          case "check_faq_duplicates": return client.knowledge.checkFaqDuplicates({ question: need(args, "question"), collectionId: optStr(args, "collectionId") || undefined });
+          case "source_usage": return client.knowledge.sourceUsage(need(args, "sourceId"));
           case "get_source":
             return client.knowledge.getSource(need(args, "sourceId"));
           case "add_text":
@@ -644,12 +670,18 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_improvements",
       description:
-        "The answer-quality kanban: `list` items, `get` one (with the flagged messages and any drafted fix), `update` status/priority/tags/assigneeId/dueDate/title/description via `patch`, e.g. move a card to in_progress or done. Priority is high, medium, low or none; send \"none\" to clear it, never null.",
+        "The answer-quality kanban: `list` items (filter by search, status, priority, assigneeId, assistantId or projectId; the answer carries per-status `counts` for the same filters), `get` one (with the flagged messages and any drafted fix), `update` status/priority/tags/assigneeId/projectId/dueDate/title/description via `patch`, e.g. move a card to in_progress or done. Stages: to_do is triage, in_progress fix, in_review validate, done resolved. Priority is high, medium, low or none; send \"none\" to clear it, never null.",
       schema: {
         action: z.enum(["list", "get", "update"]),
         id: z.string().optional().describe("Improvement id (get/update)"),
         patch: z.record(z.string(), z.unknown()).optional().describe("ImprovementPatch (update)"),
         ...paging,
+        search: z.string().max(300).optional().describe("Matches title, IMP-n key or tag (list)"),
+        status: z.enum(["to_do", "in_progress", "in_review", "done", "archived"]).optional().describe("One stage (list)"),
+        priority: z.enum(["high", "medium", "low", "none"]).optional(),
+        assigneeId: z.string().nullable().optional().describe("Member id; null lists unassigned work (list)"),
+        assistantId: z.string().optional().describe("Only items with evidence from this Assistant (list)"),
+        projectId: z.string().optional().describe("Only items in this Project (list)"),
       },
       mutates: byAction,
       run: async (args) => {
@@ -658,6 +690,12 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.improvements.list({
               limit: optNum(args, "limit"),
               cursor: optStr(args, "cursor"),
+              search: optStr(args, "search"),
+              status: args.status as "to_do" | "in_progress" | "in_review" | "done" | "archived" | undefined,
+              priority: args.priority as "high" | "medium" | "low" | "none" | undefined,
+              assigneeId: args.assigneeId as string | null | undefined,
+              assistantId: optStr(args, "assistantId"),
+              projectId: optStr(args, "projectId"),
             });
           case "get":
             return client.improvements.get(need(args, "id"));
@@ -995,9 +1033,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_help_desks",
       description:
-        "Manage Help Desks, escalation channels, channel order, and ServiceNow ticketing. Credential-bearing responses are always redacted by the server.",
+        "Manage Help Desks, escalation channels, channel order, and the ticketing target (an Organization-owned Salesforce or ServiceNow application connection). Credential-bearing responses are always redacted by the server.",
       schema: {
-        action: z.enum(["list", "get", "create", "update", "delete", "add_channel", "update_channel", "delete_channel", "reorder_channels", "connect_servicenow", "disconnect_ticketing"]),
+        action: z.enum(["list", "get", "create", "update", "delete", "add_channel", "update_channel", "delete_channel", "reorder_channels", "set_ticketing", "disconnect_ticketing"]),
         id: z.string().optional().describe("Help Desk id"),
         channelId: z.string().optional(),
         input: z.record(z.string(), z.unknown()).optional(),
@@ -1019,7 +1057,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "reorder_channels":
             if (!Array.isArray(args.orderedIds)) throw new ToolInputError('"orderedIds" is required for reorder_channels');
             return client.helpDesks.reorderChannels(id(), args.orderedIds as string[]);
-          case "connect_servicenow": return client.helpDesks.connectServiceNow(id(), needObject(args, "input") as never);
+          case "set_ticketing": return client.helpDesks.setTicketing(id(), needObject(args, "input") as never);
           case "disconnect_ticketing": return client.helpDesks.disconnectTicketing(id());
           default: throw unknownAction(args);
         }
@@ -1028,19 +1066,23 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_configuration",
       description:
-        "Manage reusable Skills, per-Assistant Skill selection and standing Goals, and operational Alerts.",
+        "Manage reusable Skills, per-Assistant Skill selection and standing Goals, operational Alerts, the Inbox's Quick Texts (saved replies), signed outbound webhook subscriptions, and Organization business hours, holidays and default timezone.",
       schema: {
-        action: z.enum(["skill_list", "skill_create", "skill_update", "skill_delete", "assistant_skills_get", "assistant_skills_set", "goal_list", "goal_create", "goal_update", "goal_delete", "alert_list", "alert_resolve"]),
-        id: z.string().optional().describe("Skill or Alert id"),
+        action: z.enum(["export_schedule_list", "export_schedule_create", "export_schedule_update", "export_schedule_delete", "skill_list", "skill_create", "skill_update", "skill_delete", "assistant_skills_get", "assistant_skills_set", "goal_list", "goal_create", "goal_update", "goal_delete", "alert_list", "alert_resolve", "quick_text_list", "quick_text_create", "quick_text_update", "quick_text_delete", "business_hours_list", "business_hours_create", "business_hours_update", "business_hours_delete", "business_hours_timezone", "webhook_list", "webhook_create", "webhook_update", "webhook_pause", "webhook_resume", "webhook_delete", "webhook_deliveries", "webhook_test"]),
+        id: z.string().optional().describe("Skill, Alert, Quick Text or webhook subscription id"),
         assistantId: z.string().optional(),
         goalId: z.string().optional(),
         input: z.record(z.string(), z.unknown()).optional(),
         patch: z.record(z.string(), z.unknown()).optional(),
         skillIds: z.array(z.string()).optional(),
       },
-      mutates: mutatesUnless("skill_list", "assistant_skills_get", "goal_list", "alert_list"),
+      mutates: mutatesUnless("export_schedule_list", "skill_list", "assistant_skills_get", "goal_list", "alert_list", "quick_text_list", "business_hours_list", "webhook_list", "webhook_deliveries"),
       run: async (args) => {
         switch (args.action) {
+          case "export_schedule_list": return client.exportSchedules.list();
+          case "export_schedule_create": return client.exportSchedules.create(needObject(args, "input") as never);
+          case "export_schedule_update": return client.exportSchedules.update(need(args, "id"), needObject(args, "patch") as never);
+          case "export_schedule_delete": await client.exportSchedules.delete(need(args, "id")); return { deleted: args.id };
           case "skill_list": return client.skills.list();
           case "skill_create": return client.skills.create(needObject(args, "input") as never);
           case "skill_update": return client.skills.update(need(args, "id"), needObject(args, "patch") as never);
@@ -1055,6 +1097,23 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "goal_delete": await client.goals.delete(need(args, "assistantId"), need(args, "goalId")); return { deleted: args.goalId };
           case "alert_list": return client.alerts.list();
           case "alert_resolve": return client.alerts.resolve(need(args, "id"));
+          case "business_hours_list": return client.businessHours.list();
+          case "business_hours_create": return client.businessHours.create(needObject(args, "input") as never);
+          case "business_hours_update": return client.businessHours.update(need(args, "id"), needObject(args, "patch") as never);
+          case "business_hours_delete": await client.businessHours.delete(need(args, "id")); return { deleted: args.id };
+          case "business_hours_timezone": return client.businessHours.setTimezone(need(needObject(args, "input"), "timezone"));
+          case "webhook_list": return client.webhooks.list();
+          case "webhook_create": return client.webhooks.create(needObject(args, "input") as never);
+          case "webhook_update": return client.webhooks.update(need(args, "id"), needObject(args, "patch") as never);
+          case "webhook_pause": return client.webhooks.update(need(args, "id"), { paused: true });
+          case "webhook_resume": return client.webhooks.update(need(args, "id"), { paused: false });
+          case "webhook_delete": await client.webhooks.delete(need(args, "id")); return { deleted: args.id };
+          case "webhook_deliveries": return client.webhooks.deliveries(need(args, "id"));
+          case "webhook_test": return client.webhooks.test(need(args, "id"));
+          case "quick_text_list": return client.quickTexts.list();
+          case "quick_text_create": return client.quickTexts.create(needObject(args, "input") as never);
+          case "quick_text_update": return client.quickTexts.update(need(args, "id"), needObject(args, "patch") as never);
+          case "quick_text_delete": await client.quickTexts.delete(need(args, "id")); return { deleted: args.id };
           default: throw unknownAction(args);
         }
       },
@@ -1062,23 +1121,43 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_organization",
       description:
-        "Manage Organization settings, Members, invitation links and API keys, and read the plan's usage meters and who spent its credits. Secret keys are returned only once on creation; Role checks match the app.",
+        "Manage Organization settings, Members, Roles and their Capabilities, invitation links and API keys, read the plan's usage meters and who spent its credits, and read the audit log of configuration changes. Secret keys are returned only once on creation; Role checks match the app.",
       schema: {
-        action: z.enum(["get", "update", "member_list", "member_set_role", "member_remove", "invite_list", "invite_create", "invite_revoke", "api_key_list", "api_key_create", "api_key_revoke", "usage_meters", "usage_spenders"]),
-        id: z.string().optional().describe("Member user id, Invite id, or API key id"),
+        action: z.enum(["get", "update", "member_list", "member_set_role", "member_remove", "invite_list", "invite_create", "invite_revoke", "api_key_list", "api_key_create", "api_key_revoke", "usage_meters", "usage_spenders", "audit_log_list", "member_assistants_get", "member_assistants_set", "role_list", "role_get", "role_create", "role_update", "role_reset", "role_delete", "role_defaults_set"]),
+        id: z.string().optional().describe("Member user id, Invite id, API key id, or Role id"),
+        roleId: z.string().optional().describe("member_set_role: a Role id from role_list, custom Roles included; wins over role"),
         input: z.record(z.string(), z.unknown()).optional(),
         patch: z.record(z.string(), z.unknown()).optional(),
-        role: z.enum(["owner", "admin", "editor", "viewer"]).optional(),
-        from: z.string().optional().describe("Usage window start, ISO instant"),
-        to: z.string().optional().describe("Usage window end, ISO instant"),
+        role: z.enum(["owner", "admin", "editor", "viewer", "support_agent"]).optional(),
+        from: z.string().optional().describe("Usage window start, ISO instant; for audit_log_list a date or ISO instant, inclusive"),
+        to: z.string().optional().describe("Usage window end, ISO instant; for audit_log_list a date (the whole day) or ISO instant, inclusive"),
+        actions: z.array(z.string()).optional().describe("audit_log_list: operation names such as members.updateRole"),
+        actor: z.string().optional().describe("audit_log_list: a Member's user id, or system"),
+        order: z.enum(["newest", "oldest"]).optional().describe("audit_log_list: newest first by default"),
+        before: z.string().optional().describe("audit_log_list: the last entry's createdAt, to read further back"),
+        beforeId: z.string().optional().describe("audit_log_list: the last entry's id"),
+        limit: z.number().optional().describe("audit_log_list: entries to return, 100 by default, at most 1000"),
+        scope: z.enum(["all", "selected"]).optional().describe("member_assistants_set: all, or only the listed Assistants"),
+        access: z.array(z.object({ assistantId: z.string(), role: z.enum(["denied", "viewer", "editor", "admin"]), roleId: z.string().optional() })).optional().describe("member_assistants_set: every row the Member keeps; replaces the rest. roleId names a Role offered on Assistants"),
       },
-      mutates: mutatesUnless("get", "member_list", "invite_list", "api_key_list", "usage_meters", "usage_spenders"),
+      mutates: mutatesUnless("get", "member_list", "invite_list", "api_key_list", "usage_meters", "usage_spenders", "audit_log_list", "member_assistants_get", "role_list", "role_get"),
       run: async (args) => {
         switch (args.action) {
           case "get": return client.organization.get();
           case "update": return client.organization.update(needObject(args, "patch") as never);
           case "member_list": return client.members.list();
-          case "member_set_role": return client.members.setRole(need(args, "id"), need(args, "role") as never);
+          case "member_set_role":
+            return client.members.setRole(
+              need(args, "id"),
+              typeof args.roleId === "string" ? { roleId: args.roleId } : (need(args, "role") as never)
+            );
+          case "role_list": return client.roles.list();
+          case "role_get": return client.roles.get(need(args, "id"));
+          case "role_create": return client.roles.create(needObject(args, "input") as never);
+          case "role_update": return client.roles.update(need(args, "id"), needObject(args, "patch") as never);
+          case "role_reset": return client.roles.reset(need(args, "id"));
+          case "role_delete": await client.roles.delete(need(args, "id")); return { deleted: args.id };
+          case "role_defaults_set": return client.roles.setDefaults(needObject(args, "input") as never);
           case "member_remove": await client.members.remove(need(args, "id")); return { removed: args.id };
           case "invite_list": return client.invites.list();
           case "invite_create": return client.invites.create(needObject(args, "input") as never);
@@ -1090,6 +1169,22 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "usage_spenders": return client.usage.spenders({
             ...(typeof args.from === "string" ? { from: args.from } : {}),
             ...(typeof args.to === "string" ? { to: args.to } : {}),
+          });
+          case "member_assistants_get": return client.members.assistants(need(args, "id"));
+          case "member_assistants_set": {
+            if (args.scope !== "all" && args.scope !== "selected") throw new ToolInputError('"scope" must be all or selected for member_assistants_set');
+            if (!Array.isArray(args.access)) throw new ToolInputError('"access" is required for member_assistants_set');
+            return client.members.setAssistants(need(args, "id"), { scope: args.scope, access: args.access as never });
+          }
+          case "audit_log_list": return client.auditLog.list({
+            ...(Array.isArray(args.actions) ? { actions: args.actions as string[] } : {}),
+            ...(typeof args.actor === "string" ? { actor: args.actor } : {}),
+            ...(typeof args.from === "string" ? { from: args.from } : {}),
+            ...(typeof args.to === "string" ? { to: args.to } : {}),
+            ...(args.order === "oldest" || args.order === "newest" ? { order: args.order } : {}),
+            ...(typeof args.before === "string" ? { before: args.before } : {}),
+            ...(typeof args.beforeId === "string" ? { beforeId: args.beforeId } : {}),
+            ...(typeof args.limit === "number" ? { limit: args.limit } : {}),
           });
           default: throw unknownAction(args);
         }

@@ -3,6 +3,7 @@
 import { EmptyState } from "@/components/ui/empty-state";
 
 import Link from "next/link";
+import { IMPROVEMENT_WORKFLOW } from "@agent-hub/core";
 import type { ReactNode } from "react";
 import type {
   Improvement,
@@ -205,6 +206,7 @@ export function ImprovementsKanban({
                 <RollingNumber value={laneCount(lane.value)} />
               </Badge>
             </header>
+            <p className="text-muted-foreground px-3 pb-2 text-xs">{IMPROVEMENT_WORKFLOW[lane.value].guidance}</p>
             <div className="flex min-h-24 flex-1 flex-col gap-2.5 p-2">
               {items.length === 0 ? (
                 <EmptyState size="sm"

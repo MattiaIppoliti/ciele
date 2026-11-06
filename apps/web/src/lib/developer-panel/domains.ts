@@ -128,6 +128,20 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpPrompt:
       "List the Help Desks with their escalation channels, and flag any desk that has no channel configured.",
   },
+  "business-hours": {
+    title: "Business hours API", mcpTool: "manage_configuration",
+    mcpPrompt: "List this Organization's business hours and holidays. Ask before changing a schedule or the default timezone.",
+  },
+  webhooks: {
+    title: "Webhooks API", mcpTool: "manage_configuration",
+    mcpPrompt: "List this Organization's outbound webhook subscriptions and their recent delivery status. Ask before changing any subscription.",
+  },
+  "quick-texts": {
+    title: "Quick Texts API",
+    mcpTool: "manage_configuration",
+    mcpPrompt:
+      "List this Organization's Quick Texts by folder and tell me which ones use a template variable.",
+  },
   skills: {
     title: "Skills API",
     mcpTool: "manage_configuration",
@@ -157,6 +171,12 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpTool: "manage_organization",
     mcpPrompt:
       "List the Members with their Roles, and tell me who can administer this Organization.",
+  },
+  roles: {
+    title: "Roles API",
+    mcpTool: "manage_organization",
+    mcpPrompt:
+      "List the Roles with their Capabilities, and tell me which built-in Roles were edited.",
   },
   // Not "API Keys API": the title names what you are looking at, and the
   // pattern is not worth a stutter.
@@ -190,10 +210,17 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpPrompt:
       "List the pending Human review requests and tell me which conversations are waiting on a colleague.",
   },
+  exports: { title: "Scheduled exports API", mcpTool: "manage_configuration", mcpPrompt: "List the scheduled Insights exports, pause a schedule or create a weekly report for Organization Members." },
   usage: {
     title: "Usage API",
     mcpTool: "manage_organization",
     mcpPrompt:
       "Show my plan's usage meters and which Teammates and Members spent the most credits this month.",
+  },
+  "audit-log": {
+    title: "Audit Log API",
+    mcpTool: "manage_organization",
+    mcpPrompt:
+      "Show who changed member Roles or API keys in the last 30 days, and what each change was.",
   },
 };

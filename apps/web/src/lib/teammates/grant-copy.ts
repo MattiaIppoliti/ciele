@@ -1,5 +1,5 @@
 import type {
-  TeammateCapabilityCeiling,
+  TeammateActionCeiling,
   TeammateGrantDomain,
 } from "@agent-hub/core";
 
@@ -50,7 +50,7 @@ export const GRANT_DOMAIN_COPY: readonly GrantDomainCopy[] = [
 ];
 
 export interface CeilingCopy {
-  ceiling: TeammateCapabilityCeiling;
+  ceiling: TeammateActionCeiling;
   label: string;
   detail: string;
 }
@@ -76,7 +76,7 @@ export const CEILING_COPY: readonly CeilingCopy[] = [
  */
 export function grantSummary(
   domains: readonly TeammateGrantDomain[],
-  ceiling: TeammateCapabilityCeiling,
+  ceiling: TeammateActionCeiling,
   approvalBypass: boolean
 ): string {
   if (domains.length === 0) {

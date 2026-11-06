@@ -1,3 +1,4 @@
+import { capabilitiesForLadderRole } from "@agent-hub/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
@@ -33,16 +34,18 @@ describe("Application OAuth callback route", () => {
     mocks.getDb.mockReset();
     mocks.getWidgetDb.mockReset();
     mocks.exchange.mockReset();
-    createConnection.mockReset();
+    createConnection.mockReset().mockResolvedValue({ id: "conn-created" });
     consumeNonce.mockReset().mockResolvedValue(true);
     mocks.getSession.mockResolvedValue({
       userId: "member-1",
       organization: { id: "org-1" },
-      role: "owner",
+      role: "owner", capabilities: capabilitiesForLadderRole("owner"),
     });
     mocks.getDb.mockResolvedValue({
       getSafeApplicationConnection: vi.fn(),
       consumeApplicationOAuthNonce: consumeNonce,
+      listMembers: vi.fn(async () => [{ userId: "member-1", email: "member@example.test" }]),
+      recordAuditEntry: vi.fn(),
     });
     mocks.getWidgetDb.mockReturnValue({
       createApplicationConnection: createConnection,

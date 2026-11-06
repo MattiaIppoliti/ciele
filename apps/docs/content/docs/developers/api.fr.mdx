@@ -1,14 +1,14 @@
 ---
 title: API v1
-description: Appelez l'API d'administration Ciele actuelle à l'aide d'une clé API d'organisation.
+description: Appelez l’API d’administration actuelle de Ciele à l’aide d’une clé API d’organisation.
 ---
 
-L'API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
+L’API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
 par `/api/v1`.
 
 [Ouvrez la référence API interactive](/api-reference) pour parcourir toutes les
-opérations publiques par domaine. Téléchargez le contrat OpenAPI actuel à cet
-endroit au format JSON ou YAML.
+opérations publiques par domaine. Téléchargez ici le contrat OpenAPI actuel au
+format JSON ou YAML.
 
 ## Découvrir le déploiement
 
@@ -19,20 +19,27 @@ GET /api/v1/meta
 GET /api/v1/openapi.json
 ```
 
-`meta` répertorie la version de l'API et les domaines disponibles.
+`meta` répertorie la version de l’API et les domaines disponibles.
 `openapi.json` renvoie le contrat lisible par machine pour le déploiement.
 
 ## Authentifier une requête
 
-Envoyez la clé API sous la forme d'un bearer token :
+Envoyez la clé API en tant que bearer token :
 
 ```bash
 curl https://ciele.app/api/v1/whoami \
   --header "Authorization: Bearer $CIELE_API_KEY"
 ```
 
-Pour l'auto-hébergement, remplacez `https://ciele.app` par l'origine publique de
+Pour l’auto-hébergement, remplacez `https://ciele.app` par l’origine publique de
 Ciele.
+
+La réponse inclut `capabilities` : les capacités de la clé. Une clé ne peut
+effectuer que ce que son Role et son créateur peuvent tous deux faire.
+
+Lors d’une opération concernant un Assistant, le Role du créateur sur cet
+Assistant s’applique. Si seul ce Role d’Assistant refuse l’opération, l’API
+renvoie `404`, comme pour un Assistant qui n’existe pas.
 
 ## Erreurs de réponse
 
@@ -47,16 +54,16 @@ Les erreurs utilisent une seule enveloppe JSON :
 }
 ```
 
-Les codes d'état courants sont :
+Les codes de statut courants sont :
 
 | Status | Signification |
 | --- | --- |
 | `400` | Le corps de la requête est mal formé ou un fichier requis est manquant. |
 | `401` | La clé est manquante, non valide ou révoquée. |
 | `403` | Le rôle de la clé n'autorise pas l'opération. |
-| `404` | La ressource n'existe pas dans l'organisation. |
-| `409` | La requête entre en conflit avec l'état actuel. |
-| `422` | L'entrée analysée échoue à la validation. |
+| `404` | La ressource n’existe pas dans l’organisation. |
+| `409` | La requête est en conflit avec l’état actuel. |
+| `422` | L’entrée analysée échoue à la validation. |
 
 ## Pagination
 
@@ -64,7 +71,7 @@ Utilisez les paramètres de pagination indiqués pour chaque opération. Les lis
 basées sur un curseur renvoient `nextCursor`. Transmettez-le en tant que
 `cursor` lors de la requête suivante.
 
-## Nouvelles tentatives sécurisées
+## Nouvelles tentatives sûres
 
 Les routes de mutation peuvent accepter un en-tête `Idempotency-Key`. Réutilisez
 la même valeur uniquement lorsque vous tentez à nouveau la même opération
@@ -72,8 +79,8 @@ logique.
 
 ## Domaines courants
 
-Ce sont des exemples. La [référence de l'API](/api-reference) répertorie
-l'ensemble complet et actuel des opérations.
+Ce sont des exemples. La [référence de l’API](/api-reference) répertorie
+l’ensemble complet et actuel des opérations.
 
 - Assistants : list, read, create, update, duplicate et delete.
 - Flows : list, read, create, update, reorder et delete.
@@ -84,38 +91,46 @@ l'ensemble complet et actuel des opérations.
 - Inbox : consulter, exporter, épingler, annoter, évaluer et supprimer des
   Conversations.
 - Améliorations : lister, lire et mettre à jour les éléments.
-- Memories : consultez les paramètres et effectuez un effacement de la mémoire
+- Memories : inspectez les paramètres et effectuez un effacement de la mémoire
   dans un périmètre défini.
-- SSO : gérez les revendications d'identité, les paramètres de connexion, la
+- SSO : gérez les revendications d’identité, les paramètres de connexion, la
   validation et la déconnexion.
-- Help Desks : gérez les desks, les canaux d'escalade, l'ordre et ServiceNow.
-- Teammates : gérez les Teammates IA et lisez vos propres conversations de
-  Teammate.
-- Projects : gérez les Projects, leurs milestones, ainsi que les documents de
-  Project que les Teammates consultent.
-- Tasks : listez, lisez, créez, modifiez, archivez et supprimez des Tasks,
-  commentez-les et gérez les Labels de tâches. La liste filtre par Project,
+- Help Desks : gérez les desks, les canaux d’escalade, l’ordre et la cible de
+  ticketing.
+- Teammates : gérez les Teammates IA et consultez vos propres conversations avec
+  les Teammates.
+- Projects : gérez les Projects, leurs milestones et les documents de Project
+  que les Teammates consultent.
+- Tasks : lister, lire, créer, modifier, archiver et supprimer les Tasks, les
+  commenter et gérer les Labels de tâches. La liste filtre par Project,
   assignee, status, Label, due dates, text et Improvement, et utilise un curseur
-  pour chaque page. Une clé ne lit que les Projets que son membre peut lire. Un
-  commentaire indique ce membre comme auteur.
+  pour chaque page. Une clé ne lit que les Projects que son membre peut lire. Un
+  commentaire indique ce membre comme étant l’auteur.
 - Reviews : listez, lisez et prenez des décisions concernant les demandes de
-  Human review.
-- Channels : consultez et configurez les canaux de collègues auxquels vous
-  appartenez, ainsi que leurs rosters. Il n'existe pas de point de terminaison
+  revue humaine.
+- Channels : consultez et configurez les canaux des coéquipiers auxquels vous
+  appartenez, ainsi que leurs rosters. Il n’existe pas de point de terminaison
   pour envoyer un message : un message déclenche une chaîne de réponses des
-  coéquipiers, qui s'exécute dans la console.
+  coéquipiers, qui s’exécute dans la console.
 - Configuration : gérez les Skills, les Assistant Goals et les Alertes
   opérationnelles.
-- Organisation : gérez les paramètres, les Members, les Invites et les clés API.
-- Integrations : gérez les intégrations d'API de l'assistant et les connexions
-  aux fournisseurs de modèles.
+- Organization : gérez les paramètres, les Members, les Invites et les clés API.
+  Limitez un Member aux Assistants sélectionnés.
+- Integrations : gérez les intégrations d’API d’Assistant et les connexions aux
+  fournisseurs de modèles.
 - Usage : consultez les compteurs du plan et identifiez qui a dépensé les
-  crédits d'une fenêtre. Lecture seule. La ventilation des dépenses conserve ses
+  crédits d’une fenêtre. Lecture seule. La ventilation des dépenses conserve ses
   dimensions distinctes. Une même réponse désigne à la fois le coéquipier qui a
-  exécuté l'opération et le collègue qui l'a demandée ; par conséquent,
-  additionner les dimensions revient à la compter deux fois. L'achat de crédits
-  n'a pas de point de terminaison : un achat s'effectue sur un écran où une
-  personne confirme un montant.
+  exécuté l’opération et le collègue qui l’a demandée ; par conséquent,
+  l’addition des dimensions la comptabilise deux fois. L’achat de crédits n’a
+  pas de point de terminaison : un achat s’effectue sur un écran où une personne
+  confirme un montant.
+- Journal d’audit : consultez qui a modifié quoi, depuis quelle interface, avec
+  la valeur avant et après pour les modifications concernant le rôle,
+  l’invitation, la clé, l’accès et les paramètres. Lecture seule. Filtrez par
+  action, acteur et date. Pour consulter des entrées plus anciennes, envoyez les
+  `createdAt` et `id` de la dernière entrée dont vous disposez en tant que
+  `before` et `beforeId`.
 
-Utilisez le document OpenAPI pour les champs de requête, l'authentification et
+Utilisez le document OpenAPI pour les champs de requête, l’authentification et
 les codes de statut de réponse documentés.

@@ -59,6 +59,19 @@ describe("transcriptDocument", () => {
     expect(doc).toContain("400 messages");
   });
 
+  it("labels a Member's reply as the operator's, with their name (#1082)", () => {
+    const doc = transcriptDocument({
+      conversation,
+      messages: [
+        message(1, { role: "operator", authorName: "Dana", content: [{ type: "text", text: "Hi there" }] }),
+      ],
+    });
+    expect(doc).toContain('class="turn operator"');
+    expect(doc).toContain("Operator · ");
+    expect(doc).toContain("Dana: Hi there");
+    expect(doc).not.toContain("Workflow:");
+  });
+
   it("carries the conversation's own details", () => {
     const doc = transcriptDocument({
       conversation,

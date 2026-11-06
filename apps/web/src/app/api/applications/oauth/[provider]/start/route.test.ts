@@ -1,3 +1,4 @@
+import { capabilitiesForLadderRole } from "@agent-hub/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
@@ -17,6 +18,7 @@ function session(role: "owner" | "editor" = "owner") {
     userId: "member-1",
     organization: { id: "org-1" },
     role,
+    capabilities: capabilitiesForLadderRole(role),
   };
 }
 

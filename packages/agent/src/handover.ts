@@ -1,3 +1,4 @@
+import { liveBusinessHours } from "./live-business-hours";
 import type { Assistant, ProviderConnection } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
@@ -160,7 +161,7 @@ export async function runHandoverContinuation(
         session: input.session,
         alreadyClarified: input.alreadyClarified,
         skills: targetConfig.skills ?? [],
-        routing: { url: input.launchUrl ?? undefined, now: new Date() },
+        routing: { url: input.launchUrl ?? undefined, now: new Date(), businessHours: await liveBusinessHours(db, input.organizationId, targetConfig.flows) },
         emit: input.emit,
         signal,
         keyResolution: input.keyResolution,

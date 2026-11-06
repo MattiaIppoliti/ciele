@@ -10,6 +10,7 @@ export default function ExportsLoading() {
         <Skeleton className="h-10 w-32" />
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <div className="mb-6 space-y-3"><div className="flex justify-between"><Skeleton className="h-5 w-24" /><Skeleton className="h-8 w-28" /></div><div className="space-y-2 rounded-xl border p-3"><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-64" /><Skeleton className="h-4 w-48" /></div></div>
         <div className="divide-border overflow-hidden rounded-xl border divide-y">
           {/* A row is the name over the kind/format and request-time lines. */}
           {Array.from({ length: 3 }).map((_, i) => (

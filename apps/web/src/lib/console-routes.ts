@@ -73,6 +73,44 @@ export function isMarketingPath(pathname: string): boolean {
   );
 }
 
+/**
+ * Top-level segments served outside both route groups (auth, the widget, the
+ * API). Pinned to the filesystem by `console-routes.test.ts`.
+ */
+const APP_ROOT_SEGMENTS = [
+  "/api",
+  "/application-connect",
+  "/join",
+  "/login",
+  "/onboarding",
+  "/signup",
+  "/subscription-connect",
+  "/widget",
+] as const;
+
+/** Files served from the app root, outside any segment. */
+const APP_ROOT_FILES = /^\/(?:robots\.txt|sitemap\.xml|llms\.txt|install\.sh|icon\.svg|opengraph-image(?:\.png)?)$/;
+
+export const APP_ROOT_SEGMENT_PREFIXES: readonly string[] = APP_ROOT_SEGMENTS;
+
+/**
+ * Does any route in this app answer the path? The auth gate sends a
+ * signed-out request for a known route to /login, but an unknown path has to
+ * reach the 404 page: redirecting it made every dead URL a 307 to a
+ * robots-disallowed /login, which search engines keep re-crawling as
+ * "page with redirect" instead of dropping.
+ */
+export function isAppRoute(pathname: string): boolean {
+  return (
+    isConsolePath(pathname) ||
+    isMarketingPath(pathname) ||
+    APP_ROOT_FILES.test(pathname) ||
+    APP_ROOT_SEGMENTS.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
+  );
+}
+
 /** True for the console's own routes, including its dashboard at `/`. */
 export function isConsolePath(pathname: string): boolean {
   // The `(admin)` group owns the root route: `/` is the Assistants dashboard,

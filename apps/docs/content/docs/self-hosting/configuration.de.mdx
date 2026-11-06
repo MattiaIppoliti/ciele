@@ -1,6 +1,6 @@
 ---
 title: Konfiguration
-description: Konfigurieren Sie Origins, Secrets, Accounts, Models, E-Mail und optionale Workers.
+description: Konfigurieren Sie Origins, Secrets, Accounts, Models, E-Mail und optionale Dienste.
 ---
 
 Das Bootstrap-Skript schreibt `deploy/.env`. Verwenden Sie `deploy/.env.example`
@@ -8,7 +8,7 @@ als aktuelle Variablenreferenz.
 
 ## Öffentliche Origins
 
-Setzen Sie `PUBLIC_URL` auf den öffentlichen Anwendungsursprung. Setzen Sie
+Setzen Sie `PUBLIC_URL` auf den öffentlichen Anwendungs-Origin. Setzen Sie
 `SUPABASE_PUBLIC_URL` auf den für den Browser zugänglichen
 Database-Gateway-Ursprung.
 
@@ -19,9 +19,9 @@ haben. Das Browser-Bundle enthält diesen Wert zur Build-Zeit.
 docker compose -f deploy/docker-compose.yml up -d --build app
 ```
 
-## Generierte Geheimnisse
+## Generierte Secrets
 
-Der Stack erfordert Postgres, JSON Web Token, eine Service-Rolle,
+Der Stack erfordert Postgres, JSON Web Token, eine Service Role,
 Anwendungsverencryption und Cron-Secrets. Lassen Sie das Bootstrap-Skript sie
 generieren.
 
@@ -33,13 +33,13 @@ voneinander. Sie bilden eine einzige Signaturkonfiguration.
 Das erste Konto wird zum Organization Owner. Legen Sie `DISABLE_SIGNUP=true`
 fest, nachdem die erforderlichen Accounts vorhanden sind.
 
-Ohne SMTP-Konfiguration bestätigt `MAILER_AUTOCONFIRM=true` neue Konten
+Ohne SMTP-Konfiguration bestätigt `MAILER_AUTOCONFIRM=true` neue Accounts
 automatisch.
 
 E-Mail-Aktionen zur Laufzeit verwenden `RESEND_API_KEY` und `EMAIL_FROM`. Sie
 melden ein unkonfiguriertes Ergebnis, wenn einer der beiden Werte fehlt.
 
-## Modell-Endpunkte
+## Modell-Endpoints
 
 Konfigurieren Sie die Provider-Schlüssel für Anthropic, OpenAI oder Google. Sie
 können auch einen mit OpenAI kompatiblen Chat- und Embedding-Endpoint
@@ -79,7 +79,110 @@ Netzwerkadresse kann 300 Nachrichten pro Minute an einen Assistant senden. Viele
 Besucher können eine Adresse gemeinsam nutzen, beispielsweise in einem
 Büronetzwerk.
 
-Turns in einem persönlichen Abonnement belegen keinen Slot.
+Die Anwendung liest die Netzwerkadresse aus dem `X-Forwarded-For`-Header aus.
+Standardmäßig wird die erste Adresse im Header verwendet. Dies ist korrekt, wenn
+kein Proxy verwendet wird und das mitgelieferte TLS-Overlay aktiv ist, da Caddy
+den vom Client gesendeten Wert entfernt.
+
+Einige Proxys fügen ihren Caller am Ende des Headers hinzu und behalten den Wert
+vom Client bei. Beispiele hierfür sind nginx mit `$proxy_add_x_forwarded_for`
+und die meisten Cloud-Load-Balancer. Hinter solchen Proxies setzen Sie
+`CIELE_TRUSTED_PROXY_HOPS` auf die Anzahl dieser Proxies. Anschließend verwendet
+die Anwendung die Adresse, die der äußerste Proxy hinzugefügt hat, und ein
+Client kann sie nicht ändern.
+
+Wenn ein persönliches Abonnement aktiviert wird, wird kein Slot belegt.
+
+## Gehosteter MCP-Endpoint
+
+Setzen Sie `CIELE_MCP_READ_ONLY=1` in `deploy/.env`, damit der gehostete
+MCP-Endpoint, `/api/mcp`, jede Mutation-Aktion ablehnt. Die Einstellung gilt für
+jeden API-Schlüssel. Dies gilt, wenn die Anwendung den Endpoint beantwortet und
+wenn der Rust-Service ihn beantwortet.
+
+## Rust-API-Dienst
+
+Der optionale Rust-Dienst führt bestimmte Operationen anstelle der Anwendung
+aus. Es beantwortet auch einige `/api/v1`-Endpoints direkt. Es ist standardmäßig
+deaktiviert. Der Stack liest seine Compose-Datei,
+`deploy/docker-compose.rust.yml`, nur dann, wenn `COMPOSE_FILE` sie auflistet.
+
+Führen Sie das Bootstrap-Skript mit der Option `--rust` aus:
+
+```bash
+./deploy/bootstrap.sh --rust
+```
+
+Das Skript fügt die Datei zu `COMPOSE_FILE` in `deploy/.env` hinzu und generiert
+das gemeinsame Geheimnis. Der Service wird aus dem Quellcode gebaut, auch im
+Image-Modus.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `CIELE_RUST_API_SECRET` | Generated | Das Secret, das die Anwendung und der Service gemeinsam nutzen. |
+| `CIELE_RUST_OPERATIONS` | All ported operations | Die im Service ausgeführten Operationen, durch Kommas getrennt. |
+| `CIELE_RUST_DATABASE_URL` | The bundled Postgres | Die Datenbankverbindung für den Service. Legen Sie es fest, wenn Sie eine externe Datenbank verwenden. |
+| `CIELE_RUST_LOG` | `info` | Das Protokollierungsniveau des Dienstes. |
+| `CIELE_RUST_MCP` | `1` | Setzen Sie `0`, um den gehosteten MCP-Endpoint in der Anwendung beizubehalten. |
+| `CIELE_RUST_WIDGET_ROUTES` | Empty | Die Widget-Endpoints, auf die der Service antwortet, durch Kommas getrennt. Ein leerer Wert sendet keinen Widget-Endpoint an den Service. |
+
+Der Service antwortet auf diese Endpunkte, wenn sich deren Operation in
+`CIELE_RUST_OPERATIONS` befindet:
+
+- `GET /api/v1/alerts` und `POST /api/v1/alerts/{id}/resolve`
+- `GET /api/v1/improvements`
+- `GET /api/v1/task-labels` und `POST /api/v1/task-labels`
+- `PATCH /api/v1/task-labels/{id}` und `DELETE /api/v1/task-labels/{id}`
+
+Der Service überprüft den API-Schlüssel selbst. Die Antworten sind identisch mit
+den Antworten der Anwendung. Alle anderen Endpunkte werden an die Anwendung
+weitergeleitet.
+
+Der Service antwortet auch auf den gehosteten MCP-Endpoint, `/api/mcp`, mit
+denselben Tools. Im Service wird ein Tool für einen der oben genannten Endpunkte
+ausgeführt. Andere Tools rufen die Anwendung mit dem API-Schlüssel des Aufrufers
+auf.
+
+Eine über den Service vorgenommene Änderung führt nicht zur Aktualisierung der
+Konsole. Die Seiten Alerts, Projects und Tasks können bis zum erneuten Laden
+veraltete Daten anzeigen. Die Suchpalette kann den alten Namen eines Labels bis
+zu 30 Sekunden lang anzeigen.
+
+Wenn der Service stoppt, beantwortet die Anwendung diese Endpunkte nicht für
+ihn. Die Anfragen schlagen fehl, bis der Service erneut gestartet wird. Um
+sofort wiederherzustellen, entfernen Sie `docker-compose.rust.yml` aus
+`COMPOSE_FILE` und starten Sie den Stack neu.
+
+### Widget-Endpunkte
+
+Der Service kann auch auf einige öffentliche Widget-Endpoints antworten. Diese
+Option ist standardmäßig deaktiviert. Um es zu aktivieren, setzen Sie
+`CIELE_RUST_WIDGET_ROUTES` in `deploy/.env` und starten Sie anschließend den
+Stack neu. Zum Beispiel:
+
+```bash
+CIELE_RUST_WIDGET_ROUTES=config,session
+```
+
+Der Service kann auf diese Widget-Endpoints reagieren: `config`, `session`,
+`feedback`, `conversation-feedback`, `conversations`, `help-desks`, `memories`
+und `sources`. Der `sources`-Endpoint dient dem Herunterladen einer
+Source-Datei. Alle anderen Widget-Endpoints werden an die Anwendung
+weitergeleitet.
+
+Der Stack stellt dem Service den Verschlüsselungsschlüssel, die Modells
+Schlüssel sowie den Dateispeicher der Anwendung bereit. Aus diesem Grund bleibt
+ein Visitor, der sich anmeldet, angemeldet, und die Modellliste im Widget bleibt
+unverändert.
+
+Wenn der Service angehalten wird, schlägt ein aufgeführter Widget-Endpoint fehl.
+Das Widget zeigt einen Fehler an, bis der Service erneut gestartet wird. Um
+sofort wiederherzustellen, setzen Sie `CIELE_RUST_WIDGET_ROUTES` auf einen
+leeren Wert und starten Sie den Stack neu.
+
+Um den Service zu stoppen, entfernen Sie `docker-compose.rust.yml` aus
+`COMPOSE_FILE`. Starten Sie anschließend den Stack neu. Anschließend werden alle
+Operationen wieder in der Anwendung ausgeführt.
 
 ## TLS
 

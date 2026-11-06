@@ -1,64 +1,64 @@
 ---
-title: Serveur MCP de Ciele
-description: Accorder à un client MCP un accès contrôlé aux opérations d'administration de Ciele.
+title: Serveur MCP Ciele
+description: Accorder à un client MCP un accès contrôlé aux opérations d’administration de Ciele.
 ---
 
 Le serveur Ciele Model Context Protocol (MCP) expose les opérations
-d'administration à un agent d'IA. Il dispose de deux transports, et les deux
+d’administration à un agent d’IA. Il dispose de deux transports, et les deux
 enregistrent les mêmes outils.
 
 - Le **hosted endpoint** est `POST /api/mcp` sur votre déploiement. Utilisez-le
   pour un client qui se connecte via HTTP.
-- Le **local server** est un processus `stdio` que vous démarrez à partir d'une
-  extraction de dépôt.
+- Le **local server** est un processus `stdio` que vous démarrez à partir d’une
+  copie locale d’un dépôt.
 
-Chaque appel d'outil atteint l'Organisation via `/api/v1`, de sorte qu'une
-opération suit un seul chemin d'exécution, quel que soit le transport qui l'a
+Chaque appel d’outil atteint l’Organisation via `/api/v1`, de sorte qu’une
+opération suit un seul chemin d’exécution, quel que soit le transport qui l’a
 demandée.
 
 ## Point de terminaison hébergé
 
 Chaque déploiement Ciele expose le point de terminaison depuis sa propre
 origine. Cela inclut le service hébergé, un auto-hébergement Docker et la pile
-locale de Ciele Desktop. Le point de terminaison ne nécessite aucune
-configuration.
+locale de Ciele Desktop. L’endpoint ne nécessite aucune configuration.
 
 ```text
 https://ciele.example.edu/api/mcp
 ```
 
-Authentifiez-vous à l'aide d'une
-[clé API de l'organisation](/developers/api-keys) dans l'en-tête `Authorization`
-:
+Authentifiez-vous à l’aide d’une [clé API d’organisation](/developers/api-keys)
+dans l’en-tête `Authorization` :
 
 ```text
 Authorization: Bearer ciele_sk_...
 ```
 
-Une clé inconnue ou absente est refusée avec `401` avant qu'aucun outil ne soit
+Une clé inconnue ou absente est refusée avec `401` avant qu’aucun outil ne soit
 répertorié.
 
 <Callout title="The key Role is the permission boundary">
-The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
+The permissions of the hosted endpoint are the Role of the key. The operations layer refuses a mutation that the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation.
+
+A self-hosted deployment can set `CIELE_MCP_READ_ONLY=1` on the application. Then the hosted endpoint refuses every mutation action for every key. For one read-only agent on a shared deployment, use `CIELE_MCP_READ_ONLY=1` on a stdio server.
 </Callout>
 
 ## Révisions du protocole
 
 Le serveur prend en charge la révision `2026-07-28` et les révisions 2025. Il
-détermine la révision dès l'échange d'ouverture, de sorte qu'un client qui n'est
+détermine la révision dès l’échange d’ouverture, de sorte qu’un client qui n’est
 pas passé à `2026-07-28` continue de fonctionner.
 
 La révision `2026-07-28` a supprimé les sessions de protocole. Chaque requête
-est autonome ; par conséquent, l'endpoint hébergé n'a pas besoin de routage «
+est autonome ; par conséquent, l’endpoint hébergé n’a pas besoin de routage «
 sticky » ni de stockage de session.
 
 ## Serveur local `stdio`
 
-### Configuration requise
+### Prérequis
 
 - Utilisez Node.js 22.6 ou une version ultérieure.
 - Clonez le dépôt Ciele.
-- Créez une [clé API d'organisation](/developers/api-keys).
+- Créez une [clé API d’organisation](/developers/api-keys).
 - Utilisez un client MCP capable de démarrer un serveur `stdio` local.
 
 Démarrez ce programme à partir du dépôt :
@@ -67,20 +67,20 @@ Démarrez ce programme à partir du dépôt :
 node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-### Variables d'environnement
+### Variables d’environnement
 
 | Variable | Exigence | Objectif |
 | --- | --- | --- |
-| `CIELE_API_KEY` | Obligatoire | Authentifie l'organisation. |
+| `CIELE_API_KEY` | Obligatoire | Authentifie l’organisation. |
 | `CIELE_BASE_URL` | Facultatif | Sélectionne une origine auto-hébergée. |
 | `CIELE_MCP_READ_ONLY` | Facultatif | Refuse les actions de mutation lorsque la valeur est `1`. |
-| `CIELE_MCP_MODERN_ONLY` | Optional | Refuse les clients 2025-revision lorsque la valeur est `1`. |
+| `CIELE_MCP_MODERN_ONLY` | Optional | Refuse les clients de la version 2025 lorsque la valeur est `1`. |
 
-La vérification du mode lecture seule a lieu au sein du processus MCP. Une
-mutation refusée n'effectue pas de requête API.
+La vérification en lecture seule a lieu au sein du processus MCP. Une mutation
+refusée n’effectue pas de requête API.
 
-<Callout type="warn" title="These variables apply to the local server only">
-A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
+<Callout type="warn" title="These variables on a deployment">
+A Ciele web container obeys `CIELE_MCP_READ_ONLY`. Then the hosted endpoint refuses mutation actions for every key. The container ignores `CIELE_MCP_MODERN_ONLY`, and the hosted endpoint always accepts 2025-revision clients.
 </Callout>
 
 <Callout title="Recommended first connection">
@@ -91,25 +91,25 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 | Tool | Opérations en cours |
 | --- | --- |
-| `ciele_identity` | Lire les informations relatives au déploiement, à l'organisation et aux rôles. |
+| `ciele_identity` | Lire les informations relatives au déploiement, à l’organisation et aux rôles. |
 | `manage_assistants` | Posez une question à un Assistant, puis listez, lisez, créez, mettez à jour, dupliquez ou supprimez des Assistants. |
-| `manage_flows` | Consultez le catalogue des Flows, vérifiez un Flow sans l'enregistrer, consultez les exécutions d'un Flow HTTP, puis listez, lisez, créez, mettez à jour, réorganisez ou supprimez des Flows. |
+| `manage_flows` | Consultez le catalogue des Flows, vérifiez un Flow sans l’enregistrer, consultez les exécutions d’un Flow HTTP, puis listez, consultez, créez, mettez à jour, réorganisez ou supprimez des Flows. |
 | `manage_knowledge` | Recherchez dans la base de connaissances, puis gérez les Collections, les Sources et les FAQ. |
 | `publish_assistant` | Consulter le statut, publier, annuler la publication ou restaurer une publication. |
-| `read_inbox` | Lister, lire, exporter, épingler, annoter, évaluer ou supprimer des Conversations. Lister, consulter et statuer sur les demandes de revue humaine. |
+| `read_inbox` | Lister, lire, exporter, épingler, annoter, noter ou supprimer des Conversations. Lister, consulter et prendre des décisions concernant les demandes de revue humaine. |
 | `manage_improvements` | Lister, lire ou mettre à jour les Improvements. |
 | `manage_memories` | Inspectez les paramètres et effectuez un effacement de la mémoire dans un périmètre défini. |
 | `manage_sso` | Gérez les revendications d'identité et la connexion SSO de l'organisation. |
-| `manage_help_desks` | Gérez les Help Desks, les canaux, les commandes et ServiceNow. |
-| `manage_teammates` | Gérez les AI Teammates, leurs autorisations, leurs Routines et leur mémoire. `provision` effectue la configuration complète en une seule action. |
+| `manage_help_desks` | Gérez les Help Desks, les canaux, l’ordre et la cible de ticketing. |
+| `manage_teammates` | Gérez les AI Teammates, leurs grants, leurs Routines et leur mémoire. `provision` effectue la configuration complète en une seule action. |
 | `manage_projects` | Gérez les Projects, leurs milestones et le document de mémoire de chaque Project. |
-| `manage_tasks` | Lister, lire, créer, modifier et supprimer des tâches. Commentez les tâches et gérez les Labels des tâches. |
+| `manage_tasks` | Lister, lire, créer, modifier et supprimer des tâches. Commentez les tâches et gérez les étiquettes de tâche. |
 | `manage_channels` | Consultez et configurez les canaux de coéquipiers auxquels vous appartenez. |
-| `manage_configuration` | Gérez les Skills, la sélection des Assistant Skills, les Goals et les Alerts. |
-| `manage_organization` | Gérez les paramètres de l'organisation, les membres, les invitations et les clés API. Consultez les compteurs d'utilisation et les responsables des dépenses du plan. |
-| `manage_integrations` | Gérez les intégrations d'API de l'assistant et les fournisseurs de modèles. |
+| `manage_configuration` | Gérez les Skills, la sélection des Assistant Skills, les Goals, les Alerts et les Quick Texts. |
+| `manage_organization` | Gérez les paramètres de l'organisation, les membres, les rôles et leurs capacités, les invitations et les clés API. Consultez les compteurs d’utilisation et les responsables des dépenses du plan, ainsi que le journal d’audit. |
+| `manage_integrations` | Gérez les intégrations d’API de l’assistant et les fournisseurs de modèles. |
 
-Le serveur enregistre dix-sept outils : un outil d'identité et seize outils de
+Le serveur enregistre dix-sept outils : un outil d’identité et seize outils de
 domaine. Chaque outil de domaine utilise un champ `action` pour ses opérations.
 
 Le mode lecture seule classe chaque action. Il autorise les actions list, read,
@@ -117,55 +117,55 @@ status, query, search et export, tout en refusant les mutations.
 
 ## Rechercher dans la base de connaissances
 
-L'action `search` de `manage_knowledge` identifie les passages qui correspondent
-à une question. Chaque résultat indique le texte du passage, son Document title,
-son Source name et son URL lorsqu'il en a une. Ciele ne génère pas de réponse.
-Votre client IA rédige la réponse et cite les Sources.
+L’action `search` de `manage_knowledge` identifie les passages qui correspondent
+à une question. Chaque résultat indique le texte du passage, le titre du
+Document, le nom de la Source et, le cas échéant, son URL. Ciele ne génère pas
+de réponse. Votre client IA rédige la réponse et cite les Sources.
 
 ```json
 { "action": "search", "query": "How do I connect Salesforce?", "assistantId": "<assistant-id>" }
 ```
 
 Avec `assistantId`, la recherche utilise uniquement les Sources liées à cet
-Assistant. Sans cela, la recherche utilise l'ensemble de la Library de
-l'Organisation. Une clé viewer permet d'effectuer des recherches, et le mode
-lecture seule l'autorise. Une recherche ne crée pas de Conversation ; elle
-n'apparaît donc ni dans l'Inbox ni dans les Insights. Chaque clé API peut
+Assistant. Sans cela, la recherche utilise l’ensemble de la Library de
+l’Organisation. Une clé viewer permet d’effectuer des recherches, et le mode
+lecture seule l’autorise. Une recherche ne crée pas de Conversation ; elle
+n’apparaît donc ni dans l’Inbox ni dans les Insights. Chaque clé API peut
 effectuer 60 recherches en une minute.
 
 ## Demander à un Assistant
 
-L'action `ask` de `manage_assistants` envoie une question à un Assistant et
-renvoie sa réponse accompagnée des Sources qu'il a citées. Utilisez-la lorsque
+L’action `ask` de `manage_assistants` envoie une question à un Assistant et
+renvoie sa réponse accompagnée des Sources qu’il a citées. Utilisez-la lorsque
 le client doit afficher la réponse de Ciele, et non sa propre réponse.
 
 ```json
 { "action": "ask", "id": "<assistant-id>", "question": "How do I connect Salesforce?" }
 ```
 
-L'Assistant répond de la même manière que son widget publié, en s'appuyant sur
-ses Flows et sur sa recherche dans la base de connaissances. Si l'Assistant
-n'est pas publié, l'action échoue. Envoyez le `conversationId` d'une réponse
-avec la question suivante pour poursuivre la même Conversation. Seule la clé API
-qui a démarré une Conversation peut la poursuivre. Avec un ID différent, la
-question démarre une nouvelle Conversation.
+L’Assistant répond comme le fait son widget publié, avec ses Flows et sa
+recherche dans la base de connaissances. Si l’Assistant n’est pas publié,
+l’action échoue. Envoyez le `conversationId` d’une réponse avec la question
+suivante pour poursuivre la même Conversation. Seule la clé API qui a démarré
+une Conversation peut la poursuivre. Avec un ID différent, la question démarre
+une nouvelle Conversation.
 
 Chaque question crée une Conversation. Insights ne le prend pas en compte. La
-boîte de réception l'affiche avec l'étiquette **API key** lorsque vous réglez le
+boîte de réception l’affiche avec l’étiquette **API key** lorsque vous réglez le
 filtre **Staff conversations** sur **Include staff** ou **Staff only**. La
 question utilise un tour de modèle sur les Provider Connections de
-l'Organisation. Pour cette raison, le mode lecture seule refuse `ask`. Chaque
+l’Organisation. Pour cette raison, le mode lecture seule refuse `ask`. Chaque
 clé API peut poser 20 questions en une minute. Une réponse peut prendre un
-certain temps, car l'Assistant peut effectuer plusieurs recherches.
+certain temps, car l’Assistant peut effectuer plusieurs recherches.
 
 Consultez [AI clients](/developers/ai-clients) pour la configuration de chaque
 client pris en charge.
 
 ## Vérifier la connexion
 
-Demandez au client d'appeler `ciele_identity`. Confirmez l'Organization ID, le
-Role, la version de l'API et la liste des domaines attendus.
+Demandez au client d'appeler `ciele_identity`. Confirmez l’Organization ID, le
+Role, la version de l’API et la liste des domaines attendus.
 
 La suite de tests du dépôt lance également le processus `stdio` réel. Elle
-vérifie l'initialisation, la découverte des outils et un appel d'API
+vérifie l’initialisation, la découverte des outils et un appel d’API
 authentifié.

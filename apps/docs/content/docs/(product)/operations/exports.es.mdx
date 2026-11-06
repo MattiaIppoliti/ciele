@@ -4,7 +4,7 @@ description: Crea y descarga informes de Insights y exportaciones de conversacio
 ---
 
 Ciele ofrece dos tipos de exportación. Una exportación de Insights es un archivo
-de informe con tus métricas de Insights. Una exportación de conversaciones
+de informe de tus métricas de Insights. Una exportación de conversaciones
 contiene los registros completos de las conversaciones seleccionadas.
 
 ## Crea una exportación de Insights
@@ -20,7 +20,7 @@ contiene los registros completos de las conversaciones seleccionadas.
 8. Selecciona **Create**.
 
 Ciele genera el archivo como una tarea en segundo plano. La exportación aparece
-en la lista con su nombre, tipo y tipo de archivo. Cuando el estado sea
+en la lista con su nombre, su tipo y el tipo de archivo. Cuando el estado sea
 **Ready**, selecciona **Download**.
 
 Los filtros son los mismos que en la página Insights. Una exportación y la
@@ -40,7 +40,7 @@ Ciele aún no registra estos clics.
 
 ## Descargas
 
-Ciele comprueba tu acceso cada vez que descargas un archivo. Ciele también
+Ciele verifica tu acceso cada vez que descargas un archivo. Ciele también
 registra cada descarga.
 
 ## Contenido de la exportación de conversaciones
@@ -67,3 +67,43 @@ ciele conversations export <conversation-id> --out export.json
 La herramienta MCP `read_inbox` también puede solicitar una exportación. Su
 acción de exportación sigue estando disponible en el modo de solo lectura de
 MCP.
+
+## Programa una exportación de Insights
+
+En **New export**, habilita la programación después de seleccionar el nombre del
+informe, los filtros, el tipo de exportación y el tipo de archivo.
+
+Elige un día de la semana o un día del mes, una hora en UTC y los destinatarios
+entre los Members de la Organization. La interfaz también muestra tu hora local.
+
+Los informes semanales abarcan los últimos siete días completos en UTC. Los
+informes mensuales abarcan el mes natural anterior. El día 31 utiliza el último
+día del mes cuando es necesario.
+
+**Exports** muestra las programaciones y sus destinatarios. Los editores pueden
+pausar, reanudar o eliminar una programación. Al eliminar una programación, se
+conservan los archivos generados anteriormente.
+
+Cada franja programada crea una tarea de exportación normal. Tras un periodo de
+inactividad, el worker crea únicamente el último informe pendiente. No vuelve a
+ejecutar todos los intervalos omitidos.
+
+Los destinatarios reciben un correo electrónico cuando el archivo está listo. El
+correo electrónico enlaza con la consola y requiere iniciar sesión. No contiene
+datos del informe ni ningún archivo adjunto.
+
+Los miembros que abandonan la organización se eliminan de las listas de
+destinatarios. Una programación sin destinatarios restantes se pausa
+automáticamente.
+
+Una exportación programada que falla genera una Alerta operativa. La siguiente
+ejecución correcta lo resuelve. Los errores de correo electrónico generan una
+Alerta independiente.
+
+El worker autenticado debe procesar las exportaciones (drain) al menos cada
+cinco minutos. El worker externo de Docker admite esta programación en Vercel
+Hobby.
+
+Los clientes de la API gestionan las programaciones en
+`/api/v1/exports/schedules`. MCP expone las acciones de export-schedule a través
+de `manage_configuration`.

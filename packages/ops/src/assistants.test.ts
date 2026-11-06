@@ -32,9 +32,9 @@ const foreignCtx = () => ctx({ organizationId: "some-other-org" });
 
 describe("assistants operations", () => {
   it("declares the catalogue contract: capability + mutated entities", () => {
-    expect(listAssistantsOp.capability).toBe("member");
-    expect(createAssistantOp.capability).toBe("edit");
-    expect(deleteAssistantOp.capability).toBe("publish");
+    expect(listAssistantsOp.capability).toBe("assistants:view");
+    expect(createAssistantOp.capability).toBe("assistants:edit");
+    expect(deleteAssistantOp.capability).toBe("assistants:delete");
     expect(createAssistantOp.entities({ title: "x" }, undefined as never)).toEqual([
       { kind: "assistantList" },
     ]);
@@ -175,7 +175,7 @@ describe("askAssistantOp", () => {
     ]);
     // A new Conversation lands in the Inbox; nothing else changes.
     expect(askAssistantOp.entities({} as never, result)).toEqual([{ kind: "inbox" }]);
-    expect(askAssistantOp.capability).toBe("member");
+    expect(askAssistantOp.capability).toBe("assistants:chat");
   });
 
   it("says an unpublished Assistant must be published first", async () => {

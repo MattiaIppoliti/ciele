@@ -483,7 +483,7 @@ export type WorkNotificationEvent =
 
 export interface WorkNotificationRecipient {
   recipientId: string;
-  kind: MemberNotificationKind;
+  kind: Exclude<MemberNotificationKind, "conversation_assigned">;
   commentId: string | null;
 }
 
@@ -498,7 +498,7 @@ export function workNotificationRecipients(
   canNotify: (memberId: string) => boolean = () => true
 ): WorkNotificationRecipient[] {
   const out: WorkNotificationRecipient[] = [];
-  const add = (recipientId: string | null, kind: MemberNotificationKind, commentId: string | null = null) => {
+  const add = (recipientId: string | null, kind: Exclude<MemberNotificationKind, "conversation_assigned">, commentId: string | null = null) => {
     if (!recipientId || recipientId === event.actorId) return;
     if (out.some((row) => row.recipientId === recipientId)) return;
     if (!canNotify(recipientId)) return;

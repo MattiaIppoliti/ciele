@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
-import type { MutatedEntity } from "@ciele/ops";
+import { defineOperation, type MutatedEntity, type OperationEffect } from "@ciele/ops";
+import { z } from "zod";
 import { observe } from "@agent-hub/diagnostics";
 import { expireOrganizationInsights } from "@/lib/insights/cache";
 import { expireFindCaches } from "@/lib/find-cache";
@@ -61,6 +62,8 @@ interface EntityRule<K extends EntityKind> {
  * to one question and forgotten by the other.
  */
 const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
+  exportSchedules: { paths: () => [{ path: "/insights/exports" }], insights: false },
+  applicationConnection: { paths: () => [{ path: "/settings/applications" }], insights: false },
   assistantList: { paths: () => [{ path: "/" }], insights: true },
   // Deleting an Assistant takes its Conversations with it, and the filter
   // options list the Assistants that exist.
@@ -94,6 +97,7 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
     insights: false,
   },
   members: { paths: () => [{ path: "/settings/members" }], insights: false },
+  roles: { paths: () => [{ path: "/settings/roles", scope: "layout" }, { path: "/settings/members" }, { path: "/settings/api-keys" }], insights: false },
   organization: {
     paths: () => [{ path: "/settings/general" }, { path: "/", scope: "layout" }],
     insights: false,
@@ -115,6 +119,11 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
   // Feedback on a message, a deleted Conversation, an escalation: all of it
   // is what the overview counts.
   inbox: { paths: () => [{ path: "/inbox" }], insights: true },
+  // The settings tab that manages them; the Inbox reads them on demand (#1085).
+  quickTexts: { paths: () => [{ path: "/settings/quick-texts" }], insights: false },
+  businessHoursSettings: { paths: () => [{ path: "/settings/business-hours" }, { path: "/help-desks" }], insights: false },
+  mcpSettings: { paths: () => [{ path: "/settings/mcp-servers" }], insights: false },
+  webhookSettings: { paths: () => [{ path: "/settings/webhooks" }], insights: false },
   // The conversation rail lives in `/teammates`'s layout, so it has to be the
   // layout that expires: a Member who creates a teammate from inside another
   // thread would otherwise keep the rail they arrived with.
@@ -234,6 +243,7 @@ export function revalidateEntities(
 }
 
 export interface OrgMutationOptions<T> {
+  operation: { name: string; effect: OperationEffect };
   /** The Role capability requireMember enforces before the mutation runs. */
   capability: MemberCapability;
   /**
@@ -264,7 +274,14 @@ export async function orgMutation<T>(
     name: "org.mutation",
     context: { surface: "console", organizationId: ctx.organizationId },
   }, async () => {
-    const result = await fn(ctx);
+    const op = defineOperation<undefined,T>({
+      ...options.operation,
+      capability: options.capability,
+      input: z.undefined(),
+      entities: (_input,result) => typeof options.entities === "function" ? options.entities(result) : options.entities,
+      run: () => fn(ctx),
+    });
+    const result = await op.run({ organizationId: ctx.organizationId, userId: ctx.session.userId, actorEmail: ctx.session.email, role: ctx.session.role ?? "viewer", surface: "console", db: ctx.db },undefined);
     if (!options.revalidateIf || options.revalidateIf(result)) {
       revalidateEntities(
         typeof options.entities === "function"

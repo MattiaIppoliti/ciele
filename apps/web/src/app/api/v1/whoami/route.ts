@@ -12,5 +12,8 @@ export async function GET(request: Request) {
     organizationId: ctx.organizationId,
     role: ctx.role,
     keyId: ctx.keyId,
+    // What the key may do (ADR-0028): its Role's Capabilities, capped at its
+    // creator's current ones.
+    capabilities: ctx.capabilities,
   });
 }

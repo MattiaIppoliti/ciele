@@ -1,4 +1,4 @@
-import type { ImprovementStatus } from "@agent-hub/core";
+import type { ImprovementQuery, ImprovementStatus } from "@agent-hub/core";
 
 // Storage-neutral pagination rules shared by both Db adapters.
 
@@ -55,4 +55,20 @@ export function finalizeImprovementPage<T extends { seq: number }>(
   limit: number,
 ) {
   return finalizePage(rows, limit, (item) => String(item.seq));
+}
+
+/**
+ * The board's storage filters with every absent or blank key dropped, or null
+ * when nothing narrows the read. `assigneeId: null` is a filter (unassigned
+ * work), so it survives; an omitted key does not.
+ */
+export function improvementFilters(input: ImprovementQuery): ImprovementQuery | null {
+  const filters: ImprovementQuery = {};
+  const search = input.search?.trim();
+  if (search) filters.search = search;
+  if (input.priority) filters.priority = input.priority;
+  if (input.assigneeId !== undefined) filters.assigneeId = input.assigneeId;
+  if (input.projectId) filters.projectId = input.projectId;
+  if (input.assistantId) filters.assistantId = input.assistantId;
+  return Object.keys(filters).length > 0 ? filters : null;
 }

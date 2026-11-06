@@ -9,7 +9,9 @@ import type {
   EscalationChannel,
   EscalationFormField,
   EscalationHelpDesk,
+  TicketConfirmation,
 } from "@/lib/escalation-desks";
+import { TICKET_NOT_FILED, ticketConfirmationText } from "@/lib/escalation-desks";
 import {
   escalationBack,
   escalationConfirmed,
@@ -23,6 +25,7 @@ import {
 import { channelAvailabilityNow } from "@/lib/channel-availability";
 import { ArrowRight, X } from "lucide-react";
 import { ChevronLeft, LoaderCircle } from "lucide-react";
+import { externalLinkUrl } from "@agent-hub/core";
 import { visitorId } from "./visitor-id";
 
 /**
@@ -33,6 +36,9 @@ import { visitorId } from "./visitor-id";
 interface WidgetConfirmation {
   text: string;
   mailto?: string | null;
+  ticketUrl?: string;
+  /** An unconfirmed submission: offer the desk's other channels. */
+  otherChannels?: boolean;
 }
 
 /** One escalation-form input, rendered by the field's configured type. */
@@ -127,6 +133,8 @@ export function WidgetEscalation({
   initialHelpDeskId,
   onBack,
   onHide,
+  onWaiting,
+  onConversationCreated,
 }: {
   assistantId: string;
   conversationId: string | null;
@@ -134,6 +142,9 @@ export function WidgetEscalation({
   initialHelpDeskId?: string;
   onBack: () => void;
   onHide: () => void;
+  onConversationCreated?: (conversationId: string) => void;
+  /** A Live operator channel was chosen (#1083): back to the chat, waiting. */
+  onWaiting?: (waiting: { conversationId: string; expiresAt: string; helpDeskId: string }) => void;
 }) {
   const [nav, setNav] = useState<EscalationNav<WidgetConfirmation>>(
     loadingEscalationNav
@@ -141,6 +152,7 @@ export function WidgetEscalation({
   const { desks, activeDesk, activeChannel, confirmation } = nav;
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const submissionId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -173,12 +185,13 @@ export function WidgetEscalation({
   }
 
   function openForm(channel: EscalationChannel) {
+    setSubmissionError(null);
     submissionId.current = crypto.randomUUID();
     setValues(initialFormValues(channel.form?.fields ?? []));
     setNav((current) => escalationOpenChannel(current, channel));
   }
 
-  function recordEscalation(helpDeskId: string) {
+  function recordEscalation(helpDeskId: string, contactChannelId: string) {
     if (!conversationId) return;
     fetch(`/api/widget/${assistantId}/escalation`, {
       method: "POST",
@@ -187,6 +200,7 @@ export function WidgetEscalation({
         visitorId: visitorId(),
         conversationId,
         helpDeskId,
+        contactChannelId,
       }),
     }).catch(() => {});
   }
@@ -194,6 +208,7 @@ export function WidgetEscalation({
   async function submitForm() {
     if (!activeDesk || !activeChannel?.form || submitting) return;
     setSubmitting(true);
+    setSubmissionError(null);
     try {
       const response = await fetch(`/api/widget/${assistantId}/escalation`, {
         method: "POST",
@@ -207,11 +222,38 @@ export function WidgetEscalation({
           fields: values,
         }),
       });
-      if (!response.ok) throw new Error("Submission failed");
-      submissionId.current = null;
       const data = (await response.json().catch(() => ({}))) as {
         email?: { delivered: boolean; fallbackAddress: string | null };
+        ticket?: TicketConfirmation;
+        ticketFailed?: boolean;
+        ticketPending?: boolean;
+        ticketInvalid?: string;
+        waiting?: { conversationId: string; expiresAt: string };
       };
+      if (data.ticketInvalid) {
+        setSubmissionError(data.ticketInvalid);
+        return;
+      }
+      if (data.ticketPending) {
+        setSubmissionError("Your ticket is still processing. Select Submit again to check its status.");
+        return;
+      }
+      if (data.ticketFailed) {
+        // Nothing was filed. The submission id is dropped so a retry from
+        // the menu is a new attempt, not a replay of this one.
+        submissionId.current = null;
+        setNav((current) =>
+          escalationConfirmed(current, { text: TICKET_NOT_FILED, otherChannels: true })
+        );
+        return;
+      }
+      if (!response.ok) throw new Error("Submission failed");
+      submissionId.current = null;
+      if (data.ticket) onConversationCreated?.(data.ticket.conversationId);
+      if (data.waiting && onWaiting) {
+        onWaiting({ ...data.waiting, helpDeskId: activeDesk.id });
+        return;
+      }
       const confirmation: WidgetConfirmation =
         data.email && !data.email.delivered
           ? {
@@ -219,17 +261,14 @@ export function WidgetEscalation({
               mailto: data.email.fallbackAddress,
             }
           : {
-              text:
-                activeChannel.form.confirmationMessage.trim() ||
-                "Thanks! Your request has been sent, our team will get back to you.",
+              text: ticketConfirmationText(activeChannel.form.confirmationMessage, data.ticket),
+              ticketUrl: data.ticket?.url ? externalLinkUrl(data.ticket.url) : undefined,
             };
       setNav((current) => escalationConfirmed(current, confirmation));
     } catch {
-      setNav((current) =>
-        escalationConfirmed(current, {
-          text: "Something went wrong sending your request. Please try again.",
-        })
-      );
+      // Keep the same submission id: the server may have filed the ticket
+      // even when the response never reached this browser.
+      setSubmissionError("We couldn't confirm your request. Select Submit again to check its status.");
     } finally {
       setSubmitting(false);
     }
@@ -267,7 +306,23 @@ export function WidgetEscalation({
         {/* Confirmation after a form submission */}
         {screen === "confirmation" && confirmation && (
           <div className="pt-6 text-[0.9375rem] leading-relaxed">
-            <p>{confirmation.text}</p>
+            <p className="whitespace-pre-line">{confirmation.text}</p>
+            {confirmation.otherChannels && (
+              <CieleButton
+                variant="secondary"
+                size="sm"
+                type="button"
+                onClick={back}
+                className="mt-4 rounded-xl border px-4 py-2 text-sm font-semibold"
+              >
+                See other ways to get help
+              </CieleButton>
+            )}
+            {confirmation.ticketUrl && (
+              <a href={confirmation.ticketUrl} target="_blank" rel="noopener noreferrer" className="press-text mt-3 inline-block font-semibold underline">
+                View ticket
+              </a>
+            )}
             {confirmation.mailto && (
               <a
                 href={`mailto:${confirmation.mailto}`}
@@ -310,6 +365,7 @@ export function WidgetEscalation({
                   </div>
                 </div>
               ))}
+              {submissionError && <p role="status" className="text-muted-foreground text-sm">{submissionError}</p>}
               <CieleButton loading={submitting} variant="primary" size="sm"
                 type="submit"
                 disabled={submitting}
@@ -352,7 +408,7 @@ export function WidgetEscalation({
             </h2>
             <div className="mt-5 space-y-3">
               {activeDesk.channels.map((channel) => {
-                const availability = channelAvailabilityNow(channel.availability);
+                const availability = channelAvailabilityNow(channel.availability, new Date(), channel.businessHours ? [channel.businessHours] : []);
                 const actionable = channel.target !== null || channel.form !== null;
                 const arrow = (
                   <span
@@ -413,7 +469,7 @@ export function WidgetEscalation({
                         ? { target: "_blank", rel: "noopener noreferrer" }
                         : {})}
                       aria-label={`Contact via ${channel.name}`}
-                      onClick={() => recordEscalation(activeDesk.id)}
+                      onClick={() => recordEscalation(activeDesk.id, channel.id)}
                       className={`${rowClass} ${CHAT_CARD_HOVER}`}
                     >
                       {body}

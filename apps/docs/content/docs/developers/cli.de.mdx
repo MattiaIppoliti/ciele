@@ -4,12 +4,12 @@ description: Verwalten Sie Ciele über ein Terminal oder einen automatisierten J
 ---
 
 Der Befehl `ciele` verwendet dieselben API-Operationen wie die
-Administrator-Konsole. Die CLI unterstützt den gehosteten Service sowie
+Administratorkonsole. Die CLI unterstützt den gehosteten Service sowie
 selbstgehostete Installationen.
 
 ## Voraussetzungen
 
-- Verwenden Sie Node.js 22.6 oder eine höhere Version.
+- Verwenden Sie Node.js 22.6 oder höher.
 - Erstellen Sie einen [Organization API key](/developers/api-keys).
 
 ## Installieren
@@ -41,7 +41,8 @@ ciele login --key "$CIELE_API_KEY"
 ciele whoami
 ```
 
-Fügen Sie bei einer Self-Hosted-Installation deren öffentlichen Origin hinzu:
+Fügen Sie bei einer selbst gehosteten Installation deren öffentlichen Ursprung
+hinzu:
 
 ```bash
 ciele login \
@@ -60,7 +61,7 @@ Die CLI löst einen Schlüssel in dieser Reihenfolge auf:
 3. Die gespeicherte Konfigurationsdatei.
 
 Die CLI verwendet dieselbe Reihenfolge für `--base-url`, `CIELE_BASE_URL` und
-den gespeicherten Origin. Der gehostete Ursprung ist der letzte Standardwert.
+den gespeicherten Origin. Der gehostete Origin ist der letzte Standardwert.
 
 ## Automatisierungsausgabe verwenden
 
@@ -72,7 +73,7 @@ erhalten.
 | `0` | Der Vorgang wurde abgeschlossen. |
 | `1` | Der Server hat einen Fehler zurückgegeben. |
 | `2` | Die Eingabe des Befehls ist ungültig. |
-| `3` | Authentifizierung fehlgeschlagen. |
+| `3` | Authentication failed. |
 
 `ciele doctor` überprüft die API-Erkennung, die API-Kompatibilität, den
 Schlüssel, seine Role und seine Organization.
@@ -91,9 +92,9 @@ ciele publish status <assistant-id>
 ```
 
 Jeder Befehl, der Wissen hinzufügt, benötigt `--assistants`. Eine Collection hat
-keinen Owner, daher sind diese Links das Einzige, was das Wissen für einen
-Assistant zugänglich macht. Die Befehle sind `sources add-text`,
-`sources add-url`, `sources add-file`, `faqs add` und `faqs import`.
+keinen Owner, daher sind diese Links das Einzige, was das Wissen einem Assistant
+zugänglich macht. Die Befehle sind `sources add-text`, `sources add-url`,
+`sources add-file`, `faqs add` und `faqs import`.
 
 ### Wissen ohne Collection hinzufügen
 
@@ -128,10 +129,10 @@ zwar über alle Assistants hinweg.
 `sources link` ersetzt den Link-Satz. Eine leere Liste entfernt alle
 Verknüpfungen, und die Source hört auf zu antworten.
 
-`sources direct-access` entscheidet, ob dieser eine Assistant einem Visitor die
-Originaldatei zur Verfügung stellen darf.
+`sources direct-access` legt fest, ob dieser eine Assistant einem Visitor die
+Originaldatei bereitstellen darf.
 
-### Die Knowledge Base durchsuchen
+### Das Wissen durchsuchen
 
 `knowledge search` zeigt die Passagen an, die zu einer Frage passen, zusammen
 mit dem Document und der Source jeder Passage. Es generiert keine Antwort.
@@ -148,7 +149,7 @@ verknüpft sind. Ohne diese Option verwendet die Suche die gesamte Library.
 
 ### Einen Assistenten fragen
 
-`assistants ask` sendet eine Frage an einen veröffentlichten Assistenten. Der
+`assistants ask` sendet eine Frage an einen veröffentlichten Assistant. Der
 Befehl zeigt die Antwort, die von der Antwort zitierten Sources sowie die ID der
 Conversation an.
 
@@ -157,23 +158,22 @@ ciele assistants ask <assistant-id> "How do I connect Salesforce?"
 ciele assistants ask <assistant-id> "And ServiceNow?" --conversation <conversation-id>
 ```
 
-Verwenden Sie `--conversation` mit der ID aus einer früheren Antwort, um diese
+Verwenden Sie `--conversation` mit der ID einer früheren Antwort, um diese
 Conversation fortzusetzen. Nur der API-Schlüssel, mit dem eine Conversation
 gestartet wurde, kann sie fortsetzen. Mit einer anderen ID startet die Frage
 eine neue Conversation.
 
-Jede Frage verbraucht einen Model Turn und erzeugt eine Conversation. Die Inbox
+Jede Frage verbraucht einen Model Turn und erstellt eine Conversation. Die Inbox
 zeigt es mit dem Label **API key** an, wenn Sie den Filter **Staff
 conversations** auf **Include staff** oder **Staff only** setzen. Der Befehl
-wird mit einem Fehlercode beendet, wenn der Assistant keine Antwort geben
-konnte.
+wird mit einem Fehlercode beendet, wenn der Assistant nicht antworten konnte.
 
 ## Flow-Befehle
 
 ### Erfahren Sie, was ein Flow enthalten kann
 
 `ciele flows catalog` zeigt die Trigger, die Actions und die Condition-Arten
-dieser Ciele-Bereitstellung an. Es zeigt auch, welche Aktionen jeder Trigger
+dieser Ciele-Bereitstellung an. Es zeigt auch, welche Actions jeder Trigger
 zulässt. Lesen Sie es, bevor Sie eine Flow-Datei schreiben. Der Server lehnt
 einen Trigger, eine Action oder eine Condition-Art ab, die nicht in der Liste
 enthalten ist.
@@ -199,7 +199,7 @@ ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
 Verwenden Sie sie vor allem aus einem Grund: Wenn ein Flow in einen Connector
 schreibt, fügt Ciele vor diesem Schreibvorgang eine Aktion zur manuellen
 Überprüfung hinzu. Diese beiden Befehle zeigen Ihnen die hinzugefügte Aktion an.
-Ein Speichervorgang führt dies im Hintergrund aus.
+Ein Save führt dies stillschweigend aus.
 
 ### Einen HTTP-Flow beobachten
 
@@ -217,7 +217,7 @@ Conversation ist.
 
 ### Einem Teammate seine Fähigkeiten zuweisen
 
-Ein neues KI-Teammitglied kann Fragen beantworten. Er kann erst dann handeln,
+Ein neues KI-Teammitglied kann Fragen beantworten. Er kann erst dann agieren,
 wenn Sie ihm eine Domain zuweisen, und er erledigt keine unbeaufsichtigte
 Arbeit, bis Sie ihm eine Routine zuweisen.
 
@@ -230,15 +230,15 @@ ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --
 
 `set-grants` sendet jedes Mal den vollständigen Satz von Domains. `--domains ""`
 entfernt sie alle. Dieser Befehl erfordert einen API-Schlüssel mit der Rolle
-„Admin“ oder einer höheren Rolle, da er es einem Agenten ermöglicht, Ihre Daten
-zu ändern. Die anderen Teammate-Befehle erfordern die Rolle Editor.
+Admin oder einer höheren Rolle, da er es einem Agenten ermöglicht, Ihre Daten zu
+ändern. Die anderen Teammate-Befehle erfordern die Rolle Editor.
 
 Ein Teammate kann maximal fünf Routines haben.
 
 ### Richten Sie ein Teammember mit einem einzigen Befehl ein
 
 `teammates create` erstellt einen Teammate, der Fragen beantwortet. Er kann
-nicht handeln und führt keine unbeaufsichtigte Arbeit aus. `teammates provision`
+nicht handeln und erledigt keine unbeaufsichtigte Arbeit. `teammates provision`
 führt die drei Schritte gemeinsam aus.
 
 ```bash
@@ -247,7 +247,7 @@ ciele teammates provision --name "Triage" \
   --routine "Triage new feedback:daily:8"
 ```
 
-Die Reihenfolge ist: create, dann grant, dann schedule. Wenn ein Schritt
+Die Reihenfolge lautet: create, dann grant, dann schedule. Wenn ein Schritt
 fehlschlägt, teilt Ihnen der Befehl mit, wo er abgebrochen wurde. Bis zu diesem
 Punkt bleibt der Teammate nutzbar.
 
@@ -296,14 +296,14 @@ ciele tasks delete <task-id> --yes
 
 `set-milestones` ersetzt die vollständige Liste. Um einen Meilenstein
 beizubehalten, senden Sie ihn erneut mit seiner ID. `tasks delete` löscht
-außerdem die Unteraufgaben, Kommentare und Dateien der Aufgabe.
-`tasks update --archive` blendet die Aufgabe und ihre Unteraufgaben aus.
-`--restore` zeigt sie wieder an. Wenn es mehrere Tasks gibt, zeigt `tasks list`
-den Cursor für die nächste Seite an. `tasks delete-label` entfernt das Label von
-jeder Task. Die Tasks bleiben erhalten.
+außerdem die Subtasks, Kommentare und Dateien der Task. `tasks update --archive`
+blendet die Task und ihre Subtasks aus. `--restore` zeigt sie wieder an. Wenn es
+mehrere Tasks gibt, zeigt `tasks list` den Cursor für die nächste Seite an.
+`tasks delete-label` entfernt das Label von jeder Task. Die Tasks bleiben
+erhalten.
 
-Es gibt keinen Befehl für Ihre eigene Memory Layer. Ein API-Schlüssel agiert als
-das Mitglied, das ihn erstellt hat. Daher würde ein Befehl hier das private
+Es gibt keinen Befehl für Ihre eigene Memory Layer. Ein API-Schlüssel fungiert
+als das Mitglied, das ihn erstellt hat. Daher würde ein Befehl hier das private
 Dokument dieses Mitglieds anzeigen. Verwenden Sie in der Konsole Settings und
 anschließend Memory.
 
@@ -319,18 +319,30 @@ ciele help-desks list
 ciele teammates list
 ciele channels list
 ciele skills list
+ciele quick-texts list
 ciele goals list <assistant-id>
 ciele alerts list
 ciele organization get
 ciele members list
+ciele members set-role <user-id> --role-id <role-id>
+ciele members set-assistants <user-id> --scope selected --assistants <assistant-id>:editor
+ciele roles list
+ciele roles create --name "Content reviewer" --capabilities knowledge:view,knowledge:edit
+ciele roles set-defaults --member <role-id>
 ciele invites list
 ciele api-keys list
+ciele audit-log list --action members.updateRole --from 2026-10-01
 ciele providers list
 ciele sso connection
 ```
 
 Befehle, die Daten löschen, erfordern `--yes`. Der Default Behavior Flow kann
 nicht gelöscht werden.
+
+`--role` erwartet den Namen einer vordefinierten Rolle. `--role-id` erwartet die
+ID einer beliebigen Rolle, auch einer benutzerdefinierten Rolle.
+`ciele roles list` zeigt die IDs an. `ciele whoami` zeigt außerdem an, über wie
+viele Capabilities der Schlüssel verfügt.
 
 Führen Sie `ciele help` für jede Befehlsgruppe und jede akzeptierte Option aus.
 Fügen Sie `--file` hinzu, wenn ein Befehl eine vollständige JSON-Eingabe oder
@@ -346,3 +358,47 @@ ciele publish status "$ASSISTANT_ID" --json
 
 Speichern Sie alle Werte im CI-Secret-Store. Schreiben Sie keinen Schlüssel in
 eine Workflow-Datei.
+
+## Portable Assistant-Bundles
+
+Export schreibt ein versioniertes JSON-Bundle in die Standardausgabe. Import
+erstellt einen neuen Assistenten und gibt einen Bericht über unaufgelöste
+Zielreferenzen zurück.
+
+```bash
+ciele assistants export <assistant-id> > assistant.json
+ciele assistants import assistant.json
+```
+
+Bundles schließen Anmeldeinformationen und Visitor-Daten aus. Import erfordert
+Bearbeitungszugriff. Konfigurieren Sie fehlende Anmeldeinformationen und
+Verweise, bevor Sie den neuen Assistenten veröffentlichen.
+
+## Geplante Insights-Exporte
+
+Erstellen Sie einen Zeitplan aus einer JSON-Definition. Der wöchentliche
+Rhythmus verwendet `weekday` von null für Sonntag bis sechs für Samstag.
+
+```json
+{
+  "name": "Weekly Insights",
+  "kind": "insights_overview",
+  "format": "csv",
+  "filters": {},
+  "cadence": { "kind": "weekly", "weekday": 1 },
+  "hour": 8,
+  "recipientMemberIds": ["member-uuid"]
+}
+```
+
+```bash
+ciele exports create --file schedule.json --yes
+ciele exports list
+ciele exports update <schedule-id> --file patch.json --yes
+ciele exports pause <schedule-id> --yes
+ciele exports resume <schedule-id> --yes
+ciele exports delete <schedule-id> --yes
+```
+
+Der monatliche Turnus verwendet `{"kind":"monthly","day":1}`. Die Uhrzeit ist in
+UTC angegeben. Die Empfänger müssen aktuelle Mitglieder der Organisation sein.

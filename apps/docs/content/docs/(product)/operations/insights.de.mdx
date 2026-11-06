@@ -15,16 +15,16 @@ positiv. Labels, Legends und genaue Werte kennzeichnen jede Kennzahl. Die
 Latenz-Zeitleiste verwendet eine gestrichelte Linie für p95.
 
 Diagramm- und Statistikkarten platzieren ihre Visualisierung in einem
-abgerundeten Einsatz. Der Titel und die Beschreibung befinden sich darunter, mit
-den Änderungen des Zeitraums und den verfügbaren Aktionen auf der rechten Seite.
-Costs, Observability, Platform Admin und einzelne Eval Runs verwenden dasselbe
-Kartenlayout.
+abgerundeten Einsatz. Der Titel und die Beschreibung befinden sich darunter,
+wobei Periodenwechsel und verfügbare Aktionen auf der rechten Seite angezeigt
+werden. Costs, Observability, Platform Admin und einzelne Eval-Runs verwenden
+dasselbe Kartenlayout.
 
 Animationen folgen den Rezepten von Transitions.dev. Aktualisierte Zahlen
 erscheinen mit einer kurzen, gestaffelten Einblendung der Ziffern, und
-Bildunterschriften wechseln mit einem leichten Unschärfeeffekt. Ladekarten
-blenden in ihren Inhalt ein, und Datentabellen erweitern sich fließend. Die
-Anzeige für den aktiven Tab gleitet zwischen den ausgewählten Tabs hin und her.
+Bildunterschriften wechseln mit einem leichten Blur-Effekt. Ladekarten blenden
+in ihren Inhalt ein, und Datentabellen erweitern sich fließend. Die Anzeige für
+den aktiven Tab gleitet zwischen den ausgewählten Tabs hin und her.
 Einstellungen für reduzierte Bewegungen entfernen die Ziffernbewegung und die
 Unschärfe aus diesen Übergängen.
 
@@ -53,7 +53,7 @@ Das Diagramm **Conversation depth** zeigt die durchschnittliche Gesprächsdauer
 und die Anzahl der Fragen pro Gespräch für jeden Tag, jede Woche oder jeden
 Monat. Ciele ordnet jede Conversation dem Zeitraum zu, in dem sie begonnen hat.
 Eine Conversation, die nach dem Ende des Zeitraums fortgesetzt wird, behält ihre
-vollständige Dauer bei.
+volle Dauer bei.
 
 Das **Usage**-Diagramm trennt Anzahlen, Prozentsätze, Verhältnisse und Sekunden,
 sodass unterschiedliche Einheiten nicht dieselbe Achse teilen. Wählen Sie eine
@@ -63,8 +63,8 @@ Metrik aus, um sie ein- oder auszublenden. Die Registerkarten **Assistants** und
 Verwenden Sie das Fenster **Explore conversations over time**, um die Diagramme
 innerhalb des ausgewählten Datumsbereichs zu zoomen. Ziehen Sie das Fenster oder
 seine Griffe, oder verwenden Sie die Pfeiltasten, nachdem Sie einen Griff
-fokussiert haben. Summary cards, die Datentabelle und Exporte decken weiterhin
-den gesamten Datumsbereich ab.
+fokussiert haben. Summary cards, die Datentabelle und die Exporte decken
+weiterhin den gesamten Datumsbereich ab.
 
 ## Kosten und Beobachtbarkeit
 
@@ -76,24 +76,24 @@ Beide Dashboards verwenden dieselben Filter. Wählen Sie einen Zeitraum aus und
 wählen Sie anschließend **All**, **Assistants**, **Teammates** oder
 **Internal**.
 
-- **Assistants** zeigt den Widget- und Preview-Traffic sowie eingehende HTTP
-  Flows an.
+- **Assistants** zeigt den Traffic von Widgets und der Vorschau sowie eingehende
+  HTTP Flows an.
 - **Teammates** zeigt AI Teammate-Chats, Channel Turns und Routines an.
 - **Internal** zeigt die Plattformaktivitäten: Indexierung, geplante Jobs sowie
   Aufrufe über API-Schlüssel und MCP.
 
-Wenn **All** oder **Assistants** ausgewählt ist, können Sie zusätzlich einen
-Assistant auswählen.
+Wenn **All** oder **Assistants** ausgewählt ist, können Sie auch einen Assistant
+auswählen.
 
 Jedes Dashboard beginnt mit Stat-Cards. Eine Karte zeigt einen Wert für den
-Zeitraum, eine Linie mit den Tageswerten und die Veränderung gegenüber dem
+Zeitraum, eine Linie mit den Tageswerten sowie die Veränderung gegenüber dem
 vorherigen Zeitraum. Der vorherige Zeitraum hat die gleiche Länge und endet am
-Tag vor dem Beginn des Bereichs. Bewegen Sie den Mauszeiger entlang der Linie,
-um den Wert für jeden Tag abzulesen.
+Tag vor dem Beginn des ausgewählten Zeitraums. Bewegen Sie den Mauszeiger
+entlang der Linie, um den Wert für jeden Tag abzulesen.
 
 ### Kosten
 
-- geschätzte Ausgaben, Kosten pro Turn, Modellaufrufe und Token
+- geschätzte Ausgaben, Kosten pro Turn, Modellaufrufe und Tokens
 - Geschätzte Gesamtausgaben pro Tag
 - Ein Streamgraph der täglich geschätzten Ausgaben nach Surface. Die Bandbreite
   repräsentiert einen Betrag, keinen Prozentsatz.
@@ -105,30 +105,30 @@ um den Wert für jeden Tag abzulesen.
   aus, um dessen Modelle zu prüfen
 
 Der Filter „Surface“ gilt für die Tagesdiagramme und die Modellaufschlüsselung.
-Die Surface-Summen unter dem Streamgraph vergleichen stets alle Surfaces.
+Die Surface-Summen unter dem Streamgraph vergleichen immer alle Surfaces.
 
-Die Ausgaben sind eine Schätzung in Euro. Ciele berechnet dies anhand der Anzahl
-der Token und der Listenpreise. Dies ist keine Rechnung.
+Die Ausgaben sind eine Schätzung in Euro. Ciele berechnet dies anhand der
+Token-Anzahl und der Listenpreise. Dies ist keine Rechnung.
 
-### Observability
+### Observierbarkeit
 
 - abgeschlossene Turns, Erfolgsrate, fehlgeschlagene Turns und Tool-Aufrufe pro
   Turn
 - Turn-Latenz: Median, 95. Perzentil, ein Histogramm und ein täglicher Trend
-- **Answer accuracy**: der Anteil der Antworten des Assistenten, die vom
-  Verifizierer als erfolgreich bewertet wurden
-- **Autonomy**: der Anteil der Besucher-Konversationen, die nicht an einen
-  Helpdesk weitergeleitet wurden
-- Einfarbige Anzeigen für Reliability, Accuracy und Autonomy, mit exakten
+- **Answer accuracy**: der Anteil der Antworten des Assistenten, die der
+  Verifizierer als erfolgreich bewertet hat
+- **Autonomy**: der Anteil der Besuchergespräche, die nicht an einen Helpdesk
+  weitergeleitet wurden
+- einfarbige Anzeigen für Reliability, Accuracy und Autonomy, mit exakten
   Zählern neben den Diagrammen
 - ein Vergleich von Reliability, Accuracy und Autonomy mit dem vorherigen
   Zeitraum, in Prozentpunkten
 - die häufigsten Fehlerklassen
-- die fünf am häufigsten verwendeten Flows, gegeneinander nach Tag oder Woche
-  geordnet
+- die fünf am häufigsten verwendeten Flows, pro Tag oder pro Woche gegeneinander
+  gerankt
 
 **Answer accuracy** und **Autonomy** gelten nur für Assistants. Für
-**Teammates** und **Internal** werden diese Kennzahlen nicht angezeigt.
+**Teammates** und **Internal** werden diese Metriken nicht angezeigt.
 
 ### Hinweise
 
@@ -148,14 +148,14 @@ festgelegten Plattform-Organisation **Admin** als letzte Registerkarte
 alle Organisationen, einschließlich der Plattformorganisation. Wählen Sie einen
 Zeitraum aus, um Modellaufrufe, Tokens, Crawl-Seiten und geschätzte Kosten für
 jede Organisation zu überprüfen. Die von der Plattform finanzierten Kosten
-umfassen weder Kunden-API-Schlüssel noch persönliche Abonnements. Andere
+beinhalten weder Kunden-API-Schlüssel noch persönliche Abonnements. Andere
 Organisationen und Mitglieder haben keinen Zugriff auf diese Registerkarte.
 
 ## Aktualität der Daten
 
 Insights speichert die berechnete Übersicht und die Dashboards für jede
-Organisation und jede Filterkombination bis zu fünf Minuten lang. Jedes Mitglied
-der Organisation liest dieselben gespeicherten Daten.
+Organisation und jeden Filtersatz bis zu fünf Minuten lang. Jedes Mitglied der
+Organisation liest dieselben gespeicherten Daten.
 
 Eine Änderung, die ein Mitglied in der Konsole vornimmt (an einem Assistant,
 einer Conversation oder einer Improvement), löscht die gespeicherte Übersicht
@@ -170,18 +170,27 @@ Mitglied der Organisation kann diese Anfrage senden.
 ## Zählung von Benachrichtigungen
 
 Eine Notification ist keine KI-Antwort. Eine reine Notification-only-Sitzung
-erhöht weder die Conversation- noch die Answer-KPIs.
+erhöht weder die KPIs für Conversations noch die KPIs für Answers.
 
 Die Kennzahl **Notifications Sent** und ihre Diagrammreihen erfassen die
 proaktive Bereitstellung separat.
 
 ## Eine Änderung untersuchen
 
-1. Wählen Sie den gewünschten Datumsbereich und den gewünschten Assistant aus.
+1. Wählen Sie den gewünschten Zeitraum und den gewünschten Assistant aus.
 2. Identifizieren Sie die Metrik, die sich geändert hat.
-3. Öffnen Sie den Inbox mit demselben Scope.
+3. Öffnen Sie die Inbox mit demselben Scope.
 4. Lesen Sie repräsentative Conversations.
 5. Erstellen Sie Improvements für umsetzbare Probleme bei Antworten.
 
 Verwenden Sie [Exports](/operations/exports) für strukturierte
-Gesprächsdatensätze.
+Conversation-Datensätze.
+
+## Geplante Berichte erhalten
+
+Verwenden Sie **Exports**, um wöchentliche oder monatliche Insights-Dateien zu
+planen. Wählen Sie die Member-Empfänger aus und behalten Sie die gleichen
+Report-Filter und Dateiformate bei.
+
+Lesen Sie [Exports](/operations/exports) für fortlaufende Datumsfenster,
+Benachrichtigungen und Steuerung von Zeitplänen.

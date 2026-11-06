@@ -301,6 +301,7 @@ async function landProposal(
   }
 
   const improvement = await raiseImprovement(db, entry.organizationId, {
+    source: "system",
     title: `[${proposal.kind.replace("_", " ")}] ${proposal.title}`,
     messageId: evidence[0]?.messageId ?? null,
   });

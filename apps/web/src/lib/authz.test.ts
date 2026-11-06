@@ -3,8 +3,8 @@ import type { Session } from "@/lib/auth";
 
 /**
  * The authorization seam (requireMember): every org-scoped server action
- * starts here. Tested by stubbing the session, the RBAC ladder itself is
- * pure (core's roleAllowsCapability) and pinned below as a full table.
+ * starts here. Tested by stubbing the session: the check is the session's
+ * Capability set against what the action requires (ADR-0028).
  */
 
 const {
@@ -66,14 +66,16 @@ vi.mock("react", async (importOriginal) => ({
   cache: reactCacheMock,
 }));
 
+import { capabilitiesForLadderRole } from "@agent-hub/core";
 import { requireMember } from "./authz";
 
-function session(role: Session["role"], withOrg = true): Session {
+function session(role: Session["role"], withOrg = true, capabilities?: string[]): Session {
   return {
     userId: "user-1",
     email: "member@example.com",
     organization: withOrg ? { id: "org-1", name: "Org" } : null,
     role,
+    capabilities: capabilities ?? capabilitiesForLadderRole(role),
     demo: false,
   } as Session;
 }
@@ -108,66 +110,36 @@ describe("requireMember", () => {
 
   it.each([
     ["viewer", false],
+    ["support_agent", false],
     ["editor", true],
     ["admin", true],
     ["owner", true],
-  ] as const)("edit capability: %s → %s", async (role, allowed) => {
+  ] as const)("flows:edit with a built-in %s → %s", async (role, allowed) => {
     getSessionMock.mockResolvedValue(session(role));
-    const attempt = requireMember("edit");
+    const attempt = requireMember("flows:edit");
     if (allowed) await expect(attempt).resolves.toBeTruthy();
-    else await expect(attempt).rejects.toThrow("Not allowed");
+    else await expect(attempt).rejects.toThrow("Your role does not allow this (Create and edit Flows)");
   });
 
-  it.each([
-    ["editor", false],
-    ["admin", true],
-  ] as const)("publish capability: %s → %s", async (role, allowed) => {
-    getSessionMock.mockResolvedValue(session(role));
-    const attempt = requireMember("publish");
-    if (allowed) await expect(attempt).resolves.toBeTruthy();
-    else await expect(attempt).rejects.toThrow("Only admins/owners can publish");
+  it("checks the Role's Capabilities, not its tier", async () => {
+    // An Admin-tier custom Role that may publish and nothing else.
+    getSessionMock.mockResolvedValue(session("admin", true, ["assistants:view", "assistants:publish"]));
+    await expect(requireMember("assistants:publish")).resolves.toBeTruthy();
+    await expect(requireMember("members:manage")).rejects.toThrow("Your role does not allow this (Manage Members)");
+    await expect(requireMember("flows:edit")).rejects.toThrow(/Create and edit Flows/);
   });
 
-  // The whole capability × Role table, with the exact message each refusal
-  // throws. Server actions surface these strings to the console verbatim.
-  const DENY_EDIT = "Not allowed";
-  const DENY_PUBLISH = "Only admins/owners can publish";
-  const DENY_KEYS = "Only admins/owners can manage API keys";
-  const DENY_ROLES = "Only owners can change roles";
-  const TABLE = {
-    //              owner  admin  editor       viewer       no role
-    member:        [null,  null,  null,        null,        null],
-    edit:          [null,  null,  null,        DENY_EDIT,   DENY_EDIT],
-    publish:       [null,  null,  DENY_PUBLISH, DENY_PUBLISH, DENY_PUBLISH],
-    manageMembers: [null,  null,  DENY_EDIT,   DENY_EDIT,   DENY_EDIT],
-    manageApiKeys: [null,  null,  DENY_KEYS,   DENY_KEYS,   DENY_KEYS],
-    changeRoles:   [null,  DENY_ROLES, DENY_ROLES, DENY_ROLES, DENY_ROLES],
-  } as const;
-  const ROLES = ["owner", "admin", "editor", "viewer", null] as const;
-
-  it.each(
-    Object.entries(TABLE).flatMap(([capability, row]) =>
-      ROLES.map((role, i) => [capability, role, row[i]] as const)
-    )
-  )("%s as %s → %s", async (capability, role, error) => {
-    getSessionMock.mockResolvedValue(session(role));
-    const attempt = requireMember(capability as keyof typeof TABLE);
-    if (error === null) {
-      await expect(attempt).resolves.toBeTruthy();
-    } else {
-      await expect(attempt).rejects.toThrow(
-        expect.objectContaining({ message: error })
-      );
-    }
+  it("lets any Member through for their own things", async () => {
+    getSessionMock.mockResolvedValue(session("viewer", true, []));
+    await expect(requireMember("member")).resolves.toBeTruthy();
+    await expect(requireMember("inbox:view")).rejects.toThrow(/View conversations/);
   });
 
-  it("reserves changeRoles for owners", async () => {
+  it("keeps the Owner-only Capability for Owners", async () => {
     getSessionMock.mockResolvedValue(session("admin"));
-    await expect(requireMember("changeRoles")).rejects.toThrow(
-      "Only owners can change roles"
-    );
+    await expect(requireMember("personalSubscriptions:manage")).rejects.toThrow(/personal AI subscriptions/);
     getSessionMock.mockResolvedValue(session("owner"));
-    await expect(requireMember("changeRoles")).resolves.toBeTruthy();
+    await expect(requireMember("personalSubscriptions:manage")).resolves.toBeTruthy();
   });
 });
 

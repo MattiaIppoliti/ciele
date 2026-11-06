@@ -1,5 +1,6 @@
 import type {
   AssistantGoal,
+  ImprovementValidation,
   CookieConsentRecord,
   EvaluationDataset,
   EvaluationRun,
@@ -71,6 +72,50 @@ import { shortId } from "@agent-hub/core";
  * (plus a store binding in the mock), not three hand-written methods.
  */
 export interface DbTableMap {
+  improvementValidations: {
+    row: ImprovementValidation;
+    insert: Omit<ImprovementValidation, "id" | "createdAt">;
+    update: Partial<Pick<ImprovementValidation, "status" | "detail" | "results" | "completedAt">>;
+  };
+  exportSchedules: { row: import("@agent-hub/core").ExportSchedule; insert: import("@agent-hub/core").ExportScheduleInput; update: import("@agent-hub/core").ExportSchedulePatch };
+  faqHistory: { row: import("@agent-hub/core").FaqHistoryEntry; insert: never; update: never };
+  businessHours: { row: import("@agent-hub/core").BusinessHours; insert: never; update: never };
+  mcpServerConnections: {
+    row: import("@agent-hub/core").McpServerConnection;
+    insert: never;
+    update: Partial<Pick<import("@agent-hub/core").McpServerConnection, "name">>;
+  };
+  /** Public configuration only: signing secrets have a separate service-only store. */
+  outboundWebhookSubscriptions: {
+    row: import("@agent-hub/core").OutboundWebhookSubscription;
+    insert: never;
+    update: Partial<Pick<import("@agent-hub/core").OutboundWebhookSubscription, "name" | "url" | "eventTypes" | "paused">>;
+  };
+  webhookDeliveries: {
+    row: import("@agent-hub/core").WebhookDelivery;
+    insert: never;
+    update: never;
+  };
+  /** Saved replies for the Inbox reply box (#1085). */
+  quickTexts: {
+    row: import("@agent-hub/core").QuickText;
+    insert: Pick<import("@agent-hub/core").QuickText, "organizationId" | "title" | "body"> &
+      Partial<Pick<import("@agent-hub/core").QuickText, "folder" | "createdBy">>;
+    update: Partial<Pick<import("@agent-hub/core").QuickText, "title" | "body" | "folder">>;
+  };
+  /** Who staffs a Help Desk's Live operator channel (#1084). */
+  helpDeskOperators: {
+    row: import("@agent-hub/core").HelpDeskOperator;
+    insert: Pick<import("@agent-hub/core").HelpDeskOperator, "organizationId" | "helpDeskId" | "memberId"> &
+      Partial<Pick<import("@agent-hub/core").HelpDeskOperator, "capacity">>;
+    update: Partial<Pick<import("@agent-hub/core").HelpDeskOperator, "capacity">>;
+  };
+  /** An operator's own Available/Away status (#1084). */
+  operatorPresence: {
+    row: import("@agent-hub/core").OperatorPresence;
+    insert: Pick<import("@agent-hub/core").OperatorPresence, "organizationId" | "memberId" | "status">;
+    update: Partial<Pick<import("@agent-hub/core").OperatorPresence, "status">>;
+  };
   threadPreferences: {
     row: import("@agent-hub/core").ThreadPreference;
     insert: Omit<import("@agent-hub/core").ThreadPreference, "id" | "createdAt">;
@@ -119,8 +164,9 @@ export interface DbTableMap {
       name: string;
       prompt: string;
       description?: string;
+      starter?: string;
     };
-    update: Partial<Pick<Skill, "name" | "description" | "prompt">>;
+    update: Partial<Pick<Skill, "name" | "description" | "prompt" | "starter">>;
   };
   /**
    * AI Teammates (#768). Mechanical by construction: the persona and the
@@ -219,7 +265,8 @@ export interface DbTableMap {
   };
   memberNotifications: {
     row: MemberNotification;
-    insert: Pick<MemberNotification, "organizationId" | "recipientId" | "kind" | "projectId" | "taskId"> &
+    insert: (Pick<import("@agent-hub/core").WorkMemberNotification, "organizationId" | "recipientId" | "kind" | "projectId" | "taskId"> |
+      { organizationId: string; recipientId: string; kind: "conversation_assigned"; conversationId: string; projectId: null; taskId: null }) &
       Partial<Pick<MemberNotification, "commentId" | "actorMemberId" | "actorTeammateId">>;
     update: Partial<Pick<MemberNotification, "readAt" | "archivedAt" | "snoozedUntil">>;
   };
@@ -474,9 +521,37 @@ export interface DbTableSpec<K extends DbTableName> {
   ascending: boolean;
   /** Whether `update` stamps `updatedAt` (tables with an updated_at column). */
   touchesUpdatedAt: boolean;
+  /**
+   * Fields whose column was renamed, with the column's old name: a write that
+   * hits a database one migration behind is retried under the old name.
+   */
+  renamedColumns?: Record<string, string>;
 }
 
 export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
+  faqHistory: { table: "faq_history", id: "shortId", defaults: {}, ascending: false, touchesUpdatedAt: false },
+  businessHours: { table: "business_hours", id: "shortId", defaults: {}, ascending: true, touchesUpdatedAt: true },
+  mcpServerConnections: { table: "mcp_server_connections", id: "shortId", defaults: {}, ascending: true, touchesUpdatedAt: true },
+  outboundWebhookSubscriptions: {
+    table: "outbound_webhook_subscriptions", id: "shortId", defaults: {},
+    ascending: false, touchesUpdatedAt: true,
+  },
+  webhookDeliveries: {
+    table: "webhook_deliveries", id: "shortId", defaults: {},
+    ascending: false, touchesUpdatedAt: false,
+  },
+  quickTexts: {
+    table: "quick_texts", id: "shortId", defaults: { folder: null, createdBy: null },
+    ascending: true, touchesUpdatedAt: true,
+  },
+  helpDeskOperators: {
+    table: "help_desk_operators", id: "shortId", defaults: { capacity: 3 },
+    ascending: true, touchesUpdatedAt: true,
+  },
+  operatorPresence: {
+    table: "operator_presence", id: "shortId", defaults: {},
+    ascending: true, touchesUpdatedAt: true,
+  },
   threadPreferences: {
     table: "thread_preferences", id: "shortId", defaults: {},
     ascending: true, touchesUpdatedAt: false,
@@ -530,7 +605,7 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       editorIds: [],
       modelProvider: "anthropic",
       modelId: "claude-opus-4-8",
-      capabilityCeiling: "edit",
+      actionCeiling: "edit",
       approvalBypass: false,
       projectId: null,
       systemKind: null,
@@ -539,6 +614,8 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     },
     ascending: true,
     touchesUpdatedAt: true,
+    // The Action Ceiling's column was capability_ceiling until 20261104150000.
+    renamedColumns: { actionCeiling: "capability_ceiling" },
   },
   projects: {
     table: "projects",
@@ -680,6 +757,7 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     ascending: true,
     touchesUpdatedAt: true,
   },
+  exportSchedules: { table: "export_schedules", id: "shortId", defaults: { enabled: true, createdBy: null, lastSlotAt: null }, ascending: true, touchesUpdatedAt: true },
   teammateRoutines: {
     table: "teammate_routines",
     id: "shortId",
@@ -755,6 +833,9 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     },
     ascending: true,
     touchesUpdatedAt: false,
+  },
+  improvementValidations: {
+    table: "improvement_validations", id: "shortId", defaults: {}, ascending: false, touchesUpdatedAt: false,
   },
   assistantGoals: {
     table: "assistant_goals",

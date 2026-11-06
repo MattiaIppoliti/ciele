@@ -26,6 +26,7 @@ import type {
   UsageOperation,
   UsageOperationStatus,
   UsageOperationUnit,
+  TurnOutcome,
   UsageProvider,
   WebhookSubscription,
   WebhookSubscriptionInput,
@@ -41,7 +42,7 @@ import type { UntrustedEnvelope } from "./untrusted-content";
  * through the RuntimeEvent `part` event and is what Widget, Preview, and
  * Inbox render. Owned here: the data package's engine is routing-only.
  */
-export type { ReferralCandidate } from "@agent-hub/core";
+export type { ReferralCandidate, TurnOutcome } from "@agent-hub/core";
 
 export type ChatReplyPart =
   /**
@@ -49,7 +50,7 @@ export type ChatReplyPart =
    * grounds (persisted, queryable marker, never a knowledge gap); `guardrail`
    * = an input guardrail blocked the message and this is its reply.
    */
-  | { type: "text"; action: FlowAction | "fallback" | "refusal" | "guardrail"; text: string }
+  | { type: "text"; action: FlowAction | "fallback" | "refusal" | "guardrail"; text: string; generated?: boolean }
   | {
       type: "help_desk";
       action: "suggest_help_desk" | "show_button";
@@ -174,13 +175,14 @@ export type ChatReplyPart =
    * The card is the whole stop. The tool did not execute and did not fail; it
    * is waiting, and a Member accepting the card is what runs it. Carries the
    * catalogue's words for the action and the gate's reason, never the action's
-   * arguments and never anything the model wrote: this is the screen where
-   * somebody with the authority to say yes is reading.
+   * arguments for ordinary operations. Remote MCP approvals also carry a
+   * redacted argument view, rendered as data for the Member to review.
    */
   | {
       type: "action_approval";
       action: "approval_gate";
       approvalId: string;
+      arguments?: unknown;
       /** The catalogue's label, e.g. "Create an Improvement". */
       label: string;
       reason: ApprovalReviewReason;
@@ -450,7 +452,24 @@ export type RuntimeEvent =
   | { type: "text-start"; action: string }
   | { type: "text-delta"; delta: string }
   | { type: "text-end" }
-  | { type: "done"; conversationId: string; messageId: string | null }
+  | {
+      type: "done";
+      conversationId: string;
+      messageId: string | null;
+      /** Why the turn ended (`TurnOutcome`, success outcomes only). */
+      outcome: TurnOutcome;
+    }
+  /**
+   * The message was saved and started no turn because a person is answering
+   * this Conversation (`held`) or the Visitor is waiting for one (`waiting`),
+   * #1082/#1083. The client listens for the person's reply from here.
+   */
+  | {
+      type: "operator";
+      state: "held" | "waiting";
+      operatorName: string | null;
+      userMessageId: string;
+    }
   | {
       type: "error";
       message: string;
@@ -521,6 +540,8 @@ export interface HistoryMessage {
    * Visitor's `ok` answer as small talk (#566). The model prompts ignore it.
    */
   askedQuestion?: boolean;
+  /** Approved remote output, fenced with the current turn nonce before model use. */
+  mcpResults?: { handle: string; serverTool: string; body: string }[];
 }
 
 /**
@@ -550,6 +571,10 @@ export type ActionEffect =
  * one place that can enforce it.
  */
 export interface TeammateActionTool {
+  /** Remote MCP definitions retain their original JSON Schema. */
+  jsonInputSchema?: Record<string, unknown>;
+  /** Redacted view used only by the trace and approval card. */
+  traceInput?(input: Record<string, unknown>): unknown;
   /** The operation's catalogue name, e.g. `improvements.update`. */
   operation: string;
   /** The grant that put it on the list, or `memory` for the ungated writes. */
@@ -588,12 +613,14 @@ export interface TeammateActionTool {
    */
   run(
     input: Record<string, unknown>,
-    options?: { confirmed?: boolean; signal?: AbortSignal }
+    options?: { confirmed?: boolean; signal?: AbortSignal; sessionId?: string }
   ): Promise<TeammateActionOutcome>;
 }
 
 /** What running one returned, plus what it says it touched. */
 export interface TeammateActionOutcome {
+  /** Only approval persistence consumes this bounded response; never a model payload. */
+  retainedMcpResult?: { body: string; serverTool: string };
   /**
    * The entities the operation declared it mutated, `kind` plus the id when the
    * kind carries one. Empty for a read. The transcript card names these, which
@@ -809,7 +836,7 @@ export interface ActionContext {
    * stage, handlers only pass numbers. Optional so pure handlers and tests
    * that never touch the model don't need it.
    */
-  recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
+  recordUsage?: (usage: UsageTotals) => void;
   /**
    * Like `recordUsage`, but pre-bound with the classifier-tier provider/model
    * identity, so a handler that ran on `fastModel` meters the model that
@@ -845,6 +872,12 @@ export interface ActionResult {
   /** Handover target Assistant id, the turn continues there (one hop). */
   handoverTo?: string;
   /**
+   * How a generative action ended, when it ended other than with a plain
+   * answer (a clarify, a refusal, a truncation, an insufficient search). The
+   * first one in a Flow becomes the turn's outcome.
+   */
+  ending?: TurnOutcome;
+  /**
    * Template variables this action contributes to the turn's context for
    * *later* actions to interpolate (e.g. api_request JSON-path extractions,
    * `{{variableName}}`). The engine merges these into `templateContext` after
@@ -857,11 +890,25 @@ export interface ActionResult {
 export type ActionHandler = (ctx: ActionContext) => Promise<ActionResult>;
 
 /**
+ * Tokens served from, and written to, the provider's prompt cache. Present
+ * only when the provider reported cache activity, so a turn on a provider
+ * with no cache (or a test mock) keeps the two-field shape it always had.
+ * Both are already counted inside `inputTokens`; they say how much of the
+ * input was cheap, not how much more there was.
+ */
+export interface CacheTokens {
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+}
+
+export type UsageTotals = { inputTokens: number; outputTokens: number } & CacheTokens;
+
+/**
  * One metered model call: stage + the provider/model that actually ran (post
  * cross-provider fallback) + token totals. Collected per turn by the engine
  * and persisted post-commit by the Conversation Turn (AI usage ledger).
  */
-export interface UsageEvent {
+export interface UsageEvent extends CacheTokens {
   stage: AiUsageStage;
   /** Who ran: a text provider, or `typesafe` for a Jev decision (#950). */
   provider: UsageProvider;
@@ -891,4 +938,9 @@ export interface RunResult {
    * (one hop only, the continuation's own handovers are ignored).
    */
   handoverTo?: string | null;
+  /**
+   * How the answering action ended, when it was not a plain answer (see
+   * `ActionResult.ending`). Absent means `answered`.
+   */
+  outcome?: TurnOutcome;
 }

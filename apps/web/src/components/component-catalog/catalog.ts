@@ -14,7 +14,12 @@ export interface ComponentFamily {
   sources: string[];
   usage: string;
   notes?: string;
+  /** A second preview, from the platform module, rendered under the first. */
+  companion?: string;
 }
+
+/** Former single-icon pages, now sections of `/components/icons`. */
+export const MERGED_ICON_SLUGS = ["feather-icon", "flow-button-icon", "sidebar-toggle-icon", "bot-icon", "brand", "app-brand", "provider-brand-icon", "model-provider-logo", "github-mark", "ghost-mark"] as const;
 
 export const COMPONENT_FAMILIES: readonly ComponentFamily[] = [
   {slug:"status-bars",kind:"component",title:"Status bars",description:"Daily endpoint availability samples, unknown days and accessible incident details.",group:"Data display",preview:"platform",variants:["Daily samples"],sources:["apps/web/src/components/block/status-bars.tsx","apps/web/src/components/insights/dashboard/assistant-availability-card.tsx"],usage:`import { StatusBars } from "@/components/block/status-bars";
@@ -636,21 +641,30 @@ export default function Example() {
   {
     slug: "icons",
     kind: "component",
-    title: "Animated icon",
-    description: "A consistent hover animation contract for package and local glyphs.",
+    title: "Icons",
+    description: "Every glyph and mark in Ciele: animated interface icons, control icons and brand marks.",
     group: "Foundations",
     preview: "primitive",
-    variants: ["AnimatedIcon", "AnimatedGlyph", "Static policy", "Local glyphs"],
-    sources: ["apps/web/src/components/ui/animated-icon.tsx", "apps/web/src/components/ui/icons/folders.tsx", "apps/web/src/components/ui/icons/mailbox.tsx", "apps/web/src/components/ui/icons/maximize-2.tsx", "apps/web/src/components/ui/icons/message-circle.tsx", "apps/web/src/components/ui/icons/scan-text.tsx", "apps/web/src/components/ui/icons/telescope.tsx", "apps/web/src/components/ui/icons/user-round-cog.tsx", "apps/web/src/components/ui/icons/users-round.tsx", "apps/web/src/components/ui/icons/volume-2.tsx"],
+    companion: "icon-marks",
+    variants: ["Animated glyphs", "Local glyphs", "Feather", "Flow button icons", "Sidebar toggle", "Bot", "Ciele AI mark", "Application brands", "Provider brands", "Model provider logos", "GitHub mark", "Ghost mark"],
+    sources: ["apps/web/src/components/ui/animated-icon.tsx", "apps/web/src/components/ui/icons/folders.tsx", "apps/web/src/components/ui/icons/mailbox.tsx", "apps/web/src/components/ui/icons/maximize-2.tsx", "apps/web/src/components/ui/icons/message-circle.tsx", "apps/web/src/components/ui/icons/scan-text.tsx", "apps/web/src/components/ui/icons/telescope.tsx", "apps/web/src/components/ui/icons/user-round-cog.tsx", "apps/web/src/components/ui/icons/users-round.tsx", "apps/web/src/components/ui/icons/volume-2.tsx", "apps/web/src/components/ui/feather-icon.tsx", "apps/web/src/components/chat/flow-button-icon.tsx", "apps/web/src/components/ui/sidebar-toggle-icon.tsx", "apps/web/src/components/ui/icons/bot.tsx", "apps/web/src/components/teammates/ciele-ai-logo.tsx", "apps/web/src/components/ui/app-brand.tsx", "apps/web/src/components/settings/provider-brand-icon.tsx", "apps/web/src/components/chat/model-provider-logo.tsx", "apps/web/src/components/home/github-mark.tsx", "apps/web/src/components/auth/ghost-mark.tsx"],
     usage: `"use client";
 
 import { Search } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
+import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
+import { ModelProviderLogo } from "@/components/chat/model-provider-logo";
+import { CieleAiLogo } from "@/components/teammates/ciele-ai-logo";
 
 export default function Example() {
   return (
     <>
       <button type="button" aria-label="Search"><AnimatedIcon icon={Search} size={18} /></button>
+      <SidebarToggleIcon isOpen={true} />
+      <FlowButtonIcon icon="external_link" />
+      <ModelProviderLogo provider="google" />
+      <CieleAiLogo className="size-12" />
     </>
   );
 }`,
@@ -1289,25 +1303,6 @@ export default function Example() {
 }`,
   },
   {
-    slug: "brand",
-    kind: "component",
-    title: "Ciele AI mark",
-    description: "The Ciele AI identity mark at different sizes.",
-    group: "Foundations",
-    preview: "platform",
-    variants: ["Logo", "Sizes"],
-    sources: ["apps/web/src/components/teammates/ciele-ai-logo.tsx"],
-    usage: `"use client";
-
-import { CieleAiLogo } from "@/components/teammates/ciele-ai-logo";
-
-export default function Example() {
-  return (
-    <CieleAiLogo className="size-12" />
-  );
-}`,
-  },
-  {
     slug: "password-input",
     kind: "component",
     title: "Password input",
@@ -1376,12 +1371,11 @@ export default function Example() {
     sources: ["apps/web/src/components/ui/section-heading.tsx"],
     usage: `"use client";
 
-import { BookOpen } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 export default function Example() {
   return (
-    <SectionHeading icon={BookOpen} title="Knowledge" description="Sources your assistant can use." />
+    <SectionHeading title="Knowledge" description="Sources your assistant can use." />
   );
 }`,
   },
@@ -1883,82 +1877,6 @@ import { Assignees } from "@/components/ui/assignees";
 export default function Example() {
   return (
     <Assignees assigned={[]} groups={[]} addLabel="Add person" />
-  );
-}`,
-  },
-  {
-    slug: "feather-icon",
-    kind: "component",
-    title: "Feather icon",
-    description: "A drawn feather glyph with a pointer-triggered animation.",
-    group: "Foundations",
-    preview: "primitive",
-    variants: ["Idle", "Hovered"],
-    sources: ["apps/web/src/components/ui/feather-icon.tsx"],
-    usage: `"use client";
-
-import { FeatherIcon } from "@/components/ui/feather-icon";
-
-export default function Example() {
-  return (
-    <FeatherIcon />
-  );
-}`,
-  },
-  {
-    slug: "flow-button-icon",
-    kind: "component",
-    title: "Flow button icon",
-    description: "The icon contract used by configured flow buttons.",
-    group: "Foundations",
-    preview: "primitive",
-    variants: ["Configured icons", "No icon"],
-    sources: ["apps/web/src/components/chat/flow-button-icon.tsx"],
-    usage: `"use client";
-
-import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
-
-export default function Example() {
-  return (
-    <FlowButtonIcon icon="external_link" />
-  );
-}`,
-  },
-  {
-    slug: "sidebar-toggle-icon",
-    kind: "component",
-    title: "Sidebar toggle icon",
-    description: "A control glyph that reflects an expanded or collapsed sidebar.",
-    group: "Foundations",
-    preview: "primitive",
-    variants: ["Expanded", "Collapsed"],
-    sources: ["apps/web/src/components/ui/sidebar-toggle-icon.tsx"],
-    usage: `"use client";
-
-import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
-
-export default function Example() {
-  return (
-    <SidebarToggleIcon isOpen={true} />
-  );
-}`,
-  },
-  {
-    slug: "bot-icon",
-    kind: "component",
-    title: "Bot icon",
-    description: "A local assistant glyph with the shared icon animation contract.",
-    group: "Foundations",
-    preview: "primitive",
-    variants: ["Idle", "Animated"],
-    sources: ["apps/web/src/components/ui/icons/bot.tsx"],
-    usage: `"use client";
-
-import { BotIcon } from "@/components/ui/icons/bot";
-
-export default function Example() {
-  return (
-    <BotIcon size={24} />
   );
 }`,
   },
@@ -3315,101 +3233,6 @@ import { MotionNavigationMenu } from "@/components/home/motion-navigation-menu";
 export default function Example() {
   return (
     <MotionNavigationMenu scrolled={false} />
-  );
-}`,
-  },
-  {
-    slug: "app-brand",
-    kind: "component",
-    title: "Application brand",
-    description: "Connector marks keyed by the application provider.",
-    group: "Foundations",
-    preview: "platform",
-    variants: ["Connector marks", "Sizes"],
-    sources: ["apps/web/src/components/ui/app-brand.tsx"],
-    usage: `"use client";
-
-import { AppBrandMark } from "@/components/ui/app-brand";
-
-export default function Example() {
-  return (
-    <AppBrandMark provider="google_drive" />
-  );
-}`,
-  },
-  {
-    slug: "provider-brand-icon",
-    kind: "component",
-    title: "Provider brand icon",
-    description: "The provider-connection identity used in settings.",
-    group: "Foundations",
-    preview: "platform",
-    variants: ["Anthropic", "OpenAI", "Google", "Azure", "ElevenLabs"],
-    sources: ["apps/web/src/components/settings/provider-brand-icon.tsx"],
-    usage: `"use client";
-
-import { ProviderBrandIcon } from "@/components/settings/provider-brand-icon";
-
-export default function Example() {
-  return (
-    <ProviderBrandIcon provider="google" />
-  );
-}`,
-  },
-  {
-    slug: "model-provider-logo",
-    kind: "component",
-    title: "Model provider logo",
-    description: "The compact provider identity used by composer model choices.",
-    group: "Foundations",
-    preview: "platform",
-    variants: ["Anthropic", "OpenAI", "Google", "Compatible"],
-    sources: ["apps/web/src/components/chat/model-provider-logo.tsx"],
-    usage: `"use client";
-
-import { ModelProviderLogo } from "@/components/chat/model-provider-logo";
-
-export default function Example() {
-  return (
-    <ModelProviderLogo provider="google" />
-  );
-}`,
-  },
-  {
-    slug: "github-mark",
-    kind: "component",
-    title: "GitHub mark",
-    description: "A monochrome GitHub identity glyph for website links.",
-    group: "Foundations",
-    preview: "platform",
-    variants: ["Default", "Size"],
-    sources: ["apps/web/src/components/home/github-mark.tsx"],
-    usage: `"use client";
-
-import { GithubMark } from "@/components/home/github-mark";
-
-export default function Example() {
-  return (
-    <GithubMark className="size-6" />
-  );
-}`,
-  },
-  {
-    slug: "ghost-mark",
-    kind: "component",
-    title: "Ghost mark",
-    description: "The illustrated Ciele ghost identity used by authentication surfaces.",
-    group: "Foundations",
-    preview: "platform",
-    variants: ["Default", "Size"],
-    sources: ["apps/web/src/components/auth/ghost-mark.tsx"],
-    usage: `"use client";
-
-import { GhostMark } from "@/components/auth/ghost-mark";
-
-export default function Example() {
-  return (
-    <GhostMark className="size-14" />
   );
 }`,
   },

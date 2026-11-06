@@ -58,6 +58,24 @@ function harness(
 }
 
 describe("ciele MCP tools", () => {
+  it("keeps webhook reads available in read-only mode and refuses subscription writes", async () => {
+    const { calls, tool } = harness();
+    const configuration = tool("manage_configuration");
+    for (const action of ["webhook_list", "webhook_deliveries"]) {
+      const result = await callTool(configuration, { action, id: "wh1" }, true);
+      expect(result.isError).not.toBe(true);
+    }
+    expect(calls).toHaveLength(2);
+    expect(calls[1].url).toMatch(/\/webhooks\/wh1\/deliveries$/);
+    for (const action of ["webhook_create", "webhook_update", "webhook_pause", "webhook_resume", "webhook_delete", "webhook_test"]) {
+      const result = await callTool(configuration, { action, id: "wh1", input: {}, patch: {} }, true);
+      expect(result.isError).toBe(true);
+    }
+    expect(calls).toHaveLength(2);
+    await callTool(configuration, { action: "webhook_pause", id: "wh1" }, false);
+    expect(JSON.parse(calls[2].body ?? "{}")).toEqual({ paused: true });
+  });
+
   it("registers the coarse tool set covering every domain", () => {
     const { tools } = harness();
     expect([...tools.keys()].sort()).toEqual([
@@ -577,4 +595,31 @@ describe("ciele MCP tools", () => {
       }
     }
   });
+});
+
+
+it("keeps Business hours reads in read-only mode and blocks schedule/timezone writes", async () => {
+  const { calls, tool } = harness();
+  const configuration = tool("manage_configuration");
+  expect((await callTool(configuration, { action: "business_hours_list" }, true)).isError).not.toBe(true);
+  expect(calls).toHaveLength(1);
+  for (const action of ["business_hours_create", "business_hours_update", "business_hours_delete", "business_hours_timezone"]) {
+    expect((await callTool(configuration, { action, id: "hours", input: {}, patch: {} }, true)).isError).toBe(true);
+  }
+  expect(calls).toHaveLength(1);
+  await callTool(configuration, { action: "business_hours_timezone", input: { timezone: "Europe/Rome" } }, false);
+  expect(calls[1]).toMatchObject({ method: "PATCH", body: JSON.stringify({ timezone: "Europe/Rome" }) });
+});
+
+it("exposes portable and schedule reads in read-only mode while blocking mutations", async () => {
+  const { calls, tool } = harness();
+  const assistants = tool("manage_assistants"); const configuration = tool("manage_configuration");
+  expect((await callTool(assistants, { action: "export", id: "a1" }, true)).isError).not.toBe(true);
+  expect((await callTool(configuration, { action: "export_schedule_list" }, true)).isError).not.toBe(true);
+  expect(calls).toHaveLength(2);
+  expect((await callTool(assistants, { action: "import", bundle: {} }, true)).isError).toBe(true);
+  expect((await callTool(configuration, { action: "export_schedule_update", id: "s1", patch: { enabled: false } }, true)).isError).toBe(true);
+  expect(calls).toHaveLength(2);
+  await callTool(configuration, { action: "export_schedule_update", id: "s1", patch: { enabled: false } }, false);
+  expect(JSON.parse(calls[2].body ?? "{}")).toEqual({ enabled: false });
 });

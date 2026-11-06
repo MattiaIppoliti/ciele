@@ -84,7 +84,7 @@ export const apiIntegrationInputSchema = z.object({
 
 export const getApiIntegrationOp = defineOperation({
   name: "apiIntegrations.get",
-  capability: "member",
+  capability: "apiIntegrations:view",
   effect: "read",
   input: z.object({ assistantId: idSchema }),
   entities: () => [],
@@ -109,7 +109,7 @@ const IDEMPOTENCY_REFUSALS: Record<IdempotencyRejection, (where: string) => stri
 
 export const setApiIntegrationOp = defineOperation({
   name: "apiIntegrations.set",
-  capability: "edit",
+  capability: "apiIntegrations:edit",
   effect: "write",
   input: z.object({ assistantId: idSchema, input: apiIntegrationInputSchema }),
   entities: ({ assistantId }) => [{ kind: "assistantEditor" as const, assistantId }],
@@ -162,7 +162,7 @@ export const setApiIntegrationOp = defineOperation({
 
 export const deleteApiIntegrationOp = defineOperation({
   name: "apiIntegrations.delete",
-  capability: "edit",
+  capability: "apiIntegrations:edit",
   effect: "consequential",
   input: z.object({ assistantId: idSchema }),
   entities: ({ assistantId }) => [{ kind: "assistantEditor" as const, assistantId }],
@@ -174,7 +174,7 @@ export const deleteApiIntegrationOp = defineOperation({
 
 export const getSsoConnectionOp = defineOperation({
   name: "sso.connection.get",
-  capability: "manageMembers",
+  capability: "sso:manage",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -203,7 +203,7 @@ export const ssoConnectionInputSchema = z.object({
 
 export const setSsoConnectionOp = defineOperation({
   name: "sso.connection.set",
-  capability: "manageMembers",
+  capability: "sso:manage",
   effect: "consequential",
   input: ssoConnectionInputSchema,
   entities: () => [{ kind: "assistantList" as const }],
@@ -226,7 +226,7 @@ export const setSsoConnectionOp = defineOperation({
 
 export const disconnectSsoConnectionOp = defineOperation({
   name: "sso.connection.disconnect",
-  capability: "manageMembers",
+  capability: "sso:manage",
   effect: "consequential",
   input: z.object({}),
   entities: () => [{ kind: "assistantList" as const }],
@@ -245,7 +245,7 @@ function providerView(connection: ProviderConnection): ProviderConnectionView {
 
 export const listProviderConnectionsOp = defineOperation({
   name: "providers.list",
-  capability: "manageMembers",
+  capability: "providers:manage",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -259,7 +259,7 @@ export function keyHintOf(secret: string): string {
 
 export const createProviderApiKeyOp = defineOperation({
   name: "providers.createApiKey",
-  capability: "manageMembers",
+  capability: "providers:manage",
   effect: "consequential",
   input: z.object({
     // `ai_gateway` is one key for every catalog provider's models through AI
@@ -314,7 +314,7 @@ export const openAiCompatibleInputSchema = z.object({
 
 export const createOpenAiCompatibleConnectionOp = defineOperation({
   name: "providers.createOpenAiCompatible",
-  capability: "manageMembers",
+  capability: "providers:manage",
   effect: "consequential",
   input: openAiCompatibleInputSchema,
   entities: () => [{ kind: "aiSettings" as const }],
@@ -384,7 +384,7 @@ export const federatedProviderInputSchema = z.discriminatedUnion("kind", [
 
 export const createFederatedProviderConnectionOp = defineOperation({
   name: "providers.createFederated",
-  capability: "manageMembers",
+  capability: "providers:manage",
   effect: "consequential",
   input: federatedProviderInputSchema,
   entities: () => [{ kind: "aiSettings" as const }],
@@ -442,7 +442,7 @@ export const createFederatedProviderConnectionOp = defineOperation({
 
 export const deleteProviderConnectionOp = defineOperation({
   name: "providers.delete",
-  capability: "manageMembers",
+  capability: "providers:manage",
   effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "aiSettings" as const }],
@@ -457,7 +457,7 @@ export const deleteProviderConnectionOp = defineOperation({
 
 export const setEmbeddingConnectionOp = defineOperation({
   name: "providers.setEmbedding",
-  capability: "manageMembers",
+  capability: "providers:manage",
   effect: "consequential",
   input: z.object({ connectionId: idSchema.nullable() }),
   entities: () => [{ kind: "aiSettings" as const }],

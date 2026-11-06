@@ -1,15 +1,33 @@
-import type { Member, Organization, OrganizationPatch, Role } from "@agent-hub/core";
+import { deferAuditCommit, describeAuditChange } from "./audit";
+import type { AuditFieldChange, Member, Organization, OrganizationPatch, Role } from "@agent-hub/core";
 import {
   apiKeySecretHint,
   generateApiKeySecret,
+  ROLES,
   hashApiKeySecret,
-  memberRoleRank,
+  roleLabel,
+  RETENTION_BOUNDS_MESSAGE,
+  RETENTION_MAX_DAYS,
+  RETENTION_MIN_DAYS,
 } from "@agent-hub/core";
 import { z } from "zod";
 import { OperationError, defineOperation, type OperationContext } from "./operation";
+import { assertMayHandOn, resolveAssignableRole } from "./roles";
 
 const idSchema = z.string().min(1);
-const roleSchema = z.enum(["owner", "admin", "editor", "viewer"]);
+const roleSchema = z.enum(ROLES);
+
+/**
+ * Which Role to give (ADR-0028): `roleId`, any Role of the Organization,
+ * custom ones included; or `role`, a built-in by name, which is what every
+ * client before custom Roles sends and keeps working.
+ */
+const roleChoice = {
+  roleId: idSchema.optional(),
+  role: roleSchema.optional(),
+};
+const requireRoleChoice = (value: { roleId?: string; role?: Role }) => Boolean(value.roleId || value.role);
+const ROLE_CHOICE_MESSAGE = "Choose a Role: roleId, or role for a built-in";
 
 async function requireMemberRow(
   ctx: OperationContext,
@@ -74,11 +92,26 @@ async function revokeKeysDelegatedBy(
  * the sweep never saw a policy (found while adding its transcript twin,
  * #801/CYB-12).
  */
+/**
+ * One month to five years: the Data retention tab's bounds, and the check
+ * constraints of 20261104130000_data_retention. Conversations take them too,
+ * on writes only, so a window saved before the tab existed still reads back.
+ */
+const retentionWindow = z
+  .number()
+  .int()
+  .min(RETENTION_MIN_DAYS, RETENTION_BOUNDS_MESSAGE)
+  .max(RETENTION_MAX_DAYS, RETENTION_BOUNDS_MESSAGE);
+
 export const organizationPatchSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   logoUrl: z.string().max(2_000).nullable().optional(),
   traceRetentionDays: z.number().int().positive().nullable().optional(),
-  transcriptRetentionDays: z.number().int().positive().nullable().optional(),
+  transcriptRetentionDays: retentionWindow.nullable().optional(),
+  messageRetentionDays: retentionWindow.nullable().optional(),
+  improvementRetentionDays: retentionWindow.nullable().optional(),
+  // Always enforced: there is no keep-forever setting for the audit log.
+  auditRetentionDays: retentionWindow.optional(),
 }) satisfies z.ZodType<OrganizationPatch>;
 
 export const getOrganizationOp = defineOperation({
@@ -96,13 +129,41 @@ export const getOrganizationOp = defineOperation({
   },
 });
 
+/** The retention windows as the audit log shows them, one key per data type. */
+function retentionPolicy(organization: Organization) {
+  return {
+    conversations: organization.transcriptRetentionDays ?? null,
+    messages: organization.messageRetentionDays ?? null,
+    improvements: organization.improvementRetentionDays ?? null,
+    auditRecords: organization.auditRetentionDays ?? null,
+    reasoningTraces: organization.traceRetentionDays ?? null,
+  };
+}
+
 export const updateOrganizationOp = defineOperation({
   name: "organization.update",
-  capability: "manageMembers",
+  capability: "organization:edit",
   effect: "consequential",
   input: organizationPatchSchema,
   entities: () => [{ kind: "organization" as const }],
-  run: (ctx, patch) => ctx.db.updateOrganization(ctx.organizationId, patch),
+  run: async (ctx, patch) => {
+    const before = (await ctx.db.listOrganizations()).find((item) => item.id === ctx.organizationId);
+    const after = await ctx.db.updateOrganization(ctx.organizationId, patch);
+    if (before) {
+      const changes: Record<string, AuditFieldChange> = {};
+      if (before.name !== after.name) changes.Name = { before: before.name, after: after.name };
+      if ((before.logoUrl ?? null) !== (after.logoUrl ?? null)) {
+        changes.Logo = { before: before.logoUrl ?? null, after: after.logoUrl ?? null };
+      }
+      const policyBefore = retentionPolicy(before);
+      const policyAfter = retentionPolicy(after);
+      if (JSON.stringify(policyBefore) !== JSON.stringify(policyAfter)) {
+        changes["Retention policy"] = { before: policyBefore, after: policyAfter };
+      }
+      describeAuditChange({ target: { label: after.name }, changes });
+    }
+    return after;
+  },
 });
 
 const positiveLimit = (message: string) =>
@@ -115,7 +176,7 @@ const positiveLimit = (message: string) =>
  */
 export const setOrgBudgetOp = defineOperation({
   name: "organization.budget.set",
-  capability: "manageMembers",
+  capability: "organization:edit",
   effect: "consequential",
   input: z.object({
     dailyTokenLimit: positiveLimit("The daily token limit must be a positive number."),
@@ -135,7 +196,7 @@ export const setOrgBudgetOp = defineOperation({
 
 export const listMembersOp = defineOperation({
   name: "members.list",
-  capability: "edit",
+  capability: "members:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -144,22 +205,29 @@ export const listMembersOp = defineOperation({
 
 export const updateMemberRoleOp = defineOperation({
   name: "members.updateRole",
-  capability: "manageMembers",
+  capability: "members:manage",
   effect: "consequential",
-  input: z.object({ userId: idSchema, role: roleSchema }),
+  input: z.object({ userId: idSchema, ...roleChoice }).refine(requireRoleChoice, ROLE_CHOICE_MESSAGE),
   entities: () => [{ kind: "members" as const }],
-  run: async (ctx, { userId, role }) => {
+  run: async (ctx, { userId, ...choice }) => {
     const member = await requireMemberRow(ctx, userId);
-    assertMayManageTier(ctx, member, role);
-    await assertNotLastOwner(ctx, member, role);
-    await ctx.db.updateMemberRole(ctx.organizationId, userId, role);
+    const role = await resolveAssignableRole(ctx, choice);
+    assertMayManageTier(ctx, member, role.tier);
+    assertMayHandOn(ctx, role);
+    await assertNotLastOwner(ctx, member, role.tier);
+    await ctx.db.updateMemberRole(ctx.organizationId, userId, role.id);
+    const before = member.roleName ?? roleLabel(member.role);
+    describeAuditChange({
+      target: { label: member.email, detail: `${role.name} role` },
+      changes: { Role: { before, after: role.name } },
+    });
     return requireMemberRow(ctx, userId);
   },
 });
 
 export const removeMemberOp = defineOperation({
   name: "members.remove",
-  capability: "manageMembers",
+  capability: "members:manage",
   effect: "consequential",
   input: z.object({ userId: idSchema }),
   entities: () => [{ kind: "members" as const }, { kind: "apiKeys" as const }],
@@ -169,6 +237,10 @@ export const removeMemberOp = defineOperation({
     await assertNotLastOwner(ctx, member);
     await revokeKeysDelegatedBy(ctx, userId);
     await ctx.db.removeMember(ctx.organizationId, userId);
+    describeAuditChange({
+      target: { label: member.email, detail: `${member.roleName ?? roleLabel(member.role)} role` },
+      changes: { Role: { before: member.roleName ?? roleLabel(member.role), after: null } },
+    });
   },
 });
 
@@ -189,13 +261,14 @@ export const leaveOrganizationOp = defineOperation({
     const member = await requireMemberRow(ctx, ctx.userId);
     await assertNotLastOwner(ctx, member);
     await revokeKeysDelegatedBy(ctx, ctx.userId);
-    await ctx.db.removeMember(ctx.organizationId, ctx.userId);
+    describeAuditChange({ target: { label: member.email, detail: `${member.roleName ?? roleLabel(member.role)} role` } });
+    deferAuditCommit({ member, run: entry => ctx.db.leaveOrganization(ctx.organizationId, ctx.userId, entry) });
   },
 });
 
 export const listInvitesOp = defineOperation({
   name: "invites.list",
-  capability: "manageMembers",
+  capability: "members:manage",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -204,21 +277,27 @@ export const listInvitesOp = defineOperation({
 
 export const createInviteOp = defineOperation({
   name: "invites.create",
-  capability: "manageMembers",
+  capability: "members:manage",
   effect: "consequential",
-  input: z.object({ role: roleSchema, email: z.string().email().optional() }),
+  input: z.object({ ...roleChoice, email: z.string().email().optional() }).refine(requireRoleChoice, ROLE_CHOICE_MESSAGE),
   entities: () => [{ kind: "members" as const }],
-  run: (ctx, { role, email }) => {
-    if (role === "owner" && ctx.role !== "owner") {
+  run: async (ctx, { email, ...choice }) => {
+    const role = await resolveAssignableRole(ctx, choice);
+    if (role.tier === "owner" && ctx.role !== "owner") {
       throw new OperationError("invalid_input", "Only owners can invite another owner");
     }
-    return ctx.db.createInvite(ctx.organizationId, role, email);
+    assertMayHandOn(ctx, role);
+    describeAuditChange({
+      // An invitation link without an address is still a grant of a Role.
+      target: { label: email ?? "Invitation link", detail: `${role.name} role` },
+    });
+    return ctx.db.createInvite(ctx.organizationId, role.id, email);
   },
 });
 
 export const revokeInviteOp = defineOperation({
   name: "invites.revoke",
-  capability: "manageMembers",
+  capability: "members:manage",
   effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "members" as const }],
@@ -228,12 +307,15 @@ export const revokeInviteOp = defineOperation({
     );
     if (!invite) throw new OperationError("not_found", "Invite not found");
     await ctx.db.revokeInvite(id);
+    describeAuditChange({
+      target: { label: invite.email ?? "Invitation link", detail: `${invite.roleName ?? roleLabel(invite.role)} role` },
+    });
   },
 });
 
 export const listOrgApiKeysOp = defineOperation({
   name: "apiKeys.list",
-  capability: "manageApiKeys",
+  capability: "apiKeys:manage",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -242,38 +324,40 @@ export const listOrgApiKeysOp = defineOperation({
 
 export const createOrgApiKeyOp = defineOperation({
   name: "apiKeys.create",
-  capability: "manageApiKeys",
+  capability: "apiKeys:manage",
   effect: "consequential",
   input: z.object({
     name: z.string().trim().min(1).max(200),
-    role: roleSchema,
-  }),
+    ...roleChoice,
+  }).refine(requireRoleChoice, ROLE_CHOICE_MESSAGE),
   entities: () => [{ kind: "apiKeys" as const }],
-  run: async (ctx, { name, role }) => {
-    if (memberRoleRank(role) > memberRoleRank(ctx.role)) {
-      throw new OperationError(
-        "invalid_input",
-        "An API key's role cannot exceed the calling key's role"
-      );
-    }
+  run: async (ctx, { name, ...choice }) => {
+    const role = await resolveAssignableRole(ctx, choice);
+    // A key delegates at most what its creator holds: every Capability of its
+    // Role must be one the caller has (the rank cap and the Support Agent
+    // rule this replaces were both special cases of it).
+    assertMayHandOn(ctx, role, "An API key's role cannot exceed the calling key's role");
     if (!ctx.userId) {
       throw new OperationError("invalid_input", "The calling key has no human delegator");
     }
     const secret = generateApiKeySecret();
     const apiKey = await ctx.db.createApiKey(ctx.organizationId, {
       name,
-      role,
+      roleId: role.id,
+      role: role.tier,
       secretHash: hashApiKeySecret(secret),
       secretHint: apiKeySecretHint(secret),
       createdBy: ctx.userId,
     });
+    // The name and the Role, never the secret or its hint.
+    describeAuditChange({ target: { label: name, detail: `${role.name} role` } });
     return { apiKey, secret };
   },
 });
 
 export const deleteOrgApiKeyOp = defineOperation({
   name: "apiKeys.delete",
-  capability: "manageApiKeys",
+  capability: "apiKeys:manage",
   effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "apiKeys" as const }],
@@ -289,12 +373,13 @@ export const deleteOrgApiKeyOp = defineOperation({
     if (!(await ctx.db.deleteRevokedApiKey(id))) {
       throw new OperationError("conflict", "The API key was not deleted");
     }
+    describeAuditChange({ target: { label: key.name, detail: `${key.roleName ?? roleLabel(key.role)} role` } });
   },
 });
 
 export const revokeOrgApiKeyOp = defineOperation({
   name: "apiKeys.revoke",
-  capability: "manageApiKeys",
+  capability: "apiKeys:manage",
   effect: "consequential",
   input: z.object({ id: idSchema }),
   entities: () => [{ kind: "apiKeys" as const }],
@@ -302,5 +387,6 @@ export const revokeOrgApiKeyOp = defineOperation({
     const key = (await ctx.db.listApiKeys(ctx.organizationId)).find((item) => item.id === id);
     if (!key) throw new OperationError("not_found", "API key not found");
     await ctx.db.revokeApiKey(id);
+    describeAuditChange({ target: { label: key.name, detail: `${key.roleName ?? roleLabel(key.role)} role` } });
   },
 });

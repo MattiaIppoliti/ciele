@@ -1,0 +1,86 @@
+# The Rust service (services/ciele-api, map #1111). An overlay, never used on
+# its own, and off unless `.env` asks:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.rust.yml
+#   CIELE_RUST_API_SECRET=<openssl rand -hex 32>
+#
+# or `./deploy/bootstrap.sh --rust`, which writes those lines for you.
+#
+# With it on, the app forwards the operations in CIELE_RUST_OPERATIONS to the
+# service, and the app's middleware sends the /api/v1 endpoints of those
+# operations straight to it: the service checks the API key itself and the
+# route handler never runs (#1134), and /api/mcp too (#1135). Without it, or with an operation taken off
+# the list, everything runs in the app exactly as before. RUNBOOK:
+# services/ciele-api/RUNBOOK.md.
+#
+# The service speaks to Postgres directly, so it sits on `data` beside the
+# other services that do, and on `backend` so the app can reach it. It
+# publishes no host port: the app is its only caller. Built from source; there
+# is no published image yet, so image mode still builds this one service.
+#
+# On an external database (docker-compose.external-db.yml) there is no
+# `postgres` service: set CIELE_RUST_DATABASE_URL to a direct or session-mode
+# connection string the service can use (see the RUNBOOK on poolers).
+
+services:
+  ciele-api:
+    build:
+      context: ..
+      dockerfile: services/ciele-api/Dockerfile
+    restart: unless-stopped
+    networks: [backend, data]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${CIELE_RUST_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres}
+      CIELE_RUST_API_SECRET: ${CIELE_RUST_API_SECRET:?set CIELE_RUST_API_SECRET to run the Rust service}
+      HOST: 0.0.0.0
+      PORT: "8080"
+      RUST_LOG: ${CIELE_RUST_LOG:-info}
+      # The hosted MCP endpoint (#1135): a tool on an operation the service
+      # does not port calls the app's /api/v1 here, with the caller's key.
+      CIELE_MCP_API_ORIGIN: http://app:3000
+      CIELE_MCP_READ_ONLY: ${CIELE_MCP_READ_ONLY:-}
+      # The same list the app reads, so taking a name off moves both doors.
+      CIELE_RUST_OPERATIONS: ${CIELE_RUST_OPERATIONS:-}
+      # The public widget endpoints (#1136) read what the app reads, by the
+      # same names: the sealing keys open the SSO gate cookie, and the model
+      # keys are read only for whether they are set, to draw the same picker.
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run ./deploy/bootstrap.sh first}
+      APP_ENCRYPTION_KEY_PREVIOUS: ${APP_ENCRYPTION_KEY_PREVIOUS:-}
+      OPENAI_COMPATIBLE_BASE_URL: ${OPENAI_COMPATIBLE_BASE_URL:-}
+      OPENAI_COMPATIBLE_CHAT_MODEL: ${OPENAI_COMPATIBLE_CHAT_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
+      # Source downloads (#1138) sign and fetch originals from Storage through
+      # the gateway, on `backend`, with the service-role key the app uses.
+      SUPABASE_URL: http://gateway:8000
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:?run ./deploy/bootstrap.sh first}
+      # The widget's rate limits and download ledger read the caller's
+      # address as the app does.
+      CIELE_TRUSTED_PROXY_HOPS: ${CIELE_TRUSTED_PROXY_HOPS:-}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    mem_limit: 256m
+
+  app:
+    depends_on:
+      ciele-api:
+        condition: service_started
+    environment:
+      CIELE_RUST_API_URL: http://ciele-api:8080
+      CIELE_RUST_API_SECRET: ${CIELE_RUST_API_SECRET:?set CIELE_RUST_API_SECRET to run the Rust service}
+      # Every operation the service ports, by default. List fewer in .env and
+      # restart the app to run the rest in TypeScript again; an empty value
+      # means this default, so to run none, take the overlay off COMPOSE_FILE.
+      # The hosted MCP endpoint goes to the service too; 0 keeps it in the app.
+      CIELE_RUST_MCP: ${CIELE_RUST_MCP:-1}
+      # The widget endpoints the app sends to the service, by name; empty, the
+      # default, sends none.
+      CIELE_RUST_WIDGET_ROUTES: ${CIELE_RUST_WIDGET_ROUTES:-}
+      CIELE_RUST_OPERATIONS: ${CIELE_RUST_OPERATIONS:-alerts.list,alerts.resolve,alerts.update,taskLabels.list,taskLabels.create,taskLabels.update,taskLabels.delete,improvements.list,improvements.listPage,improvements.fix.propose,improvements.fix.dismiss}

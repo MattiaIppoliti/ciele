@@ -5,18 +5,78 @@ description: Controlla chi può leggere, modificare, pubblicare e amministrare u
 
 ## Ruoli
 
-| Role | Livello di autorizzazione attuale |
+Un Role è un insieme di funzionalità. Una capability è una singola azione che un
+membro può compiere, ad esempio **Create and edit Flows** (`flows:edit`). Ogni
+Organization parte con sei Roles predefiniti.
+
+| Role | Funzionalità predefinite |
 | --- | --- |
 | Viewer | Legge i dati dell'organizzazione e del prodotto. |
-| Editor | Modifica i contenuti e la configurazione dell'Assistente. |
-| Admin | Pubblica gli Assistenti e gestisce i membri e le chiavi API. |
-| Owner | Modifica i ruoli e gestisce gli owner. |
+| Data Viewer | Legge gli Insights e gli Assistenti che gli Insights mostrano. |
+| Support Agent | Ha le stesse autorizzazioni di lettura di un Viewer. Inoltre, prende in carico le Conversations, risponde ai Visitors, utilizza i Quick Texts e opera negli Help Desk come operatore. |
+| Editor | Modifica il contenuto e la configurazione dell'Assistente. |
+| Admin | Pubblica gli Assistenti e gestisce i membri, i Roles, le API keys e le integrazioni. |
+| Owner | Dispone di tutte le funzionalità. Gestisce gli owner e gli abbonamenti AI personali. |
 
-L'applicazione applica controlli delle funzionalità più specifici alle singole
-operazioni.
+La navigazione di un Support Agent mostra solo **Inbox**, **Help Desks**, **My
+Tasks**, **Notifications** e **Settings**. Se un Support Agent apre una pagina
+diversa tramite un link diretto, Ciele visualizza un messaggio relativo alle
+autorizzazioni.
 
-La sezione **Roles** nella parte inferiore di **Settings > Members** mostra una
-tabella delle autorizzazioni di ciascun Role.
+## Modifica e crea Roles
+
+Apri **Settings > Roles**. L'elenco mostra ogni Role, il numero di funzionalità
+associate e chi la possiede.
+
+Per creare un Role:
+
+1. Seleziona **New role**.
+2. In **Start from**, seleziona un Role da copiare oppure seleziona **Nothing**.
+3. Inserisci un nome e una descrizione.
+4. In **Available on**, seleziona **Organization**, **Assistant** o entrambi.
+5. Seleziona le funzionalità. Seleziona una casella di gruppo per selezionare
+   tutte le funzionalità di quel gruppo. Usa la casella di ricerca per trovare
+   una funzionalità.
+6. Seleziona **Create role**.
+
+Quando selezioni una funzionalità, Ciele seleziona anche le funzionalità di cui
+ha bisogno. Ad esempio, **Create and edit Flows** necessita di **View Flows** e
+**View Assistants**. Una funzionalità di cui un'altra funzionalità selezionata
+ha bisogno rimane selezionata. La riga mostra quale capability ne ha bisogno.
+Deseleziona prima quella capability.
+
+Puoi modificare tutti i ruoli predefiniti tranne Owner. Un Role predefinito
+modificato mostra **Edited**. Seleziona **Reset to default** per ripristinare le
+sue funzionalità predefinite.
+
+Le regole:
+
+- Non puoi assegnare a un Role una capability che tu non possiedi. Questo vale
+  quando modifichi un Role, assegni un Role a un membro, inviti con un Role o
+  crei una API key.
+- Non puoi concedere a un Teammate l'accesso a un'area che il tuo Role non può
+  utilizzare.
+- Non puoi modificare il Role che hai. Un Owner può modificare tutti i Roles
+  tranne Owner.
+- Non puoi eliminare un Role predefinito. Non puoi eliminare un Role
+  personalizzato se è assegnato a un membro, a un invito o a una chiave API
+  attiva. Prima assegna loro un altro Role.
+- Quando Ciele aggiunge una funzionalità, i ruoli predefiniti che non hai
+  modificato la ottengono se fa parte delle loro impostazioni predefinite. I
+  ruoli modificati e quelli personalizzati non la ottengono.
+
+Per gestire i ruoli, un membro deve disporre della capability **Manage Roles**.
+Gli amministratori la possiedono per impostazione predefinita. Tutte le
+modifiche vengono visualizzate nell'audit log.
+
+## Ruoli predefiniti
+
+Due ruoli sono predefiniti. Il **Organization default** è il primo Role nel
+modulo di invito. Il **Assistant default** è il primo Role quando concedi a un
+membro l'accesso a un Assistant. Inizialmente, questi sono Editor e Viewer.
+
+Per modificarli, apri **Settings > Roles** e seleziona **Manage defaults**. Non
+puoi eliminare un Role predefinito. Prima seleziona un altro valore predefinito.
 
 ## Invita i membri
 
@@ -43,17 +103,70 @@ non riesce a creare un invito, l'indirizzo rimane nel campo. Seleziona di nuovo
 
 ## Modifica un membro
 
-Un Admin può gestire i membri al di sotto del livello Owner. Un Owner può
-gestire tutti i livelli.
+In **Settings > Members**, seleziona un Role nella colonna **Role**. L'elenco
+mostra i ruoli che puoi assegnare. Solo un Owner può rendere un membro un Owner
+o modificare un Owner.
 
 Un membro non può modificare né rimuovere la propria riga dall'elenco dei
-membri. Usa un altro membro autorizzato per quell'operazione.
+membri. Per quell'operazione, utilizza un altro membro autorizzato.
 
 ## Ruoli delle chiavi API
 
-Un Admin o un Owner può creare una chiave API dell'organizzazione. Il Role
-selezionato non può essere di livello superiore rispetto al Role del creatore.
+Un membro con la capability **Manage API keys** può creare una chiave API
+dell'organizzazione. La chiave può avere qualsiasi Role, anche un Role
+personalizzato. Il ruolo non può avere una capability che il creator non
+possiede.
+
+Una chiave può fare solo ciò che sia il suo Role che il suo creatore possono
+fare al momento. Se il creatore perde una capability, anche la chiave la perde.
 
 Revoca una chiave quando il suo client non ha più bisogno dell'accesso. Ciele
-conserva il record revocato per le informazioni di audit. Un Admin o un Owner
-può eliminare una chiave revocata per rimuoverne la voce nel registro.
+conserva il record revocato per le informazioni di audit. Puoi eliminare una
+chiave revocata per rimuoverne il record.
+
+## Gestisci l'accesso a un Assistente
+
+Un Owner o un Admin apre un Assistant, quindi seleziona **More options → Manage
+access**. L'elenco mostra l'Organization Role di ciascun Member e qualsiasi
+override. Seleziona **Denied** o un Role, quindi conferma la modifica. L'elenco
+mostra tutti i ruoli disponibili per gli Assistenti, inclusi i ruoli
+personalizzati. Seleziona **Organization Role** per annullare l'override. I
+proprietari mantengono sempre l'accesso.
+
+Un Role su un Assistant sostituisce l'Organization Role su quel Assistant. Può
+concedere più o meno autorizzazioni rispetto all'Organization Role. Si applica
+solo alle funzionalità degli Assistenti, ad esempio Flows, Knowledge e Inbox. Le
+funzionalità per l'organizzazione, ad esempio Members e API keys, non cambiano.
+
+Denied nasconde l'Assistente dagli elenchi, dalla ricerca, da Find e dal
+Developer Panel. La stessa restrizione si applica alle sue impostazioni
+secondarie e ai link alla Knowledge. Le chiavi API di un Member, i Teammates e
+Ciele AI operano nell'ambito dell'accesso di quel Member. Anche le chiavi API
+mantengono il proprio limite di Role. Un override non innalza mai quel limite.
+
+La modifica dell'accesso ha conseguenze rilevanti. Ciele AI ti chiede
+l'approvazione prima della modifica. I Teammate ordinari non possono modificare
+l'accesso. Il Developer Panel mostra i comandi API, CLI e MCP per queste
+operazioni.
+
+## Limita un membro ad alcuni Assistenti
+
+Nella scheda **Members**, la colonna **Assistants** mostra ciò a cui ciascun
+membro può accedere. Seleziona **Manage assistants** sotto un membro per
+modificarlo.
+
+- **All assistants** assegna al membro il suo Organization Role su ogni
+  Assistente, ora e in futuro. Puoi comunque impostare un override per ogni
+  Assistente.
+- **Only selected assistants** concede al membro l'accesso solo agli Assistenti
+  che selezioni. Seleziona un Role per ciascuno tra i Roles disponibili sugli
+  Assistants. Il Role può essere di livello superiore o inferiore rispetto
+  all'Organization Role.
+
+Un membro con **Only selected assistants** non vede un nuovo Assistente finché
+non lo aggiungi tu. Quando quel membro crea un Assistente, ottiene l'accesso a
+esso in base al proprio Organization Role. La restrizione è la stessa di
+**Denied** per ogni Assistente non selezionato.
+
+Gli Owners hanno sempre accesso a ogni Assistant. Ogni modifica viene
+visualizzata nell'audit log.

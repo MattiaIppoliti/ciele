@@ -31,6 +31,9 @@ const SectionRailContext = createContext<RailContext | null>(null);
  * bottom as the scroll runs out, or the closing sections are dimmed forever.
  */
 export function SectionTimeline({ children }: { children: ReactNode }) {
+  // Geometry matches the console `SectionHeading` above it: a 1.5rem icon and
+  // a 0.75rem gap, so each dot centres under the icon (left 0.375rem + half of
+  // its 0.75rem) and each section title starts where the page title does.
   const [activeId, setActiveId] = useState<string | null>(null);
   const sectionsRef = useRef(new Map<string, HTMLElement>());
   const frameRef = useRef(0);
@@ -121,7 +124,7 @@ export function SectionTimeline({ children }: { children: ReactNode }) {
             else, which is a fixed 24px rather than a share of the height. */}
         <div
           aria-hidden
-          className="absolute top-3 bottom-3 left-[5.5px] w-px bg-[linear-gradient(to_bottom,transparent,var(--alpha-strong)_24px,var(--alpha-strong)_calc(100%_-_24px),transparent)]"
+          className="absolute top-3 bottom-3 left-[calc(0.75rem-0.5px)] w-px bg-[linear-gradient(to_bottom,transparent,var(--alpha-strong)_24px,var(--alpha-strong)_calc(100%_-_24px),transparent)]"
         />
         {children}
       </div>
@@ -152,10 +155,10 @@ export function TimelineSection({
   const active = ctx?.activeId === id;
 
   return (
-    <section ref={ref} className="relative pt-1 pb-8 pl-7 last:pb-0 lg:pl-8">
+    <section ref={ref} className="relative pt-1 pb-8 pl-9 last:pb-0">
       <span
         aria-hidden
-        className={`absolute top-[9px] left-0 size-3 rounded-full border-2 transition-[transform,border-color] duration-150 motion-reduce:transition-none ${
+        className={`absolute top-[9px] left-1.5 size-3 rounded-full border-2 transition-[transform,border-color] duration-150 motion-reduce:transition-none ${
           active
             ? "border-foreground bg-background scale-110"
             : "border-muted-foreground/35 bg-background"

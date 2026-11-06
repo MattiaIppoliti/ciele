@@ -1619,6 +1619,18 @@ scritto-text:not(:defined) {
   @apply flex min-w-0 flex-1 flex-col p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:p-2;
 }
 
+/* A page's title at display size. The component catalog and every console
+   SectionHeading share it, so the two cannot drift apart. Sized on the nearest
+   container (cqi, the viewport when there is none), so a title in a narrow
+   list pane steps down instead of overflowing it. */
+@utility text-display {
+  font-size: clamp(2.25rem, 7cqi, 4.5rem);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
 @utility admin-panel {
   @apply bg-content flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border shadow-[0_1px_3px_rgb(0_0_0/0.06)];
 }
@@ -2236,6 +2248,12 @@ html[data-app-surface="admin"][data-squircle-ready] :is(
 ):not(:focus-visible) {
   --tw-ring-shadow: 0 0 transparent;
 }
+/* A box-shadow traces the old rounded rectangle too, 3px outside the frame:
+   a second edge with a second radius. Resting cards keep the frame and sheen as
+   their lift; dialogs keep theirs, they really float. */
+html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card) {
+  --tw-shadow: 0 0 transparent;
+}
 html[data-app-surface="admin"][data-squircle-ready] :is(
   [data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card,
   [data-slot="dialog-content"].bg-popover:not(.overflow-y-auto, .overflow-auto),
@@ -2251,7 +2269,7 @@ html[data-app-surface="admin"][data-squircle-ready] :is(
   background:
     linear-gradient(var(--squircle-frame), var(--squircle-frame)),
     var(--squircle-ground, var(--card));
-  filter: url(#SquiCircleFilter);
+  filter: url(#SquiCircleFilter) var(--squircle-lift,);
   pointer-events: none;
 }
 html[data-app-surface="admin"][data-squircle-ready] :is(
@@ -2267,6 +2285,13 @@ html[data-app-surface="admin"][data-squircle-ready] :is(
   background-color: var(--card);
   filter: url(#SquiCircleFilter);
   pointer-events: none;
+}
+/* A box-shadow follows the element's rounded rectangle, 3px outside the
+   squircle frame, so it read as a second border around the card. The lift
+   moves onto the frame itself, where it follows the squircle contour. */
+html[data-app-surface="admin"][data-squircle-ready] .squircle-card {
+  --tw-shadow: 0 0 #0000;
+  --squircle-lift: drop-shadow(0 1px 3px rgb(0 0 0 / 0.08));
 }
 html[data-app-surface="admin"][data-squircle-ready] :is([data-slot="card"].bg-card:not(.overflow-y-auto, .overflow-auto), .squircle-card)::after {
   background-image: var(--squircle-fill-image,

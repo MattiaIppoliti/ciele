@@ -18,6 +18,7 @@ import type { ApiV1Domain } from "@/lib/api-v1/meta";
 export type PanelCapability =
   | "member"
   | "edit"
+  | "operate"
   | "publish"
   | "manageMembers"
   | "manageApiKeys"

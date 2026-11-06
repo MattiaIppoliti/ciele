@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { ChannelKind, HelpDesk, SupportChannel } from "@agent-hub/core";
-import { CircleHelp, Move, Plus, Trash2 } from "lucide-react";
+import { Move, Plus, Trash2 } from "lucide-react";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
@@ -16,11 +16,17 @@ import {
 } from "@/app/actions";
 import type { ChannelPanelState } from "@/components/help-desks/channel-panel";
 import { TicketingIntegrationSection } from "@/components/help-desks/ticketing-integration";
+import { DeskOperators } from "@/components/help-desks/desk-operators";
 import { Button, Skeleton } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
-import { CHANNEL_KINDS, CHANNEL_KIND_ORDER } from "@/lib/support-channels";
+import {
+  CHANNEL_KINDS,
+  CHANNEL_KIND_ORDER,
+  channelKindUnavailable,
+} from "@/lib/support-channels";
+import type { TicketingConnectionOption } from "@/lib/ticketing-integrations";
 import {
   isRedirectError,
   useConfirmDelete,
@@ -83,10 +89,18 @@ export function HelpDeskManage({
   desk,
   channels,
   canEdit,
+  ticketingConnections,
+  members = [],
+  operators = [],
 }: {
   desk: HelpDesk;
   channels: SupportChannel[];
   canEdit: boolean;
+  /** Application Connections the Ticketing Integration section may name. */
+  ticketingConnections: TicketingConnectionOption[];
+  /** The Organization's Members, offered as operators (#1084). */
+  members?: Array<{ userId: string; name: string }>;
+  operators?: Array<{ memberId: string; capacity: number }>;
 }) {
   const router = useRouter();
   const [name, setName] = useState(desk.name);
@@ -226,11 +240,11 @@ export function HelpDeskManage({
   }
 
   function openKind(kind: ChannelKind) {
-    const meta = CHANNEL_KINDS[kind];
-    if (meta.requiresTicketing) {
-      toast.info(
-        `${meta.label} requires the ticketing integration, coming in a later iteration.`,
-      );
+    const unavailable = channelKindUnavailable(kind, {
+      ticketingReady: Boolean(desk.ticketingTarget),
+    });
+    if (unavailable) {
+      toast.info(unavailable);
       return;
     }
     openPanel({ mode: "new", kind });
@@ -286,7 +300,6 @@ export function HelpDeskManage({
     <div className="touch-scroll-clearance h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-10">
         <SectionHeading
-          icon={CircleHelp}
           title={desk.name}
 
         />
@@ -507,6 +520,17 @@ export function HelpDeskManage({
               </section>
             </TimelineSection>
 
+            {order.some((channel) => channel.kind === "live_operator") && (
+              <TimelineSection title="Operators">
+                <DeskOperators
+                  helpDeskId={desk.id}
+                  members={members}
+                  operators={operators}
+                  canEdit={canEdit}
+                />
+              </TimelineSection>
+            )}
+
             <TimelineSection title="Answer Improvements">
               <section className="rounded-xl border bg-card px-4 py-3.5">
                 <div className="flex items-start justify-between gap-6">
@@ -546,7 +570,11 @@ export function HelpDeskManage({
             <TimelineSection title="Ticketing Integration">
               <TicketingIntegrationSection
                 helpDeskId={desk.id}
-                integration={desk.ticketingIntegration}
+                target={desk.ticketingTarget}
+                legacyIntegration={
+                  desk.ticketingIntegration ? { name: desk.ticketingIntegration.name } : null
+                }
+                connections={ticketingConnections}
                 canEdit={canEdit}
               />
             </TimelineSection>
@@ -558,6 +586,7 @@ export function HelpDeskManage({
         <ChannelPanel
           key={panelKey}
           helpDeskId={desk.id}
+          ticketingReady={Boolean(desk.ticketingTarget)}
           initial={panel}
           canEdit={canEdit}
           onClose={() => setPanel(null)}

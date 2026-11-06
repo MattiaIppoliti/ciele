@@ -58,7 +58,7 @@ La CLI risolve una chiave in questo ordine:
 2. La variabile di ambiente `CIELE_API_KEY`.
 3. Il file di configurazione salvato.
 
-La CLI utilizza lo stesso ordine per `--base-url`, `CIELE_BASE_URL` e l'origin
+La CLI utilizza lo stesso ordine per `--base-url`, `CIELE_BASE_URL` e l'origine
 salvata. L'origine ospitata è l'impostazione predefinita finale.
 
 ## Utilizza l'output dell'automazione
@@ -96,7 +96,7 @@ conoscenze accessibili a un Assistant. I comandi sono `sources add-text`,
 ### Aggiungi conoscenze senza una Collection
 
 Un nuovo Assistente non ha alcuna Collection, perché l'elenco Collection mostra
-solo le Collection che contengono le sue Source. In tal caso, utilizza
+solo le Collection che contengono le sue Sources. In tal caso, utilizza
 `sources add-org`. Inserisce la Source nella Knowledge Library
 dell'Organization.
 
@@ -123,16 +123,16 @@ ciele sources direct-access <source-id> on --assistant <assistant-id>
 `sources list-org` elenca tutte le Source di proprietà dell'Organization, in
 tutti gli Assistant.
 
-`sources link` sostituisce il set di link. Un elenco vuoto rimuove tutti i link
-e la Source smette di rispondere.
+`sources link` sostituisce il set di link. Un elenco vuoto rimuove tutti i
+collegamenti e la Source smette di rispondere.
 
-`sources direct-access` decide se quell'Assistente specifico può fornire a un
+`sources direct-access` decide se quell'Assistente specifico può fornire al
 Visitor il file originale.
 
 ### Cerca nella knowledge base
 
-`knowledge search` mostra i passaggi che corrispondono a una domanda, insieme al
-Document e alla Source di ciascun passaggio. Non genera una risposta.
+`knowledge search` mostra i passaggi che corrispondono a una domanda, indicando
+il Document e la Source di ciascun passaggio. Non genera una risposta.
 
 ```bash
 ciele knowledge search "How do I connect Salesforce?"
@@ -154,16 +154,16 @@ ciele assistants ask <assistant-id> "How do I connect Salesforce?"
 ciele assistants ask <assistant-id> "And ServiceNow?" --conversation <conversation-id>
 ```
 
-Usa `--conversation` con l'ID di una risposta precedente per continuare quella
-Conversation. Solo l'API key che ha avviato una Conversation può proseguirla.
-Con un ID diverso, la domanda avvia una nuova Conversation.
+Usa `--conversation` con l'ID di una risposta precedente per proseguire quella
+Conversation. Solo la chiave API che ha avviato una Conversation può
+proseguirla. Con un ID diverso, la domanda avvia una nuova Conversation.
 
-Ogni domanda utilizza un turno del modello e crea una Conversation. L'Inbox lo
-mostra con l'etichetta **API key** quando imposti il filtro **Staff
-conversations** su **Include staff** o **Staff only**. Il comando termina con un
-codice di errore quando l'Assistente non è riuscito a rispondere.
+Ogni domanda utilizza un model turn e crea una Conversation. L'Inbox lo mostra
+con l'etichetta **API key** quando imposti il filtro **Staff conversations** su
+**Include staff** o **Staff only**. Il comando termina con un codice di errore
+quando l'Assistente non è riuscito a rispondere.
 
-## Comandi del flusso
+## Comandi Flow
 
 ### Scopri cosa può contenere un Flow
 
@@ -232,8 +232,8 @@ Un Teammate può avere al massimo cinque Routine.
 ### Configura un teammate con un unico comando
 
 `teammates create` crea un teammate che risponde alle domande. Non può agire e
-non svolge attività in autonomia. `teammates provision` esegue i tre passaggi
-insieme.
+non svolge alcun lavoro non supervisionato. `teammates provision` esegue i tre
+passaggi insieme.
 
 ```bash
 ciele teammates provision --name "Triage" \
@@ -241,9 +241,9 @@ ciele teammates provision --name "Triage" \
   --routine "Triage new feedback:daily:8"
 ```
 
-L'ordine è create, poi grant, poi schedule. Se un passaggio non va a buon fine,
-il comando ti indica dove si è interrotto. Il teammate rimane utilizzabile fino
-a quel punto.
+L'ordine è create, poi grant, poi schedule. Se un passaggio non riesce, il
+comando ti indica dove si è interrotto. Il teammate rimane utilizzabile fino a
+quel punto.
 
 Una chiave senza il ruolo Admin può creare il teammate. Non può concedere un
 dominio. Il comando segnala quindi di essersi interrotto nella fase grants.
@@ -293,8 +293,8 @@ sottoattività. `--restore` le mostra di nuovo. Quando sono presenti più
 attività, `tasks list` mostra il cursore per la pagina successiva.
 `tasks delete-label` rimuove la Label da ogni attività. Le attività rimangono.
 
-Non esiste un comando per il tuo livello di memoria personale. Una chiave API
-opera come il membro che l'ha creata, quindi un comando qui mostrerebbe il
+Non esiste alcun comando per il tuo livello di memoria personale. Una chiave API
+agisce come il membro che l'ha creata, quindi un comando qui mostrerebbe il
 documento privato di quel membro. Nella console, vai su Settings e poi su
 Memory.
 
@@ -310,21 +310,32 @@ ciele help-desks list
 ciele teammates list
 ciele channels list
 ciele skills list
+ciele quick-texts list
 ciele goals list <assistant-id>
 ciele alerts list
 ciele organization get
 ciele members list
+ciele members set-role <user-id> --role-id <role-id>
+ciele members set-assistants <user-id> --scope selected --assistants <assistant-id>:editor
+ciele roles list
+ciele roles create --name "Content reviewer" --capabilities knowledge:view,knowledge:edit
+ciele roles set-defaults --member <role-id>
 ciele invites list
 ciele api-keys list
+ciele audit-log list --action members.updateRole --from 2026-10-01
 ciele providers list
 ciele sso connection
 ```
 
-I comandi che eliminano i dati richiedono `--yes`. Il Flow del comportamento
+I comandi che eliminano i dati richiedono `--yes`. Il Flow di comportamento
 predefinito non può essere eliminato.
 
+`--role` accetta il nome di un Role predefinito. `--role-id` accetta l'ID di
+qualsiasi Role, anche di un Role personalizzato. `ciele roles list` mostra gli
+ID. `ciele whoami` mostra inoltre quante funzionalità ha la chiave.
+
 Esegui `ciele help` per ogni gruppo di comandi e per ogni opzione accettata.
-Aggiungi `--file` quando un comando accetta un input JSON completo o una patch.
+Aggiungi `--file` quando un comando accetta un input JSON completo o un patch.
 
 ## Esempio di controllo CI
 
@@ -335,4 +346,48 @@ ciele publish status "$ASSISTANT_ID" --json
 ```
 
 Archivia tutti i valori nell'archivio dei segreti CI. Non scrivere una chiave in
-un file del flusso di lavoro.
+un file di workflow.
+
+## Bundle dell'Assistente portatile
+
+Export scrive un bundle JSON con versione sullo standard output. Import crea un
+nuovo Assistant e restituisce un report delle destinazioni di riferimento non
+risolte.
+
+```bash
+ciele assistants export <assistant-id> > assistant.json
+ciele assistants import assistant.json
+```
+
+I bundle escludono le credenziali e i dati dei Visitor. L'importazione richiede
+l'accesso in modifica. Configura le credenziali e i riferimenti mancanti prima
+di pubblicare il nuovo Assistente.
+
+## Esportazioni pianificate di Insights
+
+Crea una pianificazione a partire da una definizione JSON. La cadenza
+settimanale utilizza `weekday` da zero per la domenica fino a sei per il sabato.
+
+```json
+{
+  "name": "Weekly Insights",
+  "kind": "insights_overview",
+  "format": "csv",
+  "filters": {},
+  "cadence": { "kind": "weekly", "weekday": 1 },
+  "hour": 8,
+  "recipientMemberIds": ["member-uuid"]
+}
+```
+
+```bash
+ciele exports create --file schedule.json --yes
+ciele exports list
+ciele exports update <schedule-id> --file patch.json --yes
+ciele exports pause <schedule-id> --yes
+ciele exports resume <schedule-id> --yes
+ciele exports delete <schedule-id> --yes
+```
+
+La cadenza mensile utilizza `{"kind":"monthly","day":1}`. L'ora è UTC. I
+destinatari devono essere Membri attuali dell'Organizzazione.

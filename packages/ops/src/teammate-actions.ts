@@ -1,5 +1,6 @@
-import type { TeammateActionDomain, TeammateGrantDomain } from "@agent-hub/core";
+import type { CapabilityRequirement, TeammateActionDomain, TeammateGrantDomain } from "@agent-hub/core";
 import {
+  capabilityTier,
   actionRefusal,
   ceilingAllowsCapability,
   mayAcceptSuggestedFix,
@@ -127,7 +128,7 @@ const IMPROVEMENTS: TeammateActionSpec[] = [
     label: "Move an improvement",
     domain: "improvements",
     description:
-      "Move an improvement on the board: change its status, priority, assignee, tags or due date.",
+      "Track an answer gap: change its description, status, priority, assignee, project, tags or due date. Stored statuses mean to_do=triage, in_progress=fix, in_review=validate, done=resolved, archived=inactive. Read linked evidence before proposing a correction. Only a Member records validation evidence, and changing status does not test or publish an Assistant.",
   },
   {
     operation: proposeSuggestedFixOp,
@@ -404,7 +405,7 @@ export function teammateActions(actor: TeammateActor): TeammateActionSpec[] {
     .flatMap(([, specs]) => specs)
     .filter(
       (spec) =>
-        ceilingAllowsCapability(actor.ceiling, spec.operation.capability) &&
+        ceilingAllowsCapability(actor.ceiling, capabilityTier(spec.operation.capability as CapabilityRequirement)) &&
         (spec.requires?.(actor) ?? true)
     );
 }
@@ -463,4 +464,18 @@ export async function runTeammateAction(
     entities: spec.operation.entities(input, result),
     result,
   };
+}
+
+/**
+ * The Capabilities a grant arms a Teammate with: every catalogued action of
+ * the domain its ceiling reaches. A Member may grant a domain only when they
+ * hold all of them (ADR-0028, "nobody hands on what they do not hold"),
+ * because a Teammate acts with its grants, not with the invoker's Role.
+ */
+export function grantedCapabilities(domain: TeammateGrantDomain, ceiling: TeammateActor["ceiling"]): string[] {
+  const specs = TEAMMATE_ACTION_CATALOG[domain] ?? [];
+  const wanted = specs
+    .map((spec) => spec.operation.capability as CapabilityRequirement)
+    .filter((capability) => capability !== "member" && ceilingAllowsCapability(ceiling, capabilityTier(capability)));
+  return [...new Set(wanted)];
 }

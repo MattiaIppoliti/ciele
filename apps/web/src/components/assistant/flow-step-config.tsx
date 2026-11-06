@@ -1,9 +1,11 @@
 "use client";
 
+import { useBusinessHours } from "@/lib/hooks/use-business-hours";
 import { DatePicker } from "@/components/ui/date-picker";
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import type {
+  BusinessHours,
   ApiRequestAuthType,
   FlowAction,
   FlowActionSettings,
@@ -327,15 +329,19 @@ function ExampleGroup({
  * `flowConditionIssue` so the editor and the gate share one completeness rule.
  */
 function ConditionCard({
+  businessHours,
+  defaultTimezone,
   condition,
   onChange,
   onRemove,
 }: {
+  businessHours: BusinessHours[];
+  defaultTimezone: string;
   condition: FlowCondition;
   onChange: (next: FlowCondition) => void;
   onRemove: () => void;
 }) {
-  const issue = flowConditionIssue(condition);
+  const issue = flowConditionIssue(condition, businessHours);
   const label =
     FLOW_CONDITION_KINDS.find((meta) => meta.kind === condition.kind)?.label ??
     "Condition";
@@ -446,21 +452,27 @@ function ConditionCard({
 
       {condition.kind === "schedule" && (
         <div className="space-y-3">
-          <ScheduleBound
-            label="Start date & time"
-            required
-            date={condition.startAt}
-            timezone={condition.timezone}
-            onDateChange={(startAt) => onChange({ ...condition, startAt })}
-            onTimezoneChange={(timezone) => onChange({ ...condition, timezone })}
-          />
-          <ScheduleBound
-            label="End date & time"
-            date={condition.endAt ?? ""}
-            timezone={condition.timezone}
-            onDateChange={(endAt) => onChange({ ...condition, endAt })}
-            onTimezoneChange={(timezone) => onChange({ ...condition, timezone })}
-          />
+          <Select value={condition.mode ?? "absolute"} onValueChange={mode => {
+            if (mode === "business_hours") onChange({ id: condition.id, kind: "schedule", mode, businessHoursId: businessHours.find(item => item.isDefault)?.id ?? businessHours[0]?.id ?? "", direction: "during" });
+            if (mode === "absolute") onChange({ id: condition.id, kind: "schedule", mode, startAt: "", timezone: defaultTimezone });
+          }}>
+            <SelectTrigger aria-label="Schedule type"><RollInText text={condition.mode === "business_hours" ? "Business hours" : "Absolute window"} /></SelectTrigger>
+            <SelectContent><SelectItem value="absolute">Absolute window</SelectItem><SelectItem value="business_hours">Business hours</SelectItem></SelectContent>
+          </Select>
+          {condition.mode === "business_hours" ? <>
+            <Select value={condition.businessHoursId} onValueChange={value => { if (value) onChange({ ...condition, businessHoursId: value }); }}>
+              <SelectTrigger aria-label="Business hours schedule"><RollInText text={businessHours.find(item => item.id === condition.businessHoursId)?.name ?? "Select a schedule"} /></SelectTrigger>
+              <SelectContent>{businessHours.map(item => <SelectItem key={item.id} value={item.id}><RollInText text={item.name} /></SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={condition.direction} onValueChange={direction => { if (direction === "during" || direction === "outside") onChange({ ...condition, direction }); }}>
+              <SelectTrigger aria-label="Business hours direction"><RollInText text={condition.direction === "during" ? "During business hours" : "Outside business hours"} /></SelectTrigger>
+              <SelectContent><SelectItem value="during">During business hours</SelectItem><SelectItem value="outside">Outside business hours</SelectItem></SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">Uses the current weekly hours and holidays, including after publication.</p>
+          </> : <>
+            <ScheduleBound label="Start date & time" required date={condition.startAt} timezone={condition.timezone} onDateChange={startAt => onChange({ ...condition, startAt })} onTimezoneChange={timezone => onChange({ ...condition, timezone })} />
+            <ScheduleBound label="End date & time" date={condition.endAt ?? ""} timezone={condition.timezone} onDateChange={endAt => onChange({ ...condition, endAt })} onTimezoneChange={timezone => onChange({ ...condition, timezone })} />
+          </>}
           {issue && <p className="text-destructive text-xs">{issue}</p>}
         </div>
       )}
@@ -2304,6 +2316,7 @@ export function FlowConditionsConfig({
   onLogicChange: (next: FlowConditionLogic) => void;
   onConditionsChange: (next: FlowCondition[]) => void;
 }) {
+  const calendars = useBusinessHours();
   if (isDefaultFlow) {
     return (
       <p className="text-muted-foreground text-sm">The default flow has no conditions.</p>
@@ -2357,6 +2370,8 @@ export function FlowConditionsConfig({
         <ConditionCard
           key={condition.id}
           condition={condition}
+          businessHours={calendars.items}
+          defaultTimezone={calendars.defaultTimezone}
           onChange={(next) =>
             onConditionsChange(conditions.map((c) => (c.id === next.id ? next : c)))
           }
@@ -2372,11 +2387,12 @@ export function FlowConditionsConfig({
           {flowConditionPicker(trigger).map((meta) => (
             <Button
               key={meta.kind}
+              disabled={meta.kind === "schedule" && calendars.loading}
               type="button"
               variant="outline"
               size="sm"
               onClick={() =>
-                onConditionsChange([...conditions, newFlowCondition(meta.kind, crypto.randomUUID())])
+                onConditionsChange([...conditions, newFlowCondition(meta.kind, crypto.randomUUID(), calendars.defaultTimezone)])
               }
             >
               {meta.label} <Plus className="size-4" />

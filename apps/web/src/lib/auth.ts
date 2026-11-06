@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { type Organization, type Profile, type Role } from "@agent-hub/core";
+import { capabilitiesForLadderRole, roleLabel, type Organization, type Profile, type Role } from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
 import { DEMO_MEMBER, DEMO_ORG, isSupabaseConfigured } from "@agent-hub/db";
 import { getDb } from "./data";
 import { createSupabaseServerClient } from "./supabase/server";
@@ -16,7 +17,17 @@ export interface Session {
   email: string;
   /** Null when the user is authenticated but hasn't joined an org yet. */
   organization: Organization | null;
+  /**
+   * The ladder tier RLS sees for the caller's Role (ADR-0028). Display
+   * {@link roleName} and check {@link capabilities}; this stays for the
+   * comparisons that are tiers by design.
+   */
   role: Role | null;
+  /** The Role the caller holds (`org_roles.id`); null one migration behind. */
+  roleId: string | null;
+  roleName: string | null;
+  /** What the caller may do in the active Organization. */
+  capabilities: string[];
   demo: boolean;
   /** Every Organization the caller can switch into (a platform superuser
    * sees every Organization; everyone else sees just their own). */
@@ -49,11 +60,14 @@ export const getSession = cache(async (): Promise<Session | null> => {
       db.listOrganizations(),
       db.getProfile(),
     ]);
+    const organization = current?.organization ?? DEMO_ORG;
+    const role = current?.role ?? DEMO_MEMBER.role;
     return {
       userId: DEMO_MEMBER.userId,
       email: DEMO_MEMBER.email,
-      organization: current?.organization ?? DEMO_ORG,
-      role: current?.role ?? DEMO_MEMBER.role,
+      organization,
+      role,
+      ...(await resolveGrant(db, organization.id, DEMO_MEMBER.userId, role)),
       demo: true,
       organizations,
       profile,
@@ -77,16 +91,33 @@ export const getSession = cache(async (): Promise<Session | null> => {
   // superuser grant was revoked), fall back to their default org.
   const resolved = current ?? (preferredOrgId ? await db.getCurrentOrg() : null);
 
+  const role = resolved?.role ?? null;
   return {
     userId: claims.sub,
     email: typeof claims.email === "string" ? claims.email : "",
     organization: resolved?.organization ?? null,
-    role: resolved?.role ?? null,
+    role,
+    ...(resolved ? await resolveGrant(db, resolved.organization.id, claims.sub, role) : NO_GRANT),
     demo: false,
     organizations,
     profile,
   };
 });
+
+const NO_GRANT = { roleId: null, roleName: null, capabilities: [] as string[] };
+
+/**
+ * The caller's Role and Capabilities in the active Organization. A platform
+ * superuser browsing an Organization they are not a member of has no Role
+ * row and stands for the ladder Role the org lookup gave them.
+ */
+async function resolveGrant(db: Db, organizationId: string, userId: string, role: Role | null) {
+  const grant = await db.getMemberGrant(organizationId, userId).catch(() => null);
+  if (grant) return { roleId: grant.roleId, roleName: grant.roleName, capabilities: grant.capabilities };
+  return role
+    ? { roleId: null, roleName: roleLabel(role), capabilities: capabilitiesForLadderRole(role) }
+    : NO_GRANT;
+}
 
 /** The caller's display name: first + last name, else the username, else
  *  undefined (each caller picks its own last fallback). */

@@ -5,7 +5,7 @@ import type {
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { reportError } from "@agent-hub/diagnostics";
-import type { UsageEvent } from "./types";
+import type { UsageEvent, UsageTotals } from "./types";
 
 /**
  * Token accounting helpers for the AI usage ledger.
@@ -22,17 +22,31 @@ function tokenCount(value: unknown): number {
   return typeof total === "number" && Number.isFinite(total) ? total : 0;
 }
 
-export function usageTotals(usage: unknown): {
-  inputTokens: number;
-  outputTokens: number;
-} {
+function optionalCount(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+export function usageTotals(usage: unknown): UsageTotals {
   const u = usage as
-    | { inputTokens?: unknown; outputTokens?: unknown }
+    | {
+        inputTokens?: unknown;
+        outputTokens?: unknown;
+        inputTokenDetails?: { cacheReadTokens?: unknown; cacheWriteTokens?: unknown };
+      }
     | null
     | undefined;
+  // Result level (AI SDK 7) carries `inputTokenDetails`; the model level nests
+  // the same figures under `inputTokens`.
+  const nested = (typeof u?.inputTokens === "object" ? u.inputTokens : null) as
+    | { cacheRead?: unknown; cacheWrite?: unknown }
+    | null;
+  const cacheRead = optionalCount(u?.inputTokenDetails?.cacheReadTokens ?? nested?.cacheRead);
+  const cacheWrite = optionalCount(u?.inputTokenDetails?.cacheWriteTokens ?? nested?.cacheWrite);
   return {
     inputTokens: tokenCount(u?.inputTokens),
     outputTokens: tokenCount(u?.outputTokens),
+    ...(cacheRead > 0 ? { cacheReadTokens: cacheRead } : {}),
+    ...(cacheWrite > 0 ? { cacheWriteTokens: cacheWrite } : {}),
   };
 }
 
@@ -43,7 +57,7 @@ export function usageTotals(usage: unknown): {
  */
 export async function recordStreamUsage(
   totalUsage: PromiseLike<unknown>,
-  recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void
+  recordUsage?: (usage: UsageTotals) => void
 ): Promise<void> {
   try {
     recordUsage?.(usageTotals(await totalUsage));

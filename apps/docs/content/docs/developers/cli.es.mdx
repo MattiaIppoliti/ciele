@@ -14,7 +14,7 @@ instalaciones autoalojadas.
 
 ## Instalación
 
-Compila e instala el paquete independiente a partir de una copia del
+Compila e instala el paquete autónomo a partir de una copia local del
 repositorio:
 
 ```bash
@@ -94,9 +94,9 @@ tiene propietario, por lo que estos enlaces son lo único que pone el
 conocimiento al alcance de un Assistant. Los comandos son `sources add-text`,
 `sources add-url`, `sources add-file`, `faqs add` y `faqs import`.
 
-### Añade conocimiento sin una Collection
+### Añadir conocimiento sin una Collection
 
-Un nuevo asistente no tiene ninguna colección, ya que la lista de colecciones
+Un nuevo asistente no tiene ninguna colección, porque la lista de colecciones
 solo muestra las colecciones que contienen sus fuentes. En ese caso, usa
 `sources add-org`. Coloca el Source en la Knowledge Library de la Organization.
 
@@ -123,11 +123,11 @@ ciele sources direct-access <source-id> on --assistant <assistant-id>
 `sources list-org` enumera todas las Sources que posee la Organization, en todos
 los Assistants.
 
-`sources link` reemplaza el conjunto de enlaces. Una lista vacía elimina todos
-los enlaces, y la Source deja de responder.
+`sources link` sustituye el conjunto de enlaces. Una lista vacía elimina todas
+las vinculaciones, y la Source deja de responder.
 
-`sources direct-access` decide si ese asistente concreto puede entregar el
-archivo original a un visitante.
+`sources direct-access` decide si ese Asistente concreto puede entregar el
+archivo original a un Visitante.
 
 ### Busca en la base de conocimientos
 
@@ -141,8 +141,8 @@ ciele knowledge search "How do I connect Salesforce?" --json
 ```
 
 Con `--assistant`, la búsqueda utiliza únicamente las Sources vinculadas a ese
-Assistant. Sin ella, la búsqueda utiliza toda la Library. `--json` muestra los
-resultados con su clasificación, puntuación e ID.
+Assistant. Sin ella, la búsqueda utiliza la Biblioteca completa. `--json`
+muestra los resultados con su clasificación, puntuación e ID.
 
 ### Pregúntale a un asistente
 
@@ -163,7 +163,7 @@ entrada lo muestra con la etiqueta **API key** cuando estableces el filtro
 **Staff conversations** en **Include staff** o **Staff only**. El comando
 finaliza con un código de error cuando el asistente no ha podido responder.
 
-## Comandos de flujo
+## Comandos de Flow
 
 ### Descubre qué puede contener un Flow
 
@@ -223,9 +223,9 @@ ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --
 ```
 
 `set-grants` envía el conjunto completo de dominios cada vez. `--domains ""` los
-elimina todos. Este comando requiere una clave API con el rol Admin o superior,
-ya que permite a un agente modificar tus datos. Los demás comandos de Teammate
-requieren el rol Editor.
+elimina todos. Este comando requiere una clave de API con el rol Admin o
+superior, ya que permite a un agente modificar tus datos. Los demás comandos de
+Teammate requieren el rol Editor.
 
 Un Teammate puede tener un máximo de cinco Routines.
 
@@ -246,13 +246,13 @@ comando te indica dónde se detuvo. El compañero de equipo sigue siendo
 utilizable hasta ese punto.
 
 Una clave sin el rol Admin puede crear al compañero de equipo. No puede conceder
-un dominio. A continuación, el comando informa de que se detuvo en el paso de
-concesiones.
+un dominio. A continuación, el comando informa de que se detuvo en el paso
+grants.
 
 ### Proyectos y memoria
 
-Un Project es un espacio de trabajo compartido. Un AI Teammate vinculado a un
-Project lee el documento de memoria de ese Project en cada turno.
+Un Project es un espacio de trabajo compartido. Un AI Teammate que está
+vinculado a un Project lee el documento de memoria de ese Project en cada turno.
 
 ```bash
 ciele projects list
@@ -296,7 +296,8 @@ etiqueta de todas las tareas. Las tareas se mantienen.
 
 No existe ningún comando para tu propia capa de memoria. Una clave API actúa
 como el miembro que la creó, por lo que un comando aquí mostraría el documento
-privado de ese miembro. En la consola, ve a Settings y luego a Memory.
+privado de ese miembro. Accede a Settings y, a continuación, a Memory en la
+consola.
 
 ## Comandos de Operations y Organization
 
@@ -310,12 +311,19 @@ ciele help-desks list
 ciele teammates list
 ciele channels list
 ciele skills list
+ciele quick-texts list
 ciele goals list <assistant-id>
 ciele alerts list
 ciele organization get
 ciele members list
+ciele members set-role <user-id> --role-id <role-id>
+ciele members set-assistants <user-id> --scope selected --assistants <assistant-id>:editor
+ciele roles list
+ciele roles create --name "Content reviewer" --capabilities knowledge:view,knowledge:edit
+ciele roles set-defaults --member <role-id>
 ciele invites list
 ciele api-keys list
+ciele audit-log list --action members.updateRole --from 2026-10-01
 ciele providers list
 ciele sso connection
 ```
@@ -323,8 +331,12 @@ ciele sso connection
 Los comandos que eliminan datos requieren `--yes`. No se puede eliminar el flujo
 de comportamiento Default.
 
-Ejecuta `ciele help` para cada grupo de comandos y cada opción aceptada. Añade
-`--file` cuando un comando admita una entrada JSON completa o un parche.
+`--role` acepta el nombre de un Role predefinido. `--role-id` acepta el ID de
+cualquier Role, incluidos los Roles personalizados. `ciele roles list` muestra
+los ID. `ciele whoami` también muestra cuántas capacidades tiene la clave.
+
+Ejecuta `ciele help` para cada grupo de comandos y para cada opción aceptada.
+Añade `--file` cuando un comando acepte una entrada JSON completa o un parche.
 
 ## Ejemplo de comprobación de CI
 
@@ -335,4 +347,48 @@ ciele publish status "$ASSISTANT_ID" --json
 ```
 
 Almacena todos los valores en el almacén de secretos de CI. No escribas una
-clave en un archivo de flujo de trabajo.
+clave en un archivo de workflow.
+
+## Paquetes de asistentes portátiles
+
+Export escribe un paquete JSON versionado en la salida estándar. Import crea un
+nuevo asistente y devuelve un informe de las referencias de destino no
+resueltas.
+
+```bash
+ciele assistants export <assistant-id> > assistant.json
+ciele assistants import assistant.json
+```
+
+Los paquetes excluyen las credenciales y los datos de Visitor. La importación
+requiere acceso de edición. Configura las credenciales y las referencias que
+faltan antes de publicar el nuevo asistente.
+
+## Exportaciones programadas de Insights
+
+Crea una programación a partir de una definición JSON. La cadencia semanal
+utiliza `weekday` desde cero para el domingo hasta seis para el sábado.
+
+```json
+{
+  "name": "Weekly Insights",
+  "kind": "insights_overview",
+  "format": "csv",
+  "filters": {},
+  "cadence": { "kind": "weekly", "weekday": 1 },
+  "hour": 8,
+  "recipientMemberIds": ["member-uuid"]
+}
+```
+
+```bash
+ciele exports create --file schedule.json --yes
+ciele exports list
+ciele exports update <schedule-id> --file patch.json --yes
+ciele exports pause <schedule-id> --yes
+ciele exports resume <schedule-id> --yes
+ciele exports delete <schedule-id> --yes
+```
+
+La cadencia mensual utiliza `{"kind":"monthly","day":1}`. La hora es UTC. Los
+destinatarios deben ser miembros activos de la organización.

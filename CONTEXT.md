@@ -6,6 +6,28 @@ Every term below is encoded as a type in **`@agent-hub/core`** (`packages/core/s
 pure functions that derive facts from those terms live beside them (ADR-0019). Add the term here
 first, then the type.
 
+## Governance
+
+**Audit log entry**:
+An append-only record of a configuration operation. It records the Organization, time,
+operation, effect, affected entity identifiers, actor snapshots, surface and outcome, and,
+when the operation describes its own change, a readable target and each changed field
+before and after. It never stores operation inputs, credentials or Visitor text. Owners
+and Admins read it; entries expire after the Organization's audit retention period
+(default 180 days) and Organization offboarding removes them.
+
+**Assistant access override**:
+A Member's access to one Assistant: Denied, Viewer, Editor or Admin, replacing their
+Organization Role for that Assistant. Clearing it restores the Organization Role.
+Owners always retain access. A Member's API keys and attended agents inherit that
+Member's restrictions; changing an override is a consequential operation.
+
+**Member assistant scope**:
+Whether a Member reaches every Assistant (`all`, the default) or only the Assistants
+they have an access row for (`selected`). For a selected Member an Assistant with no
+row reads as Denied, so a new Assistant stays hidden until it is added. Owners are
+never limited.
+
 ## Language
 
 **Organization**:
@@ -24,8 +46,22 @@ A person (Supabase Auth user) belonging to one Organization with exactly one Rol
 _Avoid_: user (ambiguous with widget end users), account
 
 **Role**:
-A Member's permission level: Owner, Admin, Editor or Viewer. Publish and member management require Owner/Admin; Editors edit and test assistants; Viewers only read and test.
-_Avoid_: permission, group
+A named set of **Capabilities** an Organization gives to a Member, an invitation or an API key
+(ADR-0028). Six are built in, **Owner, Admin, Editor, Support Agent, Viewer, Data Viewer**; every
+one but Owner can be edited, and custom Roles can be created. Owner holds every Capability and is
+locked. A Role is available at Organization level, Assistant level, or both. Each Role also has a
+**tier**, the ladder Role (`admin`, `editor`, `support_agent`, `viewer`, `owner`) its highest
+Capability sits at, kept only where a tier is the rule by design (runtime tables, oversight
+reads); everything else, RLS included, checks the Capabilities. A Role given on one Assistant
+replaces the Organization Role there for the Assistant-level Capabilities, up or down.
+_Avoid_: permission level, group
+
+**Capability**:
+One thing a Member may do, named `area:action` (`flows:edit`, `inbox:operate`), from the catalogue
+in `packages/core/src/capabilities.ts`. Every Operation declares one, or `member` for a Member's
+own things. A Capability may require others (`flows:edit` requires `flows:view`), and one,
+`personalSubscriptions:manage`, belongs to Owner alone.
+_Avoid_: permission, scope, right
 
 **Voice settings**:
 Per-Assistant configuration for microphone transcription and AI-generated answer playback. Each capability selects a model from a connected Google, OpenAI or ElevenLabs provider; playback also selects a voice. Disabled by default and frozen into the Publication. Audio input becomes a draft before the Visitor sends it through normal Flow routing.
@@ -82,6 +118,13 @@ _Avoid_: callback action, listener, API request (the one-call action), hook
 **Webhook Subscription**:
 One awaited callback an HTTP Webhook raised: the Conversation, the Flow and the action index it stopped at, the resolved subscribe and unsubscribe calls, the expiry, and its status, pending → received | expired | failed (the subscribe call was refused). Created by the runtime before the subscribe call goes out, because the callback address names the row; closed exactly once by the first callback or by the clock, then resumed by a durable job. A second callback is acknowledged and changes nothing. Members read it in the Inbox; no Member writes it.
 _Avoid_: webhook (alone, that is the action), registration, hook
+
+**Outbound Webhook Subscription**:
+An Organization's URL subscribed to named events. Ciele sends signed JSON through the durable job ledger, with one stable event id across retries. Owner and Admin Members manage the URL, event selection and paused state in Settings → Webhooks. Its signing secret is shown once. Payloads contain event metadata, never message text or escalation form values. This is separate from a **Webhook Subscription**, which waits for an HTTP Webhook callback inside a Flow.
+_Avoid_: HTTP Webhook (the callback gate), callback subscription, integration action
+
+**Webhook Delivery**:
+One event sent to one Outbound Webhook Subscription, with its attempts, last response status and delivery time. A failed delivery retries for up to 24 hours; terminal failure raises an Alert, cleared by the next successful delivery to that subscription.
 
 **Flow Continuation**:
 The remaining actions of a Flow paused for Human Review or an HTTP Webhook, using the Flow definition and accumulated values admitted before the pause. Ordinary edits apply to new executions; an explicit disable or unpublish stops pending continuations, and resumed actions remain subject to current authorization.
@@ -273,10 +316,12 @@ the grant: there is no enabled flag, absence is refusal, and revoking deletes. W
 only, one rung above the Editor who may edit the Teammate's persona.
 _Avoid_: permission, scope (that is the Knowledge Scope), capability (that is the ceiling), role
 
-**Capability Ceiling**:
+**Action Ceiling**:
 The furthest inside *any* granted domain a Teammate may go, set per Teammate and defaulting to
 `edit`. It caps; it never grants, an ungranted domain stays shut at every ceiling, and the ladder
 stops at `edit`; publish and Organization administration are never available to a Teammate.
+Not a **Capability**: it caps the *tier* of the Capability an Operation declares. It was the
+"Capability Ceiling" until map #1164 gave the word Capability one meaning.
 _Avoid_: max role, permission level, tier
 
 **Approval Bypass**:
@@ -377,7 +422,7 @@ _Avoid_: audit log, history, feed, events
 
 **Member Notification**:
 A notice addressed to one Member about the work: assigned to them, mentioned, commented on or
-changed status on a Task they are on. Persisted with a read state, triaged on the Notifications
+changed status on a Task they are on. It can also target a live Conversation assigned to an operator. Persisted with a read state, triaged on the Notifications
 page, and arriving in the console's notification stack. Distinct from a **Notification** (the
 Visitor-facing Flow Action) and an **Alert** (an org-wide health notice).
 _Avoid_: notification (unqualified), inbox (that is Visitor Conversations), alert, activity
@@ -427,7 +472,7 @@ _Avoid_: fan-out (that is the behaviour, not the unit), cascade, run, session, l
 - An **Organization** owns many **AI Teammates**; a Teammate belongs to exactly one Organization, has one owner **Member**, and answers only Members, never Visitors
 - A **Teammate**'s **Knowledge Scope** names zero or more **Knowledge Collections** and zero or more **Sources**; the two are searched as a union, and zero of both means the turn has no knowledge-search tool
 - A **Conversation** belongs to exactly one of an **Assistant** or a **Teammate**, never both, never neither
-- A **Teammate** holds zero or more **Action Grants**, at most one per domain, under one **Capability Ceiling**; with no grant it can only talk
+- A **Teammate** holds zero or more **Action Grants**, at most one per domain, under one **Action Ceiling**; with no grant it can only talk
 - An **Organization** owns many **Projects**; a **Teammate** attaches to 0..1 of them
 - A **Project** owns many **Tasks**, **Milestones** and **Saved Views**; every Task belongs to exactly one Project; a private Project lists the **Members** who may see it
 - A **Task** has 0..1 parent Task (one level), 0..N **Dependencies** inside its Project, 0..N **Labels**, 0..1 **Assignee** (a Member, or a Teammate, never both) and 0..N **Comments**
@@ -477,16 +522,44 @@ An Organization-level escalation destination with a description the AI uses to d
 recommend it; owns Support Channels and links to the Assistants that may offer it.
 _Avoid_: department, queue.
 
+**Business hours**:
+An Organization-owned, named weekly schedule in an IANA timezone. It has several opening windows
+per weekday, including overnight windows, and associated Holidays. One schedule is the
+Organization's default. Support Channels and Flow Schedule conditions reference its live definition.
+
+**Holiday**:
+A named local calendar date or inclusive date range that closes a Business hours schedule for
+whole days. A yearly Holiday repeats its month/day range, including ranges across New Year.
+
 **Support Channel**:
 One escalation method on a Help Desk, type is Email, Phone number, Live chat, Create a ticket,
-External link, Salesforce Chat Handover, or API endpoint, each with its own Form, Conversation Data
-selection, and Availability.
+External link, Salesforce Chat Handover, API endpoint, or Live operator, each with its own Form,
+Conversation Data selection, and Availability. **Live operator** keeps the Visitor in the Widget:
+choosing it puts the Conversation in a **waiting** state (no turns run) until a Member takes it over
+from the Inbox Waiting view, or until its wait timeout (default 5 minutes, derived from when the
+wait started) hands it back to the AI.
 _Avoid_: contact, route.
+
+**Ticketing Target**:
+The Organization-owned Application Connection (Salesforce or ServiceNow) a Help Desk's "Create a
+ticket" Support Channel files through, plus, for ServiceNow, the table and the requester-email
+column. It names a Connection and holds no credential. A filed record (a Salesforce Case, a
+ServiceNow record) is stored on the Conversation as its **escalation ticket**.
+_Avoid_: ticketing integration (the retired password-grant ServiceNow registration it replaces).
 
 **Escalation**:
 The act of handing a Conversation off from the AI to a Help Desk / human, optionally collecting a
 form and attaching conversation data; may open a ticket in a connected system.
 _Avoid_: handoff (reserved for assistant-to-assistant **Handover**), transfer.
+
+**Takeover**:
+A Member answering a live Conversation directly from the Inbox. While the Member holds it, a
+Visitor message is saved and starts no Conversation Turn (no Flow routing, no model call, no
+proactive trigger); the Member's replies are **operator messages**, shown with their name and never
+counted as AI answers (Insights, Answer Verdict, Trust Tier and feedback read AI answers only).
+**Release** hands the Conversation back to the AI. Only one Member holds a Conversation at a time.
+Neither an Escalation (nothing leaves Ciele) nor a Handover (no second Assistant).
+_Avoid_: handoff, transfer, live chat (that is a Support Channel type that links out).
 
 **Improvement**:
 A problem record about answer quality (status/priority/tags/assignee, `IMP-n`) carrying its
@@ -494,8 +567,21 @@ evidence, the flagged AI message(s), and at most one Suggested Fix. Created by p
 Answer", a manual item) and by nine producers, each of which attaches a recurrence to the existing
 *open* item (open: neither Done nor Archived) instead of filing a duplicate. Work that a Suggested
 Fix cannot close goes on a **Task** that names it; when every such Task is Done the Improvement
-moves to In Review, and a person closes it (ADR-0027).
+moves to In Review, and a person closes it (ADR-0027). The console names the stages **Triage → Fix →
+Validate → Resolved**, with **Archived** outside active work; the stored and API statuses stay
+`to_do`, `in_progress`, `in_review`, `done` and `archived`. Resolution is a Member decision, not
+proof that a widget passed a test: that proof is an **Improvement Validation**. A Project groups
+the work; it never stands in for the linked Conversation as evidence or decides which Assistant a
+correction affects.
 _Avoid_: ticket (reserved for external ticketing), issue, task (the work that resolves it).
+
+**Improvement Validation**:
+Append-only evidence that an Improvement's correction holds: a Member's own check of the customer
+widget (pass or fail), or a synthetic replay of up to three questions against the Assistant's
+latest Publication and live knowledge. Each record carries a fingerprint of that Publication and
+knowledge, so it reads as stale once either changes. It never moves the Improvement's status; a
+Task being Done and a passing validation are separate facts, and a person still closes the item.
+_Avoid_: verification (a status), test result (a replay checks only the stated text and citations).
 
 **Alert**:
 A system-raised operational health notice (e.g. an integration whose credentials stopped working)
@@ -560,13 +646,6 @@ A per-user data value (from SSO profile or imported User data) interpolated into
 personalization.
 _Avoid_: variable, merge tag.
 
-**Role, target RBAC (5 tiers)**:
-The target org-role model is **Super Admin · Admin · Collaborator · Support Agent · Data Viewer**
-(new-member invite defaults to Collaborator). The current model has four (Owner/Admin/Editor/
-Viewer); mapping-wise Super Admin≈Owner, Admin≈Admin, Collaborator≈Editor, Data Viewer≈Viewer, and
-**Support Agent** (a help-desk/escalation operator) has no equivalent yet.
-_Avoid_: permission, group.
-
 **Analytics API**:
 A public, org-scoped HTTP API (base path `/analytics`) for pulling Insights data programmatically,
 authenticated by **API keys** minted in Organization → API Keys.
@@ -616,6 +695,13 @@ tool calls folded from runtime events by one shared function, stored on the assi
 tool rows are visible to any Role that can read the Inbox. Always stored structured, the flat
 bracketed export string is a serialization produced at export time, never the storage format.
 _Avoid_: chain of thought (in UI), log, AgenticTrace (the export serialization only).
+
+**Turn Timings** (`TurnTimings`):
+The wall-time measurements on a Conversation Turn's runtime event: wait unions, individual model
+and tool durations, time to first output, and process CPU. A **Turn Trigger** (`TurnTrigger`)
+distinguishes a live interaction from API, Channel and unattended work. **Ingest Timings**
+(`IngestTimings`) measure parsing, chunking, embeddings and persistence for one ingestion attempt.
+Process CPU is an upper bound; unrelated work can share the same process.
 
 **AI Usage Ledger**:
 One row per model call the runtime makes (stage `classify` / `generate` / `embed` / `verify` /
@@ -710,3 +796,16 @@ Its actor identity and display name come from the verified session, or the widge
 subject. Social reactions are separate from answer-quality feedback and never
 change grading or resolution metrics. In a group, only current participants can
 read or change reactions; a participant can remove only their own reaction. Inbox readers can see the emoji and its author without assigning it a sentiment or quality score.
+
+## MCP Server Connection
+
+An **MCP Server Connection** registers an external Streamable HTTP MCP server for one Organization. It holds a public URL and discovered tool definitions; its optional bearer token lives in a separate sealed credential store. Each tool policy (Run freely, Ask first or Off) belongs to a reviewed definition hash. A changed definition is suspended until an Admin reviews it again. Teammates select registered servers. An Assistant Publication selects only Run freely tool names and hashes, never credentials. Remote results are untrusted tool output and are not knowledge Sources.
+
+**Assistant Bundle**:
+A versioned, portable configuration of one Assistant, including its Flows and Skills. It excludes credentials and Visitor data. Import creates a new Assistant and reports destination references that need setup.
+
+**Export Schedule**:
+An Organization's recurring Insights report definition. Its **Export Schedule Cadence** selects a weekly weekday or monthly calendar day at a UTC hour. Each due slot creates one export and notifies current Member recipients after the file is ready.
+
+**Operator Presence Lease**:
+The short interval during which an operator's Available status remains effective. An active console renews it. Closing the console or losing the session stops renewal. A heartbeat cannot revive an explicit Away status.

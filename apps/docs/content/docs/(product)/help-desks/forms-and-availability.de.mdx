@@ -6,30 +6,46 @@ description: Erfassen Sie die erforderlichen Eskalationsdaten und zeigen Sie an,
 ## Formularfelder hinzufügen
 
 Fügen Sie nur die Daten hinzu, die das empfangende Team benötigt. Markieren Sie
-ein Feld als Pflichtfeld, wenn der Kanal ohne dieses Feld nicht funktionieren
+ein Feld als erforderlich, wenn der Kanal ohne dieses Feld nicht funktionieren
 kann.
 
-Testen Sie das Formular als Besucher. Vergewissern Sie sich, dass Pflichtfelder
-eine unvollständige Übermittlung verhindern.
+Testen Sie das Formular als Visitor. Stellen Sie sicher, dass Pflichtfelder eine
+unvollständige Übermittlung verhindern.
 
-## Gesprächsdaten anhängen
+## Konversationsdaten anhängen
 
-Ein Helpdesk kann konfigurierte Konversationsinformationen an eine Eskalation
-anhängen. Zu den verfügbaren Daten können eine Zusammenfassung, ein Verlauf,
+Ein Help Desk kann konfigurierte Conversation-Informationen an eine Eskalation
+anhängen. Zu den verfügbaren Daten können eine Zusammenfassung, der Verlauf,
 Benutzerdaten und Metadaten gehören.
 
-Wählen Sie die Mindestdaten aus, die das empfangende Team benötigt. Überprüfen
-Sie die Auswahl anhand Ihrer Datenschutzanforderungen.
+Wählen Sie die vom empfangenden Team benötigten Mindestdaten aus. Überprüfen Sie
+die Auswahl im Hinblick auf Ihre Datenschutzanforderungen.
 
 ## Verfügbarkeit konfigurieren
 
-Legen Sie den Kanalplan und die Zeitzone fest. Das Widget zeigt an, ob der Kanal
-verfügbar ist, und kann den nächsten verfügbaren Zeitpunkt anzeigen.
+Legen Sie den Zeitplan und die Zeitzone des Channels fest. Das Widget zeigt an,
+ob der Kanal verfügbar ist, und kann die nächste Verfügbarkeitszeit anzeigen.
 
 Verwenden Sie die Zeitzone des Teams, das die Eskalation erhält. Testen Sie die
-Grenze am Anfang und am Ende eines Verfügbarkeitsfensters.
+Grenze am Anfang und am Ende eines Availability-Fensters.
 
 ## E-Mail-Zustellung
 
-Der E-Mail-Kanal erfordert einen konfigurierten Resend-Transport. Wenn dieser
-fehlt, meldet Ciele, dass die E-Mail nicht gesendet wurde.
+Der E-Mail-Kanal erfordert einen konfigurierten Resend-Transport. Wenn er fehlt,
+meldet Ciele, dass die E-Mail nicht gesendet wurde.
+
+
+## Geschäftszeiten der Organisation wiederverwenden
+
+Wählen Sie **Business hours** auf der Registerkarte „Availability“ eines Kanals
+aus und wählen Sie dann einen benannten Zeitplan aus. Erstellen und bearbeiten
+Sie Zeitpläne unter [Settings](/organization). Die wöchentlichen Öffnungszeiten,
+die Zeitzone und die Feiertage werden aus diesem Zeitplan übernommen. Mehrere
+Channels können denselben Zeitplan verwenden. An einem Feiertag sind sie alle
+geschlossen, und die nächste Öffnung des Widgets überspringt geschlossene Tage.
+
+**Always available** und **Limited availability** behalten ihr bisheriges
+Verhalten bei. Limited Availability behält seine eigenen wöchentlichen
+Zeitfenster und seine eigene Zeitzone bei. Neue Kanal-Einstellungen beginnen mit
+der Standardzeitzone der Organisation. Ein Zeitplan kann nicht gelöscht werden,
+solange er von einem Kanal verwendet wird. Die Ablehnung nennt den Kanal.

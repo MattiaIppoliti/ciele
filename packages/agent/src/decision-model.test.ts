@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Experimental_EvaluationMockModelV4 } from "ai/test";
+import { Experimental_EvaluationMockModelV4, MockLanguageModelV4 } from "ai/test";
+import { wrapLanguageModel } from "ai";
+import { TurnClock, turnClockMiddleware, withTurnClock } from "./turn-clock";
 import { createPiiMasker, creditsFor, PII_DETECTORS, type Provider, type ProviderConnection } from "@agent-hub/core";
 import { withPiiMasking } from "./pii-masking";
 import {
@@ -212,6 +214,39 @@ describe("decide", () => {
     // Sonnet 5's input rate (Anthropic's classifier tier), not Jev's:
     // €2.80 per million → 280 credits.
     expect(creditsFor([{ kind: "model", ...decision.usage }])).toBeCloseTo(280, 6);
+  });
+
+  it("files adapter language-model calls under the decide usage stage", async () => {
+    const language = wrapLanguageModel({
+      model: new MockLanguageModelV4({
+        doGenerate: async () => ({
+          content: [{ type: "text", text: "ok" }],
+          finishReason: { unified: "stop", raw: "stop" },
+          usage: {
+            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 1, text: 1, reasoning: 0 },
+          },
+          warnings: [],
+        }),
+      }),
+      middleware: turnClockMiddleware(),
+    });
+    const model = new Experimental_EvaluationMockModelV4({
+      doEvaluate: async () => {
+        await language.doGenerate({ prompt: [] });
+        return {
+          answers: { ok: { type: "boolean", probability: 0.8 } },
+          usage: { inputTokens: 1, outputTokens: 1 },
+          warnings: [],
+        };
+      },
+    });
+    const clock = new TurnClock();
+    await withTurnClock(clock, () => decide(resolvedOn(model, { backend: "adapter" }), {
+      state: "x", questions: { ok: { type: "boolean", instructions: "Is it fine." } },
+    }));
+    expect(clock.summary().modelCallTimings).toEqual([{ stage: "decide", ms: expect.any(Number) }]);
+    expect(clock.summary().modelMsByStage.generate).toBeUndefined();
   });
 
   it("sends Jev the state and questions masked under a PII masking scope (#1078)", async () => {

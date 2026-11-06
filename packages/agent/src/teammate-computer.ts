@@ -214,7 +214,7 @@ export function teammateComputer({
       throw new Error("Terminal access requires files and internet access");
     if (
       ["exec", "files_write", "click", "type", "key"].includes(action) &&
-      row.capabilityCeiling !== "edit"
+      row.actionCeiling !== "edit"
     )
       throw new Error("This Teammate is limited to reading");
   }
@@ -400,17 +400,17 @@ export function teammateComputerTools(
           config.computer.terminal &&
           config.computer.files &&
           config.internet &&
-          teammate.capabilityCeiling === "edit"
+          teammate.actionCeiling === "edit"
         );
       if (name.startsWith("files_"))
         return (
           config.computer.files &&
-          (name !== "files_write" || teammate.capabilityCeiling === "edit")
+          (name !== "files_write" || teammate.actionCeiling === "edit")
         );
       return (
         config.computer.browser &&
         config.internet &&
-        (teammate.capabilityCeiling === "edit" ||
+        (teammate.actionCeiling === "edit" ||
           ["navigate", "snapshot", "read", "scroll"].includes(name))
       );
     })

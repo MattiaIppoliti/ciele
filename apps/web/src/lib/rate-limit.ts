@@ -76,13 +76,28 @@ export function createRateLimiter(options: {
 }
 
 /**
- * The caller's address, as far as we can tell behind the proxy. Takes the
- * left-most `x-forwarded-for` hop (the client as the edge saw it) and falls
- * back to a shared bucket, which is intentional: unattributable traffic
- * competes for one budget instead of getting an unlimited one each.
+ * `CIELE_TRUSTED_PROXY_HOPS`: how many proxies in front of this app append to
+ * `x-forwarded-for`. Unset or 0 (anything but a whole number reads as 0) is
+ * the default and right on Vercel, whose edge overwrites the header, and
+ * behind the bundled Caddy, which replaces what an untrusted client sent.
+ * `services/ciele-api` reads the same variable the same way.
  */
-export function clientAddress(headers: Headers): string {
-  const forwarded = headers.get("x-forwarded-for");
-  const first = forwarded?.split(",")[0]?.trim();
-  return first || headers.get("x-real-ip")?.trim() || "unknown";
+export function trustedProxyHops(value: string | undefined = process.env.CIELE_TRUSTED_PROXY_HOPS): number {
+  const trimmed = (value ?? "").trim();
+  return /^\d+$/.test(trimmed) ? Number(trimmed) : 0;
+}
+
+/**
+ * The caller's address, as far as we can tell behind the proxy. With no
+ * trusted proxies it takes the left-most `x-forwarded-for` hop (the client as
+ * the edge saw it). Behind N proxies that each append the address they were
+ * called from, a client can write anything on the left, so it takes the Nth
+ * hop from the right, the one the outermost trusted proxy added. Then
+ * `x-real-ip`, then a shared bucket, which is intentional: unattributable
+ * traffic competes for one budget instead of getting an unlimited one each.
+ */
+export function clientAddress(headers: Headers, hops: number = trustedProxyHops()): string {
+  const forwarded = headers.get("x-forwarded-for")?.split(",");
+  const hop = forwarded?.[hops > 0 ? Math.max(0, forwarded.length - hops) : 0]?.trim();
+  return hop || headers.get("x-real-ip")?.trim() || "unknown";
 }

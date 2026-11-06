@@ -1,3 +1,5 @@
+import { DocumentFaqEditor } from "./document-faq-editor";
+import { DocumentReview } from "./document-review";
 import { StatusBadge as StatusPill, statusFromTone } from "@/components/spaceui/status-badge";
 import Link from "next/link";
 import { Download, ExternalLink } from "lucide-react";
@@ -66,7 +68,9 @@ export function DocumentView({
   rootLabel,
   listQuery = "",
   canEdit,
+  currentMemberId = "",
 }: {
+  currentMemberId?: string;
   source: Source;
   collection: KnowledgeCollection;
   document: Concept;
@@ -286,6 +290,8 @@ export function DocumentView({
                 </DetailRow>
               </DetailGroup>
 
+              <DocumentReview sourceId={source.id} documentId={document.id} frontmatter={document.frontmatter} memberId={currentMemberId} canEdit={canEdit} assistantId={assistantId} />
+              {canEdit && source.kind === "faq" && <DocumentFaqEditor sourceId={source.id} question={document.frontmatter.title ?? source.name} answer={document.body} />}
               <DetailGroup label="Activity">
                 <DetailRow label="Stored">
                   <span
@@ -300,7 +306,7 @@ export function DocumentView({
                   <RollingNumber value={chunkCount} className="font-mono text-xs" />
                 </DetailRow>
                 {canEdit ? (
-                  <DocumentExcludeToggle
+            <DocumentExcludeToggle
                     sourceId={source.id}
                     documentId={document.id}
                     excluded={document.excluded}

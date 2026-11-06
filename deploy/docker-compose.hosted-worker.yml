@@ -1,0 +1,17 @@
+# Standalone scheduler for a Ciele deployment hosted on Vercel Hobby.
+# From the repository root:
+# docker compose --env-file /secure/ciele-worker.env -f deploy/docker-compose.hosted-worker.yml up -d --build
+services:
+  webhook-worker:
+    build:
+      context: ./cron
+      args:
+        CRONTAB: webhooks.crontab
+    environment:
+      APP_URL: ${APP_URL:?Set the HTTPS origin of the hosted Ciele deployment}
+      CRON_SECRET: ${CRON_SECRET:?Set the hosted deployment's CRON_SECRET}
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"

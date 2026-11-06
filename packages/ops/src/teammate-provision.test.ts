@@ -82,7 +82,7 @@ describe("provisioning a Teammate", () => {
     });
 
     expect(result.partial).toBe("grants");
-    expect(result.reason).toContain("manageMembers");
+    expect(result.reason).toContain("teammates:grants");
     expect(result.governance).toBeNull();
   });
 
@@ -135,7 +135,7 @@ describe("provisioning a Teammate", () => {
     // Declaring `manageMembers` here would refuse an Editor the
     // create-plus-routines call they are entitled to make; granting re-checks
     // its own capability inside `setTeammateGrantsOp`.
-    expect(provisionTeammateOp.capability).toBe("edit");
+    expect(provisionTeammateOp.capability).toBe("teammates:edit");
     const result = await provisionTeammateOp.run(ctx("editor"), {
       name: "Editor made me",
       routines: [{ instruction: "Daily sweep", cadence: "daily" }],

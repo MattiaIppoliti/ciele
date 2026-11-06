@@ -1,5 +1,6 @@
 import type { PGlite } from "@electric-sql/pglite";
 import type {
+  MessageRole,
   ConversationMetadata,
   InsightsFilter,
   InsightsOverview,
@@ -48,7 +49,7 @@ export interface SeedConversation {
 }
 export interface SeedMessage {
   conversationId: string;
-  role: "user" | "assistant";
+  role: MessageRole;
   feedback: -1 | 0 | 1;
   createdAt: string;
   flowName?: string;

@@ -33,7 +33,7 @@ async function redirectTo(
  * itself fails.
  */
 export async function openBillingPortalAction(): Promise<void> {
-  const { organizationId } = await requireMember("manageMembers");
+  const { organizationId } = await requireMember("billing:manage");
   await redirectTo("portal session", () =>
     getEnterpriseCapabilities().billing.startBillingPortal(organizationId),
   );
@@ -51,7 +51,7 @@ export async function openBillingPortalAction(): Promise<void> {
  * `manageMembers` is the same capability that gates the billing page itself.
  */
 export async function startPlanCheckoutAction(formData: FormData): Promise<void> {
-  const { session, organizationId } = await requireMember("manageMembers");
+  const { session, organizationId } = await requireMember("billing:manage");
   const plan = String(formData.get("plan") ?? "");
   await redirectTo("checkout session", () =>
     getEnterpriseCapabilities().billing.startUpgradeCheckout({
@@ -69,7 +69,7 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
  * a real Stripe or network failure lands on the error notice.
  */
 export async function startTopupCheckoutAction(formData: FormData): Promise<void> {
-  const { session, organizationId } = await requireMember("manageMembers");
+  const { session, organizationId } = await requireMember("billing:manage");
   const pack = String(formData.get("pack") ?? "");
   await redirectTo("topup checkout session", async () =>
     getEnterpriseCapabilities().billing.startTopupCheckout?.({

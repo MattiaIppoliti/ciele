@@ -1,6 +1,8 @@
+import { approvedMcpResultWindows } from "../remote-mcp-results";
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
 import type { Assistant, Flow, KnowledgeSearchResult, SkillSnapshot } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS, STUDY_MODE_FLOW_ID } from "@agent-hub/core";
+import { planSkills, skillIndexSection } from "../skills";
 import { voiceReplyLanguage } from "../voice-language";
 import {
   mintUntrustedNonce,
@@ -14,6 +16,8 @@ import type {
   HistoryMessage,
   KnowledgeSearcher,
   RuntimeEvent,
+  TurnOutcome,
+  UsageTotals,
 } from "../types";
 import type { SearchPass } from "./search-pass";
 import {
@@ -124,6 +128,8 @@ export function buildSystemPrompt(
      */
     canSearchKnowledge?: boolean;
     skills?: SkillSnapshot[];
+    /** Skills listed by name and description, loaded with `useSkill` (skills.ts). */
+    skillIndex?: SkillSnapshot[];
     memory?: string[];
     longTermMemory?: string[];
     /**
@@ -161,6 +167,7 @@ export function buildSystemPrompt(
   const flowStyle = context?.flowStyle;
   const searchGuidelines = flowStyle?.searchGuidelines?.trim();
   const skills = (context?.skills ?? []).filter((s) => s.prompt.trim());
+  const skillIndex = context?.skillIndex ?? [];
   const memory = context?.memory ?? [];
   const longTermMemory = context?.longTermMemory ?? [];
   const retrievalContext = context?.retrievalContext?.trim();
@@ -195,6 +202,9 @@ export function buildSystemPrompt(
           ...skills.map((s) => `## Skill: ${s.name}\n${s.prompt.trim()}`),
         ]
       : []),
+    // The index invites a useSkill call, and only the gather phase has tools.
+    // The writer reads any playbook that was opened in the gather messages.
+    ...(skillIndex.length > 0 && phase === "gather" ? ["", ...skillIndexSection(skillIndex)] : []),
     // Standing context before per-conversation context: who the colleague is
     // and what the team decided outrank what was said ten messages ago.
     ...(context?.memoryDocuments ?? []).flatMap((section) => ["", section]),
@@ -378,11 +388,13 @@ export interface AgenticSearchTurnInput {
      * so the saved message carries the component the Visitor was shown.
      */
     showPart: (part: ChatReplyPart) => void;
+    /** Skills the prompt only lists; `useSkill` returns their bodies (skills.ts). */
+    skillIndex: SkillSnapshot[];
   }) => ToolSet;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
   /** Reports one model call's token totals for the AI usage ledger. */
-  recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
+  recordUsage?: (usage: UsageTotals) => void;
   /** True on the admin Preview surface (provider diagnostics may be shown). */
   previewSurface?: boolean;
 }
@@ -397,6 +409,8 @@ export interface AgenticSearchOutcome {
   parts: ChatReplyPart[];
   grounded: boolean;
   terminal: boolean;
+  /** How the search ended; `answered` for a plain answer. */
+  ending: TurnOutcome;
 }
 
 /**
@@ -491,6 +505,8 @@ export async function runAgenticSearch(
   // One fence label for the whole turn: the prompt that defines it and every
   // tool result that uses it are the same turn, so the model sees one boundary.
   const untrustedNonce = mintUntrustedNonce();
+  // Short playbooks ride the prompt whole; long ones become an index (skills.ts).
+  const skillPlan = planSkills(skills);
 
   const tools = buildTools({
     searchPasses,
@@ -502,11 +518,12 @@ export async function runAgenticSearch(
     // The registry has already emitted it; collecting is what makes it persist.
     showPart: (part) => streamedParts.push(part),
     untrustedNonce,
+    skillIndex: skillPlan.indexed,
   });
 
   // ── Phase 1: gather (gather-phase.ts) ─────────────────────────────────────
   const baseMessages: ModelMessage[] = [
-    ...history.map((m) => ({ role: m.role, content: m.text })),
+    ...history.map((m) => ({ role: m.role, content: [m.text, ...approvedMcpResultWindows(m.mcpResults ?? []).map(body => wrapUntrustedContent({ provenance: "Approved remote MCP result", body }, untrustedNonce))].join("\n\n") })),
     {
       role: "user" as const,
       content: [
@@ -523,7 +540,8 @@ export async function runAgenticSearch(
       persona,
       memoryDocuments,
       canSearchKnowledge: Boolean(input.searchKnowledge),
-      skills,
+      skills: skillPlan.inline,
+      skillIndex: skillPlan.indexed,
       memory: session.memory(),
       longTermMemory,
       flowStyle,
@@ -554,6 +572,7 @@ export async function runAgenticSearch(
       parts: [...streamedParts, refusalPart, helpPart],
       grounded: false,
       terminal: true,
+      ending: "refused",
     };
   }
 
@@ -574,7 +593,8 @@ export async function runAgenticSearch(
       persona,
       memoryDocuments,
       canSearchKnowledge: Boolean(input.searchKnowledge),
-      skills,
+      skills: skillPlan.inline,
+      skillIndex: skillPlan.indexed,
       memory: session.memory(),
       longTermMemory,
       flowStyle,
@@ -601,7 +621,7 @@ export async function runAgenticSearch(
       question: clarifyQuestion(write.text),
     };
     emit({ type: "part", part });
-    return { parts: [...streamedParts, part], grounded: false, terminal: true };
+    return { parts: [...streamedParts, part], grounded: false, terminal: true, ending: "clarified" };
   }
 
   // What the finished stream says, and the copy its ending calls for.
@@ -610,7 +630,7 @@ export async function runAgenticSearch(
   if (ending.fellBack) {
     emit({
       type: "part",
-      part: { type: "text", action: "search_knowledge", text: ending.text },
+      part: { type: "text", action: "search_knowledge", text: ending.text, generated: !ending.fellBack },
     });
   }
 
@@ -619,14 +639,14 @@ export async function runAgenticSearch(
   // the front of the answer string; here, still separable parts).
   const parts: ChatReplyPart[] = [
     ...streamedParts,
-    { type: "text", action: "search_knowledge", text: ending.text },
+    { type: "text", action: "search_knowledge", text: ending.text, generated: !ending.fellBack },
   ];
   // Output-limit truncation: say so instead of pretending nothing was found.
   if (ending.lengthNotice) {
     const notePart = ending.lengthNotice;
     emit({ type: "part", part: notePart });
     parts.push(notePart);
-    return { parts, grounded: false, terminal: true };
+    return { parts, grounded: false, terminal: true, ending: "length_cutoff" };
   }
   if (sourcesPart) {
     emit({ type: "part", part: sourcesPart });
@@ -638,5 +658,6 @@ export async function runAgenticSearch(
     parts,
     grounded: sourcesPart !== null && status === "answer",
     terminal: false,
+    ending: status === "insufficient_information" ? "insufficient" : "answered",
   };
 }

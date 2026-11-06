@@ -7,6 +7,7 @@
 #   ./deploy/bootstrap.sh --images vX.Y.Z
 #                                      run published images, no source build
 #   ./deploy/bootstrap.sh --workers    …and the heavy crawler worker
+#   ./deploy/bootstrap.sh --rust       …and the Rust API service (services/ciele-api)
 #   ./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/db
 #                                      run on a managed Postgres you already own
 #                                      (Azure, RDS/Aurora, Cloud SQL/AlloyDB, Neon);
@@ -35,6 +36,7 @@ SEED=0
 ENV_ONLY=0
 IMAGE_TAG=""
 WORKERS=0
+RUST=0
 TLS=0
 DB_URL=""
 DB_CA=""
@@ -46,6 +48,7 @@ while [ $# -gt 0 ]; do
     --seed) SEED=1 ;;
     --env-only) ENV_ONLY=1 ;;
     --workers) WORKERS=1 ;;
+    --rust) RUST=1 ;;
     --tls) TLS=1 ;;
     --database-url)
       shift
@@ -201,6 +204,14 @@ if [ "$WORKERS" = "1" ]; then
   set_var CRAWL4AI_API_TOKEN "$(random_secret)"
   set_var CRAWL4AI_SECRET_KEY "$(random_secret)"
   echo "Workers: the crawler is on (budget ~4 GiB of RAM)."
+fi
+
+if [ "$RUST" = "1" ]; then
+  listed "$overlays" docker-compose.rust.yml ||
+    overlays="$overlays:docker-compose.rust.yml"
+  # The secret the app signs forwarded operations with and the service checks.
+  set_var CIELE_RUST_API_SECRET "$(random_secret)"
+  echo "Rust service: on, running every ported operation (services/ciele-api/RUNBOOK.md)."
 fi
 
 if [ "$TLS" = "1" ]; then

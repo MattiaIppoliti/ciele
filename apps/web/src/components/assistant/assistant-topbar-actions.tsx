@@ -15,11 +15,13 @@ export function AssistantTopBarActions({
   assistantTitle,
   canEdit,
   canDelete,
+  canManageAccess,
 }: {
   assistantId: string;
   assistantTitle: string;
   canEdit: boolean;
   canDelete: boolean;
+  canManageAccess: boolean;
 }) {
   const setSlot = useSetTopBarSlot();
 
@@ -43,11 +45,12 @@ export function AssistantTopBarActions({
           assistantTitle={assistantTitle}
           canEdit={canEdit}
           canDelete={canDelete}
+          canManageAccess={canManageAccess}
         />
       </>
     );
     return () => setSlot("actions", null);
-  }, [assistantId, assistantTitle, canEdit, canDelete, setSlot]);
+  }, [assistantId, assistantTitle, canEdit, canDelete, canManageAccess, setSlot]);
 
   return null;
 }

@@ -68,6 +68,7 @@ export function SourceDocumentsTable({
   params,
   basePath,
   canEdit,
+  qualityAvailable = false,
 }: {
   sourceId: string;
   documents: SourceDocumentListItem[];
@@ -80,6 +81,7 @@ export function SourceDocumentsTable({
   basePath: string;
   /** Editors get the checkbox column; a Viewer reads. */
   canEdit: boolean;
+  qualityAvailable?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -98,6 +100,7 @@ export function SourceDocumentsTable({
     { key: "site", width: 240 },
     { key: "memories", width: 120 },
     { key: "status", width: 140 },
+    { key: "trust", width: 160 },
     { key: "updated", width: 180 },
     { key: "actions", width: 140, fixed: true },
   ];
@@ -146,9 +149,10 @@ export function SourceDocumentsTable({
 
   return (
     <TableCard title="Documents" results={{ total, noun: "document" }}
-      filters={<TableFilter label="Status" value={params.status} anyLabel="All statuses"
+      filters={<><TableFilter label="Status" value={params.status} anyLabel="All statuses"
         options={[{ value: "ready", label: "Ready" }, { value: "pending", label: "Pending" }, { value: "excluded", label: "Excluded" }]}
-        onChange={(value) => go({ status: value as SourceDocumentsSearchParams["status"], page: 1 })} />}
+        onChange={(value) => go({ status: value as SourceDocumentsSearchParams["status"], page: 1 })} />
+        {qualityAvailable ? <TableFilter label="Trust" value={params.trustTier ?? ""} anyLabel="All tiers" options={[{ value: "unverified", label: "Unverified" }, { value: "machine-confirmed", label: "Machine-confirmed" }, { value: "human-reviewed", label: "Human-reviewed" }]} onChange={value => go({ trustTier: value === "unverified" || value === "machine-confirmed" || value === "human-reviewed" ? value : undefined, page: 1 })} /> : <span className="text-muted-foreground text-xs">Trust filtering is unavailable until the database is updated.</span>}</>}
       className={isPending ? "opacity-60" : undefined}
       footer={
         <TablePagination
@@ -236,6 +240,7 @@ export function SourceDocumentsTable({
                   go({ status: value as SourceDocumentsSearchParams["status"] }),
               }}
             />
+            <TableColumnHeader label="Trust" resize={columns.handleFor("trust")} />
             <TableColumnHeader
               label="Updated"
               resize={columns.handleFor("updated")}
@@ -363,6 +368,7 @@ export function SourceDocumentsTable({
                     primaryText={<RollInText text={sourceDocumentStatusLabel(status)} />}
                   />
                 </TableCell>
+                <TableCell><RollInText text={document.trustTier ?? "Unavailable"} /></TableCell>
                 <TableCell
                   className="text-muted-foreground"
                   title={new Date(document.createdAt).toISOString()}

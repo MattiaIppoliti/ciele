@@ -5,9 +5,9 @@ import {
   listDocumentMemoriesOp,
 } from "@ciele/ops";
 import { DocumentView } from "@/components/knowledge/document-view";
-import { requirePageMember } from "@/lib/authz";
+import { requirePageMember, requireAssistantPageAccess } from "@/lib/authz";
 import { runPageOperation } from "@/lib/operations";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { parseDocumentTab } from "@/lib/document-view";
 import {
   assistantDocumentsHref,
@@ -36,7 +36,8 @@ export default async function AssistantDocumentPage({
   // Where in the Documents table this row was opened from: the breadcrumb and
   // every tab link keep it, so "back" is the same page and sort (#928).
   const list = parseSourceDocumentsParams(search);
-  const { role } = await requirePageMember();
+  const { session } = await requirePageMember();
+  const { access } = await requireAssistantPageAccess(id);
 
   // The two tabs' data, read here so each paints with the route rather than
   // after a client round trip. Memories include the forgotten ones: the
@@ -67,6 +68,7 @@ export default async function AssistantDocumentPage({
   const sourcePath = assistantDocumentsHref(id, view.source.id);
   return (
     <DocumentView
+      currentMemberId={session.userId}
       source={view.source}
       collection={view.collection}
       document={view.document}
@@ -85,7 +87,7 @@ export default async function AssistantDocumentPage({
       rootHref={assistantKnowledgeHref(id, view.source.kind)}
       rootLabel="Knowledge"
       listQuery={sourceDocumentsQuery(list)}
-      canEdit={canEdit(role)}
+      canEdit={can(access, "knowledge:edit")}
     />
   );
 }

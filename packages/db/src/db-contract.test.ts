@@ -1,5 +1,6 @@
 import { describeDbContract } from "./db-contract.suite";
 import { getMockDb, DEMO_MEMBER, DEMO_ORG } from "./index";
+import { listMockRuntimeEventTimings } from "./mock";
 
 describeDbContract("mock", async () => {
   const db = getMockDb();
@@ -16,5 +17,6 @@ describeDbContract("mock", async () => {
     missingOrganizationId: "00000000-0000-0000-0000-000000000000",
     foreignOrganizationId,
     foreignAssistantId: foreignAssistant.id,
+    listRuntimeEventTimings: async (organizationId) => listMockRuntimeEventTimings(organizationId),
   };
 });

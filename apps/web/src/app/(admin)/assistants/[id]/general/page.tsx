@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { SlidersHorizontal } from "lucide-react";
 import { GeneralForm } from "@/components/assistant/general-form";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { requirePageMember } from "@/lib/authz";
@@ -25,7 +24,6 @@ export default async function GeneralPage({
   return (
     <div className="mx-auto max-w-3xl px-5 py-6 @xl:px-8 @xl:py-10">
       <SectionHeading
-        icon={SlidersHorizontal}
         title="General Settings"
 
       />

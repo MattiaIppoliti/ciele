@@ -27,6 +27,7 @@ const inboxQuerySchema = z.object({
   conversationIds: z.array(z.string().min(1)).max(500).optional(),
   feedback: z.enum(["", "up", "down", "neutral"]).optional(),
   escalation: z.enum(["", "escalated", "not_escalated"]).optional(),
+  flaggedAnswer: z.boolean().optional(),
   staff: z.enum(["", "include", "only"]).optional(),
 });
 
@@ -60,7 +61,7 @@ export async function requireConversation(
 
 export const listInboxConversationsOp = defineOperation({
   name: "inbox.conversations.list",
-  capability: "member",
+  capability: "inbox:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -71,7 +72,7 @@ export const listInboxConversationsOp = defineOperation({
 /** Bounded keyset page for every interactive surface. */
 export const listInboxPageOp = defineOperation({
   name: "inbox.conversations.page",
-  capability: "member",
+  capability: "inbox:view",
   effect: "read",
   input: inboxQuerySchema,
   entities: () => [],
@@ -80,7 +81,7 @@ export const listInboxPageOp = defineOperation({
 
 export const getInboxFacetsOp = defineOperation({
   name: "inbox.facets.get",
-  capability: "member",
+  capability: "inbox:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -104,7 +105,8 @@ export type InboxConversationDetail = InboxConversationReview & {
 
 export const getInboxConversationReviewOp = defineOperation({
   name: "inbox.conversations.review",
-  capability: "member",
+  capability: "inbox:view",
+  assistant: async (ctx, input) => { const ref = input as { id?: string; conversationId?: string }; const id = ref.conversationId ?? ref.id; return id ? (await ctx.db.getConversation(id))?.assistantId ?? null : null; },
   effect: "read",
   input: z.object({ conversationId: z.string().min(1) }),
   entities: () => [],
@@ -155,7 +157,8 @@ async function readInboxWindow(options: {
 
 export const readInboxSummaryWindowOp = defineOperation({
   name: "inbox.conversations.summary-window",
-  capability: "member",
+  capability: "inbox:view",
+  assistant: async (ctx, input) => { const ref = input as { id?: string; conversationId?: string }; const id = ref.conversationId ?? ref.id; return id ? (await ctx.db.getConversation(id))?.assistantId ?? null : null; },
   effect: "read",
   input: z.object({
     query: inboxQuerySchema.omit({ cursor: true, limit: true }),
@@ -167,7 +170,8 @@ export const readInboxSummaryWindowOp = defineOperation({
 
 export const getConversationOp = defineOperation({
   name: "inbox.conversations.get",
-  capability: "member",
+  capability: "inbox:view",
+  assistant: async (ctx, input) => { const ref = input as { id?: string; conversationId?: string }; const id = ref.conversationId ?? ref.id; return id ? (await ctx.db.getConversation(id))?.assistantId ?? null : null; },
   effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
@@ -185,7 +189,7 @@ export const getConversationOp = defineOperation({
  */
 export const readConversationsForExportOp = defineOperation({
   name: "inbox.conversations.export-read",
-  capability: "member",
+  capability: "inbox:view",
   effect: "read",
   input: z.object({
     query: inboxQuerySchema.omit({ cursor: true, limit: true }),
@@ -222,7 +226,8 @@ export const readConversationsForExportOp = defineOperation({
 
 export const setConversationPinnedOp = defineOperation({
   name: "inbox.conversations.pin",
-  capability: "member",
+  capability: "inbox:triage",
+  assistant: async (ctx, input) => { const ref = input as { id?: string; conversationId?: string }; const id = ref.conversationId ?? ref.id; return id ? (await ctx.db.getConversation(id))?.assistantId ?? null : null; },
   effect: "write",
   input: z.object({ id: z.string().min(1), pinned: z.boolean() }),
   entities: () => [{ kind: "inbox" as const }],
@@ -240,7 +245,7 @@ export const setConversationPinnedOp = defineOperation({
  */
 export const setConversationLegalHoldOp = defineOperation({
   name: "inbox.conversations.legalHold",
-  capability: "manageMembers",
+  capability: "inbox:legalHold",
   effect: "consequential",
   input: z.object({ id: z.string().min(1), legalHold: z.boolean() }),
   entities: () => [{ kind: "inbox" as const }],
@@ -253,7 +258,8 @@ export const setConversationLegalHoldOp = defineOperation({
 
 export const sendConversationFeedbackOp = defineOperation({
   name: "inbox.conversations.feedback",
-  capability: "member",
+  capability: "inbox:triage",
+  assistant: async (ctx, input) => { const ref = input as { id?: string; conversationId?: string }; const id = ref.conversationId ?? ref.id; return id ? (await ctx.db.getConversation(id))?.assistantId ?? null : null; },
   effect: "write",
   input: z.object({ id: z.string().min(1), text: z.string().trim().min(1).max(2_000) }),
   entities: () => [{ kind: "inbox" as const }],
@@ -269,7 +275,8 @@ export const sendConversationFeedbackOp = defineOperation({
 
 export const deleteConversationOp = defineOperation({
   name: "inbox.conversations.delete",
-  capability: "member",
+  capability: "inbox:delete",
+  assistant: async (ctx, input) => { const ref = input as { id?: string; conversationId?: string }; const id = ref.conversationId ?? ref.id; return id ? (await ctx.db.getConversation(id))?.assistantId ?? null : null; },
   effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [{ kind: "inbox" as const }],
@@ -284,7 +291,8 @@ export const deleteConversationOp = defineOperation({
 
 export const setMessageFeedbackOp = defineOperation({
   name: "inbox.messages.feedback",
-  capability: "member",
+  capability: "inbox:triage",
+  assistant: async (ctx, input) => { const ref = input as { id?: string; conversationId?: string }; const id = ref.conversationId ?? ref.id; return id ? (await ctx.db.getConversation(id))?.assistantId ?? null : null; },
   effect: "write",
   input: z.object({
     messageId: z.string().min(1),

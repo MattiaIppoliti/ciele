@@ -47,7 +47,7 @@ export async function intakeSource(
 ): Promise<Response | IntakenSource> {
   const auth = await resolveApiKeyContext(request);
   if (auth instanceof Response) return auth;
-  const forbidden = requireApiCapability(auth, "edit");
+  const forbidden = requireApiCapability(auth, "knowledge:edit");
   if (forbidden) return forbidden;
 
   // The same per-member budget as the console doors (#801, CYB-01), keyed on

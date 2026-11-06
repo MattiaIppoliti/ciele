@@ -8,9 +8,11 @@ export async function PATCH(request: Request, { params }: Params) {
   const { userId } = await params;
   const body = await request.json().catch(() => null);
   if (body === null) return apiError(400, "invalid_input", "Body must be JSON");
+  // A Role by id (custom ones included), or a built-in by name.
   const outcome = await runApiOperation(request, updateMemberRoleOp, {
     userId,
-    role: body.role,
+    ...(body.roleId ? { roleId: body.roleId } : {}),
+    ...(body.role ? { role: body.role } : {}),
   });
   return outcome instanceof Response ? outcome : Response.json(outcome.result);
 }

@@ -33,6 +33,16 @@ describe("component library source contract", () => {
     }
   });
 
+  it("gives every family, and every companion, a case in its preview module", () => {
+    // A missing case throws "Unknown … preview" at runtime and nothing else notices.
+    const modules = { primitive: "primitive-previews.tsx", platform: "platform-previews.tsx", block: "block-previews.tsx" } as const;
+    const read = (preview: keyof typeof modules) => readFileSync(resolve(__dirname, modules[preview]), "utf8");
+    for (const family of COMPONENT_FAMILIES) {
+      expect(read(family.preview), family.slug).toContain(`"${family.slug}"`);
+      if (family.companion) expect(read("platform"), family.companion).toContain(`"${family.companion}"`);
+    }
+  });
+
   it("keeps composed features in Blocks and individual form controls in Components", () => {
     for (const slug of ["tables", "motion-table", "availability-scheduler", "appearance-settings", "conversation", "chat-composer", "editors"]) {
       const family = componentFamily(slug);

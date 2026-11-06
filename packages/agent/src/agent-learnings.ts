@@ -46,7 +46,9 @@ const DISTILLER_SYSTEM = [
   "You maintain an AI teammate's notebook of what it has learned about doing its job inside one organization.",
   "You are given the teammate's standing role and the last exchange it had with a colleague. Decide whether the exchange taught something durable.",
   "Durable means: a convention this organization uses, a name they have for something, a preference in how work is done here, a correction a colleague made. It has to be useful in a conversation with a DIFFERENT colleague next month.",
-  "NOT durable: what was discussed, what the colleague wanted today, anything about one person (their profile is kept separately), anything the teammate could look up, and anything it already knows.",
+  "NOT durable: what was discussed, what the colleague wanted today, anything about one person (their profile is kept separately), anything the teammate could look up or derive from the organization's own knowledge, and anything the notebook already says.",
+  "A confirmation counts as much as a correction: a colleague saying an unusual approach was right is worth keeping, because otherwise the teammate drifts away from it.",
+  "When you keep something, say in the same sentence why it holds or when it applies, so a later reader can judge an edge case instead of following the rule blindly.",
   "Refusing is the normal answer. Say worthKeeping: false unless the line you would write is one you would want read back in six months.",
 ].join(" ");
 
@@ -84,6 +86,13 @@ export async function distillAgentLearning(input: {
   // outcome rather than a degraded one.
   if (!classifier) return { appended: false };
 
+  // The notebook as it stands, so the distiller can see a repeat and decline
+  // it. Read again before the append below, which is what handles a race.
+  const notebook = await db.getMemoryDocument(organizationId, {
+    scope: "agent",
+    teammateId,
+  });
+
   const nonce = mintUntrustedNonce();
   let result;
   try {
@@ -96,6 +105,15 @@ export async function distillAgentLearning(input: {
       system: `${DISTILLER_SYSTEM}\n\n${untrustedContentPolicy(nonce)}`,
       prompt: [
         `The teammate's standing role, in the organization's words:\n${teammate.roleDescription || "(none given)"}`,
+        "",
+        // Distilled from earlier exchanges, so it is fenced like them.
+        "What the notebook already says:",
+        notebook?.body.trim()
+          ? wrapUntrustedContent(
+              { provenance: "teammate notebook", body: notebook.body },
+              nonce
+            )
+          : "(empty)",
         "",
         "The exchange:",
         wrapUntrustedContent(

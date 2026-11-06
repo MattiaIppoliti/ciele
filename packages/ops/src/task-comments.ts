@@ -44,7 +44,7 @@ async function requireOwnComment(ctx: OperationContext, commentId: string): Prom
 
 export const listTaskCommentsOp = defineOperation({
   name: "tasks.comments.list",
-  capability: "member",
+  capability: "projects:view",
   effect: "read",
   input: z.object({ taskId: id }),
   entities: () => [],
@@ -64,7 +64,7 @@ export const listTaskCommentsOp = defineOperation({
 
 export const createTaskCommentOp = defineOperation({
   name: "tasks.comments.create",
-  capability: "member",
+  capability: "tasks:comment",
   effect: "write",
   input: z.object({ taskId: id, body }),
   entities: ({ taskId }) => commentEntities(taskId),
@@ -99,7 +99,7 @@ export const createTaskCommentOp = defineOperation({
 
 export const updateTaskCommentOp = defineOperation({
   name: "tasks.comments.update",
-  capability: "member",
+  capability: "tasks:comment",
   effect: "write",
   input: z.object({ id, body }),
   entities: (_input, result: TaskComment) => commentEntities(result.taskId),
@@ -126,7 +126,7 @@ export const updateTaskCommentOp = defineOperation({
 
 export const deleteTaskCommentOp = defineOperation({
   name: "tasks.comments.delete",
-  capability: "member",
+  capability: "tasks:comment",
   // Restorable for ten minutes, but a removal all the same: an agent acting
   // for a Member stops on the approval card before deleting their words.
   effect: "consequential",
@@ -142,7 +142,7 @@ export const deleteTaskCommentOp = defineOperation({
 /** Undo for a delete, within the restore window (#1055). */
 export const restoreTaskCommentOp = defineOperation({
   name: "tasks.comments.restore",
-  capability: "member",
+  capability: "tasks:comment",
   effect: "write",
   input: z.object({ id }),
   entities: (_input, result: TaskComment) => commentEntities(result.taskId),
@@ -162,7 +162,7 @@ export const restoreTaskCommentOp = defineOperation({
  */
 export const reactToTaskCommentOp = defineOperation({
   name: "tasks.comments.react",
-  capability: "member",
+  capability: "tasks:comment",
   effect: "write",
   input: z.object({ id, emoji: z.string().min(1).max(32), on: z.boolean() }),
   entities: (_input, result: { taskId: string; reactions: TaskCommentReaction[] }) => [

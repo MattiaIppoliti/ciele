@@ -84,7 +84,7 @@ const expectedUpdatedAtSchema = z.string().min(1).nullable().optional();
 
 export const writeProjectDocumentOp = defineOperation({
   name: "projects.document.write",
-  capability: "edit",
+  capability: "projects:edit",
   effect: "write",
   input: z.object({
     id: z.string().min(1),
@@ -159,7 +159,7 @@ export const revertMyMemoryOp = defineOperation({
 
 export const getTeammateMemoryOp = defineOperation({
   name: "teammates.memory.get",
-  capability: "member",
+  capability: "teammates:view",
   effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
@@ -175,7 +175,7 @@ export const getTeammateMemoryOp = defineOperation({
 
 export const writeTeammateMemoryOp = defineOperation({
   name: "teammates.memory.write",
-  capability: "edit",
+  capability: "teammates:edit",
   effect: "write",
   input: z.object({
     id: z.string().min(1),

@@ -1,7 +1,7 @@
 import { deleteConversationOp, getConversationOp, setConversationPinnedOp } from "@ciele/ops";
 import { apiError } from "@/lib/api-v1/http";
 import { runApiOperation } from "@/lib/api-v1/run";
-import { canViewReasoning } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,7 +19,7 @@ export async function GET(
   const outcome = await runApiOperation(request, getConversationOp, { id });
   if (outcome instanceof Response) return outcome;
 
-  const includeTrace = canViewReasoning(outcome.ctx.role);
+  const includeTrace = can(outcome.ctx, "inbox:reasoning");
   const { conversation, messages } = outcome.result;
   return Response.json({
     conversation,

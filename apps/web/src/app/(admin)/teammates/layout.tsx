@@ -3,7 +3,7 @@ import { listChannelsOp } from "@ciele/ops";
 import { TeammatesShell, type TeammatesShellData } from "@/components/teammates/teammates-client";
 import { requirePageMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { loadScopeSources } from "@/lib/teammates/settings-props";
 import { teammateAvatarSeed } from "@/lib/avatar";
 import { ensureCieleAi } from "@/lib/teammates/ciele-ai";
@@ -39,7 +39,8 @@ export default function TeammatesLayout({
 }
 
 async function loadShellData(): Promise<TeammatesShellData> {
-  const { organizationId, role, session, db } = await requirePageMember();
+  const { organizationId, role, session, db, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
 
   const [
     teammates,
@@ -142,6 +143,6 @@ async function loadShellData(): Promise<TeammatesShellData> {
         // model, so attaching to one would be attaching to nothing.
         .filter((project) => !project.archived)
         .map((project) => ({ id: project.id, name: project.name })),
-    canEdit: canEdit(role),
+    canEdit: can(access, "teammates:edit"),
   };
 }

@@ -61,6 +61,10 @@ export function ObservabilityDashboard({
     >
       <DashboardStatCards specs={observabilityStats(dashboard, view.previous)} loading={stale} />
 
+      {view.moderation && <DashboardStatCards loading={stale} specs={[
+        { key: "moderationVisitors", label: "Visitor messages flagged", value: view.moderation.visitors },
+        { key: "moderationAnswers", label: "Answers flagged", value: view.moderation.answers },
+      ].map(item => ({ ...item, kind: "count", previous: null, series: [], labels: [], goodWhen: "down", caption: "Selected window" }))} />}
       {assistantScoped && <AssistantAvailabilityCard filter={filter} />}
 
       <div className="grid grid-cols-12 gap-4">

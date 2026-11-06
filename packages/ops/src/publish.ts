@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { effectiveMcpToolPolicy, type AssistantTools } from "@agent-hub/core";
 import type { Flow } from "@agent-hub/core";
 import {
   buildPublicationConfig,
@@ -54,11 +55,23 @@ export async function assertConnectorFlowsPublishable(
  * live widgets flip without a Postgres round-trip per request.
  */
 
+async function assertMcpToolsPublishable(ctx: OperationContext, tools: AssistantTools) {
+  for (const selection of tools.remoteMcp ?? []) {
+    const server = await ctx.db.table("mcpServerConnections").get(selection.serverId);
+    for (const selected of selection.tools) {
+      const tool = server?.organizationId === ctx.organizationId ? server.tools.find(tool => tool.name === selected.name) : undefined;
+      if (!tool || tool.definitionHash !== selected.definitionHash || effectiveMcpToolPolicy(tool) !== "run_freely") {
+        throw new OperationError("invalid_input", `MCP tool "${selected.name}" must have the current Run freely policy before publishing`);
+      }
+    }
+  }
+}
+
 const assistantIdSchema = z.object({ assistantId: z.string().min(1) });
 
 export const publishAssistantOp = defineOperation({
   name: "publish.publish",
-  capability: "publish",
+  capability: "assistants:publish",
   effect: "consequential",
   input: assistantIdSchema,
   entities: ({ assistantId }) => [
@@ -73,9 +86,11 @@ export const publishAssistantOp = defineOperation({
     ]);
     await assertConnectorFlowsPublishable(ctx, flows);
     await assertHumanReviewFlowsPublishable(ctx, flows);
+    await assertMcpToolsPublishable(ctx, assistant.tools);
     const publication = await ctx.db.createPublication(
       assistantId,
-      buildPublicationConfig(assistant, flows, collections, skills)
+      buildPublicationConfig(assistant, flows, collections, skills),
+      ctx.userId || null
     );
     await ctx.ports?.invalidatePublication?.(assistantId);
     return { version: publication.version, publicationId: publication.id };
@@ -84,7 +99,7 @@ export const publishAssistantOp = defineOperation({
 
 export const unpublishAssistantOp = defineOperation({
   name: "publish.unpublish",
-  capability: "publish",
+  capability: "assistants:publish",
   effect: "consequential",
   input: assistantIdSchema,
   entities: ({ assistantId }) => [
@@ -99,7 +114,7 @@ export const unpublishAssistantOp = defineOperation({
 
 export const republishOp = defineOperation({
   name: "publish.republish",
-  capability: "publish",
+  capability: "assistants:publish",
   effect: "consequential",
   input: z.object({
     assistantId: z.string().min(1),
@@ -114,7 +129,8 @@ export const republishOp = defineOperation({
     if (!old || old.assistantId !== assistantId) {
       throw new OperationError("not_found", "Publication not found");
     }
-    const publication = await ctx.db.createPublication(assistantId, old.config);
+    await assertMcpToolsPublishable(ctx, old.config.assistant.tools);
+    const publication = await ctx.db.createPublication(assistantId, old.config, ctx.userId || null);
     await ctx.ports?.invalidatePublication?.(assistantId);
     return { version: publication.version, publicationId: publication.id };
   },
@@ -123,7 +139,7 @@ export const republishOp = defineOperation({
 /** Publication state a CI script needs: published?, version, when. */
 export const publicationStatusOp = defineOperation({
   name: "publish.status",
-  capability: "member",
+  capability: "assistants:view",
   effect: "read",
   input: assistantIdSchema,
   entities: () => [],

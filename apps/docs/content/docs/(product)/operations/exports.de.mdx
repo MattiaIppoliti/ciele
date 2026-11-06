@@ -13,13 +13,13 @@ Datensätze ausgewählter Conversations.
 2. Wählen Sie **Exports** aus.
 3. Wählen Sie **New export** aus.
 4. Geben Sie einen Namen in **Export name** ein.
-5. Legen Sie die Filter für den Bericht fest: den Datumsbereich, den Assistant,
+5. Legen Sie die Filter für den Bericht fest: den Zeitraum, den Assistant,
    **Aggregated**, **Feedback** und **Escalated**.
 6. Wählen Sie den Exporttyp aus.
 7. Wählen Sie den Dateityp aus: **CSV**, **JSON** oder **XLSX**.
 8. Wählen Sie **Create** aus.
 
-Ciele erstellt die Datei als Hintergrundjob. Der Export wird in der Liste mit
+Ciele erstellt die Datei als Hintergrund-Job. Der Export wird in der Liste mit
 seinem Namen, seinem Typ und seinem Dateityp angezeigt. Wenn der Status
 **Ready** lautet, wählen Sie **Download** aus.
 
@@ -28,10 +28,10 @@ Die Filter sind dieselben wie auf der Seite „Insights“. Ein Export und die S
 
 ## Exporttypen für Insights
 
-- **Aggregated insights**: Jede Diagrammreihe, mit jeweils einer Zeile pro Tag,
-  Woche oder Monat.
-- **Datapoints**: die wichtigsten Kennzahlen für den Zeitraum, mit jeweils einer
-  Zeile pro Kennzahl. Eine Kennzahl ohne Daten für den Zeitraum weist eine leere
+- **Aggregated insights**: Jede Diagrammreihe, mit einer Zeile für jeden Tag,
+  jede Woche oder jeden Monat.
+- **Datapoints**: die wichtigsten Kennzahlen für den Zeitraum, mit einer Zeile
+  für jede Kennzahl. Eine Kennzahl ohne Daten für den Zeitraum weist eine leere
   Zelle auf.
 - **Languages**: die Anzahl der Conversations für jede Sprache, in der Visitors
   geschrieben haben.
@@ -66,4 +66,42 @@ ciele conversations export <conversation-id> --out export.json
 ```
 
 Das MCP-Tool `read_inbox` kann ebenfalls einen Export anfordern. Die
-Export-Aktion bleibt auch im MCP-Schreibschutzmodus verfügbar.
+Exportaktion bleibt auch im schreibgeschützten MCP-Modus verfügbar.
+
+## Einen Insights-Export planen
+
+Aktivieren Sie in **New export** die Planung, nachdem Sie den Report-Namen, die
+Filter, den Export-Typ und den Dateityp ausgewählt haben.
+
+Wählen Sie einen Wochentag für wöchentliche Berichte oder einen Tag im Monat für
+monatliche Berichte, eine Uhrzeit in UTC sowie Empfänger aus den Mitgliedern der
+Organisation aus. Die Benutzeroberfläche zeigt auch Ihre Ortszeit an.
+
+Wöchentliche Berichte umfassen die letzten sieben vollständigen UTC-Tage.
+Monatsberichte beziehen sich auf den vorangegangenen Kalendermonat. Day 31
+verwendet bei Bedarf den letzten Tag des Monats.
+
+**Exports** listet Zeitpläne und deren Empfänger auf. Editors können einen
+Schedule pausieren, fortsetzen oder löschen. Beim Löschen eines Zeitplans
+bleiben zuvor generierte Dateien erhalten.
+
+Jeder fällige Slot erzeugt einen normalen Exportjob. Nach einer Ausfallzeit
+erstellt der Worker nur den zuletzt verpassten Bericht. Es werden nicht alle
+verpassten Slots erneut ausgeführt.
+
+Empfänger erhalten eine E-Mail, sobald die Datei bereit ist. Die E-Mail enthält
+einen Link zur Konsole und erfordert eine Anmeldung. Sie enthält keine
+Berichtsdaten und keinen Anhang.
+
+Mitglieder, die die Organisation verlassen, werden aus den Empfängerlisten
+entfernt. Ein Zeitplan ohne verbleibende Empfänger wird automatisch pausiert.
+
+Ein fehlgeschlagener geplanter Export löst einen betrieblichen Alert aus. Der
+nächste erfolgreiche Lauf behebt das Problem. E-Mail-Fehler lösen einen
+separaten Alert aus.
+
+Der authentifizierte Worker muss mindestens alle fünf Minuten Exports abholen.
+Der externe Docker-Worker unterstützt diesen Zeitplan auf Vercel Hobby.
+
+API-Clients verwalten Zeitpläne unter `/api/v1/exports/schedules`. MCP stellt
+Export-Schedule-Aktionen über `manage_configuration` bereit.

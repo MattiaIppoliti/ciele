@@ -1,5 +1,5 @@
 ---
-title: Ajustes de la organización
+title: Configuración de la organización
 description: Gestiona los miembros, las conexiones con proveedores, las claves API, el uso y la facturación.
 ---
 
@@ -9,32 +9,118 @@ Ciele.
 Usa **Settings** para estas áreas actuales:
 
 - **General** para la información de la organización.
+- **Business hours** para los calendarios compartidos, los días festivos y la
+  zona horaria predeterminada.
 - **Members** para las membresías, las invitaciones y los Roles.
 - **AI Provider** para las conexiones con proveedores.
-- **Crawling** para el rastreador web de la Organización, como su propia cuenta
+- **Crawling** para el rastreador web de la organización, como su propia cuenta
   de Apify.
 - **API Keys** para las credenciales programáticas.
-- **Usage** para consultar el uso reciente de recursos y los límites.
+- **Usage** para el uso reciente de recursos y los límites.
 - **Billing** para el plan gestionado y la cuenta de facturación.
 
 La edición autoalojada no muestra un catálogo de suscripciones gestionadas.
 
-Los Member Roles y los API-key Roles utilizan la misma escala de permisos. Una
-clave API no puede recibir un Role superior al de su creador.
+Un Role es un conjunto de capacidades. Los miembros, las invitaciones y las
+claves API utilizan los mismos Roles. Una clave API no puede tener una capacidad
+que su creador no tenga.
 
 El área **AI Provider** también controla la
 [memoria a largo plazo](/data/long-term-memory). Incluye herramientas para
 borrar los recuerdos almacenados de un Visitor.
 
-La pestaña **General** tiene dos ajustes de retención: uno para los rastros de
-razonamiento y otro para las conversaciones completas. Consulta
-[Data retention](/organization/data-retention).
+La pestaña **Data retention** establece durante cuánto tiempo se conservan las
+conversaciones, los mensajes, las mejoras y los registros de auditoría. La
+pestaña **General** mantiene la ventana para los rastros de razonamiento.
+Consulta [Data retention](/organization/data-retention).
 
 ## Apariencia personal
 
-En la barra lateral, expande **Settings** y selecciona **Personal settings**, y
+En la barra lateral, expande **Settings** y selecciona **Personal settings**,
 luego **Theme**. Si no ves **Settings**, abre el menú de la cuenta y selecciona
 **Profile** y, a continuación, **Theme**. Elige **Light**, **Dark** o **System**
 y selecciona la paleta **Midnight** o **Mist Blue**. Estas preferencias afectan
 a tu consola y se guardan en este navegador. El widget publicado conserva su
 estilo de Assistant.
+
+
+## Horario comercial y festivos
+
+Un Member con la capacidad **edit** puede abrir **Settings → Business hours**.
+Crea un horario con nombre, selecciona su zona horaria IANA y define los
+períodos de apertura semanales. Un día puede tener varias franjas horarias. Una
+hora de cierre anterior a la hora de apertura se prolonga hasta el día
+siguiente. Un horario es el predeterminado de la organización. Puedes cambiar el
+valor predeterminado cuando edites un horario.
+
+Añade festivos con nombre como una única fecha o como un intervalo de fechas
+inclusivo. Selecciona **Repeat yearly** para un cierre anual. Un día festivo
+cierra todo el día local, incluidas las horas que continúan desde la noche
+anterior. Los canales y las condiciones de Flow leen estos ajustes en tiempo
+real. Un cambio de festivo se aplica sin necesidad de volver a publicar un
+asistente.
+
+La zona horaria predeterminada de la organización es el valor inicial para los
+nuevos horarios, las condiciones de Availability del canal y las condiciones de
+Flow Schedule. Las zonas horarias existentes y los informes de Insights no
+cambian. Se rechaza la eliminación mientras un canal, un Flow de editor o un
+Flow de la última publicación esté utilizando el horario. El rechazo indica los
+nombres de esos canales y Flujos.
+
+El Developer Panel de esta página muestra el **Business hours API**. Utiliza
+`/api/v1/business-hours`, `ciele business-hours` o `manage_configuration` en MCP
+para gestionar los mismos ajustes. Establece la zona horaria predeterminada con
+`PATCH /api/v1/business-hours/timezone` o
+`ciele business-hours timezone Europe/Rome --yes`.
+
+
+## Registro de auditoría
+
+Los propietarios y los administradores abren **Settings → Audit log** para ver
+los cambios de configuración. Cada fila muestra **When**, **Action**, **Actor**
+y **Target**. Las horas están en UTC.
+
+- Selecciona **Filter by action** para mostrar una o varias acciones.
+- Selecciona **Filter by actor** para mostrar los cambios de un miembro o de
+  **System**.
+- Selecciona el control de fecha para mostrar un período.
+- Selecciona **When** para mostrar primero las entradas más antiguas.
+
+El actor es el miembro que realizó el cambio. Cuando una clave API o un
+compañero de equipo ha realizado el cambio, el actor es la clave o el compañero
+de equipo. El miembro en cuyo nombre actúa se muestra debajo. Los cambios que no
+ha realizado ninguna persona muestran **System**.
+
+Selecciona el icono del ojo en una fila para abrir **Entry details**. El panel
+muestra el actor, el objetivo, la superficie, el resultado y las entidades
+afectadas. Los enlaces abren las entidades que aún existen. Algunos cambios
+también muestran **Changes**: roles, invitaciones, claves API, acceso de
+asistentes y la configuración de la organización. Cada campo muestra su valor
+antes y después.
+
+El registro anota las operaciones de escritura y las operaciones consecuentes,
+incluidas las ejecuciones fallidas. Una operación compuesta crea una única
+entrada para su llamada externa. No registra entradas de operaciones,
+credenciales, texto de Visitor ni operaciones de lectura. Un fallo en el
+registro no detiene la operación. Los diagnósticos informan del fallo.
+
+Selecciona **Export CSV** para poner en cola los filtros actuales en las tareas
+de exportación existentes. La exportación aparece en **Insights → Exports**
+cuando está lista. Las exportaciones de auditoría siguen estando restringidas a
+Owners y Admins. Los Members no pueden reescribir ni eliminar entradas de
+auditoría. La limpieza de retención elimina las entradas anteriores al periodo
+de **Audit records** en la pestaña **Data retention**. El valor predeterminado
+es de 180 días. Al eliminar una organización, también se eliminan sus entradas
+de auditoría.
+
+El registro de auditoría también está disponible desde la API, la CLI y el
+servidor MCP. Cada uno es de solo lectura y requiere una clave que pueda
+gestionar miembros.
+
+```bash
+ciele audit-log list --actor system --from 2026-11-01
+curl "https://ciele.app/api/v1/audit-log?action=apiKeys.create" \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+En el servidor MCP, utiliza la acción `audit_log_list` de `manage_organization`.

@@ -284,3 +284,44 @@ knowledge** panel below it lists the Organization Sources linked from the Librar
 
 Together the two lists are the full search reach of the Assistant. Use **Open in Library** to change
 a link or its Direct access.
+
+
+## Review a Document
+
+Open a Source, then open one Document. An Editor can select **Mark as reviewed**.
+The review records the Member and time. Select **Remove my review** to remove only your own review.
+The Document list shows each Trust tier. Use its filter to find reviewed or unverified Documents.
+
+A review applies to the current text. A FAQ question or answer edit clears its reviews.
+A website crawl or Application sync keeps reviews when the body stays identical. A changed body clears them.
+These labels help Members check knowledge. They do not change retrieval results.
+Teammates cannot mark Documents as reviewed for a Member.
+
+## FAQ History and restore
+
+Open a FAQ editor and select **History**. Each version shows its author, time, question and full answer.
+The list keeps the 50 most recent previous versions, with the newest first.
+Select **Restore** and confirm to save that text. The current text becomes another History entry.
+Restore updates the search index and clears reviews. Deleting the FAQ also deletes its History.
+Members can read History but cannot rewrite or delete individual entries.
+
+## Check FAQ duplicates
+
+In **New FAQ**, enter the question and select **Check for duplicates**.
+The check shows up to three similar FAQs from the same Collection, with an answer preview and an edit link.
+The warning never blocks creation. The check uses one embedding per question, or a text search when no embedding model is available.
+A CSV import reports matches against existing FAQs and earlier rows. It imports all valid rows despite duplicate warnings.
+
+## Source citation figures
+
+Open a Source to see its cited answers, positive and negative feedback, latest citation and contributing Assistants for the last 30 days.
+The Library has a **Cited (30d)** sort and an **Unused (90d)** filter.
+Each answer counts a Source once. Figures include Visitor answers from Assistants.
+They exclude internal Member previews, Teammates and proactive notifications. Reports expose counts, never message text.
+
+## API, CLI and MCP
+
+The Developer Panel lists Document review, FAQ History, restore, duplicate checks and Source usage endpoints.
+Use `ciele sources documents`, `review`, `remove-review` and `usage` for Document and Source checks.
+Use `ciele faqs get`, `update`, `history`, `restore` and `check` for FAQ maintenance.
+The `manage_knowledge` MCP tool exposes the same operations. Human review remains a personal Member action.

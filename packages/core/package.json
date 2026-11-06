@@ -8,6 +8,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./outbound-webhooks": "./src/outbound-webhooks.ts",
     "./testing": "./src/testing/index.ts"
   },
   "devDependencies": {

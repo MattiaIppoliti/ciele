@@ -10,6 +10,9 @@ export interface SettingsSessionData {
   organization: Organization;
   /** Owner or admin: the tabs of the Organization scope are theirs alone. */
   canManageOrg: boolean;
+  /** Editor and above: the Members roster is readable, managing it is not. */
+  canViewMembers?: boolean;
+  canEditBusinessHours?: boolean;
   demo: boolean;
 }
 

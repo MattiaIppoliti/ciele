@@ -24,3 +24,12 @@ cargo build --locked --manifest-path "$manifest"
 CIELE_RUST_PARITY_REQUIRED=1 \
 CIELE_RUST_API_BIN="$PWD/services/ciele-api/target/debug/ciele-api" \
   pnpm --filter @ciele/ops exec vitest run rust-parity
+CIELE_RUST_PARITY_REQUIRED=1 \
+CIELE_RUST_API_BIN="$PWD/services/ciele-api/target/debug/ciele-api" \
+  pnpm --filter @agent-hub/web exec vitest run rust-direct.parity
+CIELE_RUST_PARITY_REQUIRED=1 \
+CIELE_RUST_API_BIN="$PWD/services/ciele-api/target/debug/ciele-api" \
+  pnpm --filter @agent-hub/web exec vitest run rust-mcp.parity
+CIELE_RUST_PARITY_REQUIRED=1 \
+CIELE_RUST_API_BIN="$PWD/services/ciele-api/target/debug/ciele-api" \
+  pnpm --filter @agent-hub/web exec vitest run src/app/api/widget/rust-parity

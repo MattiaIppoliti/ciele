@@ -29,7 +29,7 @@ import { getRuntimeHost } from "./host";
 import { runApprovalGate } from "./approval-gate";
 import { decide, evaluationModel, resolveDecisionModel } from "./decision-model";
 import { decidedRoute, runPreflight, type PreflightFaqAnswer, type PreflightOutcome } from "./preflight-shadow";
-import type { ChatReplyPart } from "./types";
+import type { ChatReplyPart, TurnOutcome, UsageTotals } from "./types";
 import type { TurnSession } from "./session";
 import {
   getClassifierModel,
@@ -55,6 +55,7 @@ import type {
 } from "./types";
 import { usageTotals } from "./usage";
 import { errorMessageOf } from "./telemetry";
+import { withModelStage } from "./turn-clock";
 
 export interface ProviderHealthEvent {
   provider: Provider;
@@ -295,10 +296,11 @@ async function dispatchActions(options: {
     action: FlowAction,
     error: unknown
   ) => Promise<ChatReplyPart | null> | ChatReplyPart | null;
-}): Promise<{ handoverTo: string | null }> {
+}): Promise<{ handoverTo: string | null; outcome?: TurnOutcome }> {
   const { ctx, parts, effects, signal, onActionError } = options;
   const startIndex = options.startIndex ?? 0;
   let handoverTo: string | null = null;
+  let outcome: TurnOutcome | undefined;
   const effectKeyPrefix = ctx.idempotencyKey;
   const sourceFlow = ctx.flow;
   ctx.sourceFlow = sourceFlow;
@@ -330,10 +332,13 @@ async function dispatchActions(options: {
       if (result.templatePatch)
         ctx.templateContext = { ...ctx.templateContext, ...result.templatePatch };
       if (result.handoverTo) handoverTo = result.handoverTo;
+      // The first generative action that ended unusually speaks for the turn.
+      if (result.ending && result.ending !== "answered") outcome ??= result.ending;
       if (result.halt) break;
     } catch (error) {
       const part = await onActionError(action, error);
       if (!part) break;
+      outcome ??= "action_failed";
       ctx.emit({ type: "part", part });
       parts.push(part);
     }
@@ -352,7 +357,7 @@ async function dispatchActions(options: {
     ctx.emit({ type: "part", part });
     parts.push(part);
   }
-  return { handoverTo };
+  return { handoverTo, ...(outcome ? { outcome } : {}) };
 }
 
 /**
@@ -684,7 +689,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
   const meter = (
     stage: UsageEvent["stage"],
     who: Pick<UsageEvent, "provider" | "modelId" | "credentialKind"> | null,
-    tokens: { inputTokens: number; outputTokens: number }
+    tokens: UsageTotals
   ): void => {
     if (!who) return;
     usageEvents.push({
@@ -692,8 +697,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
       provider: who.provider,
       modelId: who.modelId,
       credentialKind: who.credentialKind,
-      inputTokens: tokens.inputTokens,
-      outputTokens: tokens.outputTokens,
+      ...tokens,
     });
   };
 
@@ -857,7 +861,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
     const effects: ActionEffect[] = [];
     const ctx: ActionContext = { ...baseContext(flow, parts), chatModel: null };
 
-    const { handoverTo } = await dispatchActions({
+    const { handoverTo, outcome } = await dispatchActions({
       ctx,
       parts,
       effects,
@@ -876,6 +880,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
       flowName: flow.name,
       usage: [],
       handoverTo,
+      ...(outcome ? { outcome } : {}),
     };
   }
 
@@ -989,7 +994,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
     requestedStudyFlow ??
     courtesyFlow ??
     routedByPreflight ??
-    (await classifyIntent(
+    (await withModelStage("classify", () => classifyIntent(
       message,
       flows,
       classifier?.model ?? null,
@@ -997,7 +1002,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
       (usage) => meter("classify", classifier, usageTotals(usage)),
       routing,
       emit
-    ));
+    )));
 
   // The record is completed with the Flow the turn actually took and goes to
   // the trace; `acted` says whether that Flow was the pre-flight's own choice
@@ -1082,7 +1087,7 @@ export async function runAssistantChat(options: Pick<ActionContext,
     recordFastUsage: (usage) => meter("generate", classifier, usage),
   };
 
-  const { handoverTo } = await dispatchActions({
+  const { handoverTo, outcome } = await dispatchActions({
     ctx,
     parts,
     effects,
@@ -1141,5 +1146,6 @@ export async function runAssistantChat(options: Pick<ActionContext,
     usage: [...usageEvents],
     ...(preflight ? { preflight } : {}),
     handoverTo,
+    ...(outcome ? { outcome } : {}),
   };
 }

@@ -2,9 +2,8 @@ import {
   applicationConnectionOwnerType,
   type ApplicationConnection,
   type ApplicationProvider,
-  type Role,
 } from "@agent-hub/core";
-import { canEdit, canPublish } from "./rbac";
+import { can, type Access } from "./rbac";
 
 export type PublicApplicationConnection = Omit<
   ApplicationConnection,
@@ -23,37 +22,37 @@ export function redactApplicationConnection(
 /** Provider ownership is also the authorization boundary for starting OAuth. */
 export function canAuthorizeApplicationProvider(
   provider: ApplicationProvider,
-  role: Role | null
+  access: Access
 ): boolean {
   return applicationConnectionOwnerType(provider) === "member"
-    ? canEdit(role)
-    : canPublish(role);
+    ? can(access, "applications:edit")
+    : can(access, "applications:connect");
 }
 
 /** Existing personal authorizations can only be refreshed by their owner. */
 export function canReconnectApplicationConnection(
   connection: ApplicationConnection,
   memberId: string,
-  role: Role | null
+  access: Access
 ): boolean {
-  if (!canAuthorizeApplicationProvider(connection.provider, role)) return false;
+  if (!canAuthorizeApplicationProvider(connection.provider, access)) return false;
   if (applicationConnectionOwnerType(connection.provider) === "organization") {
     return true;
   }
   return connection.ownerType === "member"
     ? connection.ownerMemberId === memberId
-    : canPublish(role) && connection.status === "reauthorization_required";
+    : can(access, "applications:connect") && connection.status === "reauthorization_required";
 }
 
 /** Admins may govern all rows; Members may remove only their own personal row. */
 export function canDeleteApplicationConnection(
   connection: ApplicationConnection,
   memberId: string,
-  role: Role | null
+  access: Access
 ): boolean {
   return (
-    canPublish(role) ||
-    (canEdit(role) &&
+    can(access, "applications:connect") ||
+    (can(access, "applications:edit") &&
       connection.ownerType === "member" &&
       connection.ownerMemberId === memberId)
   );

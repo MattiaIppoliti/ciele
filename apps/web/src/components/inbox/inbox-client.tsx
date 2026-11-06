@@ -59,6 +59,9 @@ import { replaceFilterParams } from "@/lib/url-state";
 import { StudyProvider } from "@/components/chat/study-context";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { PreflightRecordPanel } from "@/components/inbox/preflight-record";
+import { OperatorPanel } from "@/components/inbox/operator-panel";
+import { WaitingQueue } from "@/components/inbox/waiting-queue";
+import { mergeById } from "@/lib/widget-live";
 import {
   storedTraceLabel,
   terminalBadge,
@@ -432,6 +435,8 @@ export function InboxClient({
   canEdit = false,
   canViewReasoning = false,
   canManageRetention = false,
+  canOperate = false,
+  currentUserId = "",
 }: {
   initialPage: InboxPage;
   /** The filters the URL asked for; the server already read this page with them. */
@@ -452,11 +457,16 @@ export function InboxClient({
    * Everyone still sees the status: a held conversation behaves differently.
    */
   canManageRetention?: boolean;
+  /** May take a Conversation over and answer the Visitor (#1082). */
+  canOperate?: boolean;
+  /** The signed-in Member, to tell "you hold it" from "a colleague does". */
+  currentUserId?: string;
 }) {
   const [conversations, setConversations] = useState(
     initialPage.conversations,
   );
   const [nextCursor, setNextCursor] = useState(initialPage.nextCursor);
+  const [moderationAvailable, setModerationAvailable] = useState(initialPage.qualityAvailable !== false);
   const [loadingList, setLoadingList] = useState(false);
   const [facets, setFacets] = useState<InboxFacets | null>(null);
   const [loadingFacets, setLoadingFacets] = useState(false);
@@ -559,6 +569,7 @@ export function InboxClient({
             : page.conversations;
         });
         setNextCursor(page.nextCursor);
+        setModerationAvailable(page.qualityAvailable !== false);
       } catch {
         if (!cancelled && generation === listGeneration.current) {
           toast.error("Could not refresh conversations.");
@@ -1164,6 +1175,8 @@ export function InboxClient({
                   })
                 }
               />
+              <FilterSelect label="Answer moderation" value={filters.answerModeration} placeholder="Any" options={[{ value: "flagged", label: "Flagged answers" }]} onChange={value => setFilters({ ...filters, answerModeration: value === "flagged" ? "flagged" : "" })} />
+              {!moderationAvailable && <p className="text-muted-foreground text-xs">Answer moderation filtering needs the latest database migration.</p>}
               <FilterSelect
                 label="Human review"
                 value={filters.review}
@@ -1226,6 +1239,13 @@ export function InboxClient({
                   conversations.length === 1 ? "conversation" : "conversations"
                 }`}
           </p>
+          <WaitingQueue
+            currentUserId={currentUserId}
+            onSelect={(id) => {
+              focusThreadOnSelect.current = !window.matchMedia(LG_QUERY).matches;
+              void loadConversation(id);
+            }}
+          />
           <p className="text-muted-foreground px-4 pb-2 text-xs">Latest activity first</p>
           {!loadingList && conversations.length === 0 && (
             <EmptyState
@@ -1400,7 +1420,17 @@ export function InboxClient({
                 </div>
               )}
 
-              {messages?.length === 0 && (
+              {messages !== null && selected.messagesDeletedThrough && (
+                <p
+                  role="note"
+                  className="text-muted-foreground rounded-xl border border-dashed px-4 py-3 text-center text-sm"
+                >
+                  Earlier messages were deleted by this organization&apos;s data retention
+                  policy.
+                </p>
+              )}
+
+              {messages?.length === 0 && !selected.messagesDeletedThrough && (
                 <EmptyState
                   size="sm"
                   title="No messages"
@@ -1410,6 +1440,29 @@ export function InboxClient({
               )}
 
               {messages?.map((m) => {
+                if (m.role === "system") {
+                  // A line about the Conversation itself (#1082).
+                  return (
+                    <p key={m.id} role="status" className="text-muted-foreground text-center text-xs">
+                      {messageText(m.content)} · {formatTime(m.createdAt)}
+                    </p>
+                  );
+                }
+                if (m.role === "operator") {
+                  // A Member's reply to the Visitor: on the answer side, with
+                  // their name, and none of an AI answer's review tools.
+                  return (
+                    <div key={m.id} className="space-y-1 pl-10">
+                      <p className="text-muted-foreground text-xs font-medium">
+                        {m.authorName ?? "Operator"} · Operator
+                      </p>
+                      <div className="bg-muted max-w-[75%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap">
+                        {messageText(m.content)}
+                      </div>
+                      <MessageTime iso={m.createdAt} />
+                    </div>
+                  );
+                }
                 if (m.role === "user") {
                   // Visitor messages sit on the right, assistant replies on the
                   // left, the convention every messaging app trains readers on.
@@ -1482,12 +1535,12 @@ export function InboxClient({
                       )}
                       {m.trace?.guardrails?.map((hit) => (
                         <span
-                          key={`guardrail-${hit.id}`}
-                          title={hit.detail}
+                          key={`guardrail-${hit.target ?? "visitor"}-${hit.id}`}
+                          title={[hit.detail, ...(hit.scores ?? []).map(item => `${item.category}: ${(item.score * 100).toFixed(1)}%`)].filter(Boolean).join(" · ")}
                           className="text-muted-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium"
                         >
                           <ShieldAlert className="size-3.5" />
-                          {hit.name}: {hit.outcome === "unavailable" ? "could not run" : hit.outcome}
+                          <RollInText text={`${hit.target === "answer" ? "Answer · " : ""}${hit.name}: ${hit.outcome === "unavailable" ? "could not run" : hit.outcome}`} />
                         </span>
                       ))}
                       {m.trace?.piiMasking && (
@@ -1574,6 +1627,15 @@ export function InboxClient({
                   </div>
                 );
               })}
+              <OperatorPanel
+                key={selected.id}
+                conversationId={selected.id}
+                canOperate={canOperate}
+                currentUserId={currentUserId}
+                onMessages={(incoming) =>
+                  setMessages((current) => (current ? mergeById(current, incoming) : current))
+                }
+              />
             </div>
           )}
         </section>
@@ -1667,6 +1729,37 @@ export function InboxClient({
                 <div className="grid grid-cols-2 gap-3">
                   <DetailRow label="Help desk" value={meta.escalationHelpDesk} />
                   <DetailRow label="Option" value={meta.escalationOption} />
+                  {meta.escalationTicket && (
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground text-xs">Ticket</p>
+                      {meta.escalationTicket.url ? (
+                        <a
+                          href={meta.escalationTicket.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="press-text block truncate text-sm underline"
+                          title={meta.escalationTicket.url}
+                        >
+                          {meta.escalationTicket.number || meta.escalationTicket.id}
+                        </a>
+                      ) : (
+                        <p className="truncate text-sm">
+                          {meta.escalationTicket.number || meta.escalationTicket.id}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {/* The Chat summary sent with the escalation (#1081). */}
+                  {meta.escalationSummary && (
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs font-medium">Summary</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{meta.escalationSummary}</p>
+                    </div>
+                  )}
+                  {/* What the Visitor wrote on a Live operator form (#1083). */}
+                  {meta.operatorRequestFields?.map((field) => (
+                    <DetailRow key={field.label} label={field.label} value={field.value} />
+                  ))}
                   {meta.escalationRecommendedHelpDesk && (
                     <DetailRow
                       label="Recommended"

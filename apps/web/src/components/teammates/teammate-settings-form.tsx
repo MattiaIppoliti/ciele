@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ModelSourceSelect } from "@/components/chat/model-source-select";
 import { modelCatalogWith } from "@/lib/platform-model-catalog";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
-import { ChevronRight, Settings2, Shuffle } from "lucide-react";
+import { ChevronRight, Shuffle } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useSetTopBarSlot } from "@/components/shell/top-bar-slots";
@@ -344,7 +344,6 @@ export function TeammateSettingsForm({
           (see the effect above); the page itself opens on its heading. */}
       <div className="flex items-start gap-4">
         <SectionHeading
-          icon={Settings2}
           title={platformLayer ? `${teammate.name} settings` : "Teammate settings"}
 
           className="min-w-0 flex-1"

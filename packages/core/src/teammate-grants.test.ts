@@ -32,8 +32,8 @@ describe("ceilingAllowsCapability", () => {
   it("refuses a capability it has never heard of", () => {
     // A capability added to the operations layer later must not land under
     // `edit` by accident: unknown is denied until somebody decides.
-    expect(ceilingAllowsCapability("edit", "impersonate")).toBe(false);
-    expect(ceilingAllowsCapability("edit", "")).toBe(false);
+    expect(ceilingAllowsCapability("edit", "impersonate" as never)).toBe(false);
+    expect(ceilingAllowsCapability("edit", "" as never)).toBe(false);
   });
 });
 
@@ -103,7 +103,7 @@ describe("the Member Role ladder", () => {
     // A capability added to the operations layer tomorrow is denied until
     // somebody ranks it, rather than landing silently under a default.
     for (const role of ["owner", "admin", "editor", "viewer"] as const) {
-      expect(roleAllowsCapability(role, "teleport")).toBe(false);
+      expect(roleAllowsCapability(role, "teleport" as never)).toBe(false);
     }
   });
 });

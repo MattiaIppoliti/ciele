@@ -35,7 +35,7 @@ function moderation(over: Partial<Extract<AssistantGuardrail, { type: "moderatio
   return { ...defaultGuardrail("moderation", "mod"), ...over } as AssistantGuardrail;
 }
 
-function moderationEndpoint(result: { flagged: boolean; categories: Record<string, boolean> }) {
+function moderationEndpoint(result: { flagged: boolean; categories: Record<string, boolean>; category_scores?: Record<string, number> }) {
   const calls: { url: string; body: unknown }[] = [];
   const fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     calls.push({ url: String(url), body: JSON.parse(String(init?.body)) });
@@ -64,6 +64,14 @@ describe("runInputGuardrails", () => {
     expect(result.blocked?.id).toBe("len");
     // Moderation never ran: a cheap block spares the call.
     expect(endpoint.calls).toHaveLength(0);
+  });
+
+  it("retains the three highest moderation scores on a passing input check", async () => {
+    const endpoint = moderationEndpoint({ flagged: false, categories: {}, category_scores: { hate: 0.01, violence: 0.04, sexual: 0.03, harassment: 0.02 } });
+    const result = await runInputGuardrails([moderation()], "hello", deps({ fetch: endpoint.fetch }));
+    expect(result.checks[0]).toMatchObject({ outcome: "pass", flagged: false, scores: [
+      { category: "violence", score: 0.04 }, { category: "sexual", score: 0.03 }, { category: "harassment", score: 0.02 },
+    ] });
   });
 
   it("posts the message to OpenAI's moderation endpoint on the org's key", async () => {

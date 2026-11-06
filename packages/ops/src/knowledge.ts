@@ -8,6 +8,9 @@ import type {
   Source,
 } from "@agent-hub/core";
 import {
+  documentEditFrontmatter,
+  FAQ_DUPLICATE_THRESHOLD,
+  faqDuplicateScore,
   DOCUMENT_CHUNKS_PAGE_SIZE,
   SOURCE_DOCUMENTS_PAGE_SIZE,
 } from "@agent-hub/core";
@@ -84,6 +87,14 @@ async function requireSource(
   return { source, collection };
 }
 
+async function readSourceUsage(ctx: OperationContext, sourceId: string) {
+  try { return (await ctx.db.getSourceUsage(ctx.organizationId, new Date().toISOString())).find(row => row.sourceId === sourceId) ?? null; }
+  catch (error) {
+    if (error && typeof error === "object" && "code" in error && ["42P01", "42703", "42883", "PGRST202", "PGRST204", "PGRST205"].includes(String(error.code))) return null;
+    throw error;
+  }
+}
+
 /**
  * The Assistant scope of the drill-down (#927, #928, #932). With an
  * `assistantId`, the Source must be linked to that Assistant of this
@@ -107,7 +118,7 @@ async function requireLinkedSource(
 
 export const listCollectionsOp = defineOperation({
   name: "knowledge.collections.list",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({ assistantId: z.string().min(1) }),
   entities: () => [],
@@ -119,7 +130,7 @@ export const listCollectionsOp = defineOperation({
 
 export const listSourcesOp = defineOperation({
   name: "knowledge.sources.list",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({ collectionId: z.string().min(1) }),
   entities: () => [],
@@ -131,7 +142,7 @@ export const listSourcesOp = defineOperation({
 
 export const getSourceOp = defineOperation({
   name: "knowledge.sources.get",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
@@ -156,7 +167,7 @@ const triageSchema = z.object({
  */
 export const addSourceOp = defineOperation({
   name: "knowledge.sources.add",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     /** Optional cross-check; the Collection is the authority on ownership. */
@@ -211,7 +222,7 @@ export const addSourceOp = defineOperation({
 /** One hub-table page of the Organization's knowledge items (PRD #726). */
 export const listOrgKnowledgeSourcesOp = defineOperation({
   name: "knowledge.org.list",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({
     kinds: z
@@ -224,8 +235,9 @@ export const listOrgKnowledgeSourcesOp = defineOperation({
     page: z.number().int().min(1).optional(),
     pageSize: z.number().int().min(1).max(100).optional(),
     /** Which column header was clicked; the default is newest first. */
-    sort: z.enum(["createdAt", "name", "status", "updatedAt"]).optional(),
+    sort: z.enum(["createdAt", "name", "status", "updatedAt", "cited30"]).optional(),
     ascending: z.boolean().optional(),
+    unused: z.boolean().optional(),
   }),
   entities: () => [],
   run: (ctx, input) => ctx.db.listOrgKnowledgeSources(ctx.organizationId, input),
@@ -234,7 +246,7 @@ export const listOrgKnowledgeSourcesOp = defineOperation({
 /** Every FAQ with its full answer, the org-wide CSV export (PRD #726). */
 export const listOrgFaqsOp = defineOperation({
   name: "knowledge.org.faqs.list",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -248,7 +260,7 @@ export const listOrgFaqsOp = defineOperation({
  */
 export const setSourceLinksOp = defineOperation({
   name: "knowledge.sources.links.set",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     sourceId: z.string().min(1),
@@ -273,7 +285,7 @@ export const setSourceLinksOp = defineOperation({
  */
 export const setDirectAccessOp = defineOperation({
   name: "knowledge.sources.direct_access.set",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "consequential",
   input: z.object({
     sourceId: z.string().min(1),
@@ -307,7 +319,7 @@ export const setDirectAccessOp = defineOperation({
 
 export const deleteSourceOp = defineOperation({
   name: "knowledge.sources.delete",
-  capability: "edit",
+  capability: "knowledge:delete",
   effect: "consequential",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantIds: string[] }) => [
@@ -328,7 +340,7 @@ export const deleteSourceOp = defineOperation({
  */
 export const deleteSourcesOp = defineOperation({
   name: "knowledge.sources.deleteMany",
-  capability: "edit",
+  capability: "knowledge:delete",
   effect: "consequential",
   input: z.object({
     ids: z.array(z.string().min(1)).min(1).max(100),
@@ -392,7 +404,7 @@ async function removeSource(
  */
 export const unlinkSourceOp = defineOperation({
   name: "knowledge.sources.unlink",
-  capability: "edit",
+  capability: "knowledge:delete",
   effect: "consequential",
   input: z.object({
     assistantId: z.string().min(1),
@@ -421,7 +433,7 @@ export const unlinkSourceOp = defineOperation({
  */
 export const unlinkSourcesOp = defineOperation({
   name: "knowledge.sources.unlinkMany",
-  capability: "edit",
+  capability: "knowledge:delete",
   effect: "consequential",
   input: z.object({
     assistantId: z.string().min(1),
@@ -466,7 +478,7 @@ async function removeSourceLink(
 
 export const createFaqOp = defineOperation({
   name: "knowledge.faqs.create",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     assistantId: z.string().min(1).optional(),
@@ -522,7 +534,7 @@ const faqRowsSchema = z
 /** Bulk FAQ import, the parsed rows of a two-column CSV. */
 export const importFaqsOp = defineOperation({
   name: "knowledge.faqs.import",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     assistantId: z.string().min(1).optional(),
@@ -533,7 +545,7 @@ export const importFaqsOp = defineOperation({
     /** Hub import (PRD #726): the linked-assistant set for every new FAQ. */
     assistantIds: z.array(z.string().min(1)).max(50).optional(),
   }),
-  entities: (_input, result: { imported: number; assistantId: string }) => [
+  entities: (_input, result: import("@agent-hub/core").FaqImportResult) => [
     { kind: "assistantEditor" as const, assistantId: result.assistantId },
     { kind: "knowledgeHub" as const },
   ],
@@ -548,7 +560,22 @@ export const importFaqsOp = defineOperation({
     }
     const at = new Date().toISOString();
     let imported = 0;
+    const duplicates: import("@agent-hub/core").FaqImportDuplicate[] = [];
+    const checks = new Map<string, Promise<import("@agent-hub/core").FaqDuplicate[]>>();
+    const importedRows = new Map<string, number>();
+    let duplicateCheckIncomplete = !ctx.ports.findFaqDuplicates;
     for (const [index, row] of input.rows.entries()) {
+      const key = row.question.trim().toLowerCase();
+      let check = checks.get(key);
+      if (!check) {
+        check = ctx.ports.findFaqDuplicates?.({ collectionId: input.collectionId, question: row.question }).catch(() => { duplicateCheckIncomplete = true; return []; }) ?? Promise.resolve([]);
+        checks.set(key, check);
+      }
+      const matches = await check;
+      const repeatedRows = new Set(matches.flatMap(match => { const prior = importedRows.get(match.sourceId); return prior === undefined ? [] : [prior]; }));
+      for (let prior = 0; prior < index; prior++) if (faqDuplicateScore(row.question, input.rows[prior].question) >= FAQ_DUPLICATE_THRESHOLD) repeatedRows.add(prior + 1);
+      const existing = matches.filter(match => !importedRows.has(match.sourceId));
+      if (existing.length || repeatedRows.size) duplicates.push({ row: index + 1, question: row.question, existing, rows: [...repeatedRows].sort((a, b) => a - b) });
       const concept = await ctx.ports.persistFaq({
         assistantId: linkTargets[0],
         collectionId: input.collectionId,
@@ -575,10 +602,11 @@ export const importFaqsOp = defineOperation({
       });
       if (concept.sourceId) {
         await ctx.db.setSourceAssistantLinks(concept.sourceId, linkTargets);
+        importedRows.set(concept.sourceId, index + 1);
       }
       imported += 1;
     }
-    return { imported, assistantId: linkTargets[0] };
+    return { imported, assistantId: linkTargets[0], duplicates, duplicateCheckIncomplete };
   },
 });
 
@@ -589,7 +617,7 @@ export const importFaqsOp = defineOperation({
  */
 export const createOrgFaqOp = defineOperation({
   name: "knowledge.org.faqs.create",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     question: z.string().min(1).max(1000),
@@ -627,7 +655,7 @@ export const createOrgFaqOp = defineOperation({
  */
 export const addOrgSourceOp = defineOperation({
   name: "knowledge.org.sources.add",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     name: z.string().min(1).max(500),
@@ -659,14 +687,14 @@ export const addOrgSourceOp = defineOperation({
 /** Org-level bulk FAQ import (PRD #726), the Library + explicit links. */
 export const importOrgFaqsOp = defineOperation({
   name: "knowledge.org.faqs.import",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     fileName: z.string().max(300).optional(),
     rows: faqRowsSchema,
     assistantIds: z.array(z.string().min(1)).min(1).max(50),
   }),
-  entities: (_input, result: { imported: number; assistantId: string }) =>
+  entities: (_input, result: import("@agent-hub/core").FaqImportResult) =>
     importFaqsOp.entities({ collectionId: "", rows: [] }, result),
   run: async (ctx, input) => {
     const library = await ctx.db.getOrCreateOrgLibraryCollection(
@@ -692,7 +720,7 @@ export const importOrgFaqsOp = defineOperation({
  */
 export const listSourceDocumentsOp = defineOperation({
   name: "knowledge.sources.documents.list",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
@@ -705,6 +733,7 @@ export const listSourceDocumentsOp = defineOperation({
     /** Which column header was clicked; the default is when it was stored. */
     sort: z.enum(["createdAt", "title"]).optional(),
     /** The Status header's filter, the same three states the badge shows. */
+    trustTier: z.enum(["unverified", "machine-confirmed", "human-reviewed"]).optional(),
     status: z.enum(["ready", "pending", "excluded"]).optional(),
   }),
   entities: () => [],
@@ -713,12 +742,13 @@ export const listSourceDocumentsOp = defineOperation({
     await requireLinkedSource(ctx, source, input.assistantId);
     const pageSize = input.pageSize ?? SOURCE_DOCUMENTS_PAGE_SIZE;
     const page = input.page ?? 1;
-    const { items, total } = await ctx.db.listSourceDocuments(source.id, {
+    const { items, total, qualityAvailable } = await ctx.db.listSourceDocuments(source.id, {
       page,
       pageSize,
       ascending: input.ascending,
       sort: input.sort,
       status: input.status,
+      trustTier: input.trustTier,
     });
     // The Memories column (#932), counted for this page's Documents only, so
     // a 10k-page Source costs one bounded read rather than a scan.
@@ -726,21 +756,22 @@ export const listSourceDocumentsOp = defineOperation({
       source.id,
       items.map((document) => document.path)
     );
-    return { source, items, total, page, pageSize, memoryCounts };
+    return { source, items, total, page, pageSize, memoryCounts, qualityAvailable: qualityAvailable === true, usage: await readSourceUsage(ctx, source.id) };
   },
 });
 
 /** One FAQ with its full answer, the hub's edit dialog. */
 export const getOrgFaqOp = defineOperation({
   name: "knowledge.org.faqs.get",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({ sourceId: z.string().min(1) }),
   entities: () => [],
   run: async (ctx, { sourceId }) => {
     const { source } = await requireSource(ctx, sourceId);
+    if (source.kind !== "faq") throw new OperationError("invalid_input", "Not a FAQ");
     const [concept] = await ctx.db.listConceptsBySource(sourceId, 1);
-    return { question: source.name, answer: concept?.body ?? "" };
+    return { question: concept?.frontmatter.title ?? source.name, answer: concept?.body ?? "" };
   },
 });
 
@@ -751,63 +782,73 @@ export const getOrgFaqOp = defineOperation({
  * a linked Assistant; an unlinked FAQ is unreachable in retrieval anyway, so
  * skipping the re-embed loses nothing.
  */
-export const updateOrgFaqOp = defineOperation({
-  name: "knowledge.org.faqs.update",
-  capability: "edit",
-  effect: "write",
-  input: z.object({
+export const faqUpdateInput = z.object({
     sourceId: z.string().min(1),
     question: z.string().min(1).max(1000),
     answer: z.string().min(1).max(20000),
-  }),
+  });
+
+async function saveOrgFaq(
+  ctx: OperationContext,
+  input: z.infer<typeof faqUpdateInput>,
+  forceVersion = false,
+) {
+  const { source } = await requireSource(ctx, input.sourceId);
+  if (source.kind !== "faq") {
+    throw new OperationError("invalid_input", "Not a FAQ");
+  }
+  const [existing] = await ctx.db.listConceptsBySource(input.sourceId, 1);
+  if (!existing) throw new OperationError("not_found", "FAQ content missing");
+  const actor = writingActor(ctx);
+  const at = new Date().toISOString();
+  const trimmed = input.question.trim();
+  const concept = await ctx.db.updateConcept(existing.id, {
+    frontmatter: documentEditFrontmatter(existing.frontmatter, existing.body, {
+      ...existing.frontmatter,
+      type: "FAQ",
+      title: trimmed,
+      description: input.answer.slice(0, 140),
+      generated: {
+        by: actor,
+        at,
+      },
+    }, input.answer),
+    body: input.answer,
+  }, { actor, forceVersion });
+  await ctx.db.updateSource(input.sourceId, { name: trimmed.slice(0, 500) });
+  await ctx.db.deleteChunksByConcept(concept.id);
+  const links = await ctx.db.listSourceAssistantLinks(input.sourceId);
+  if (links[0]) {
+    // The Assistant only attributes the embedding's usage, so the first
+    // link is as good as any.
+    await ctx.ports?.reembedConcept?.({
+      assistantId: links[0].assistantId,
+      collectionId: concept.collectionId,
+      conceptId: concept.id,
+      title: trimmed,
+      body: input.answer,
+    });
+  }
+  return { ...concept, linkedAssistantIds: links.map((link) => link.assistantId) };
+}
+
+export const updateOrgFaqOp = defineOperation({
+  name: "knowledge.org.faqs.update",
+  capability: "knowledge:edit",
+  effect: "write",
+  input: faqUpdateInput,
   // The FAQ renders in the Library and in the Knowledge tab of every
   // Assistant it is linked to, so the edit touches all of them.
   entities: (_input, result: Concept & { linkedAssistantIds: string[] }) => [
     { kind: "knowledgeHub" as const },
     ...assistantEditors(result.linkedAssistantIds),
   ],
-  run: async (ctx, input) => {
-    const { source } = await requireSource(ctx, input.sourceId);
-    if (source.kind !== "faq") {
-      throw new OperationError("invalid_input", "Not a FAQ");
-    }
-    const [existing] = await ctx.db.listConceptsBySource(input.sourceId, 1);
-    if (!existing) throw new OperationError("not_found", "FAQ content missing");
-    const trimmed = input.question.trim();
-    const concept = await ctx.db.updateConcept(existing.id, {
-      frontmatter: {
-        ...existing.frontmatter,
-        type: "FAQ",
-        title: trimmed,
-        description: input.answer.slice(0, 140),
-        generated: {
-          by: writingActor(ctx),
-          at: new Date().toISOString(),
-        },
-      },
-      body: input.answer,
-    });
-    await ctx.db.updateSource(input.sourceId, { name: trimmed.slice(0, 500) });
-    await ctx.db.deleteChunksByConcept(concept.id);
-    const links = await ctx.db.listSourceAssistantLinks(input.sourceId);
-    if (links[0]) {
-      // The Assistant only attributes the embedding's usage, so the first
-      // link is as good as any.
-      await ctx.ports?.reembedConcept?.({
-        assistantId: links[0].assistantId,
-        collectionId: concept.collectionId,
-        conceptId: concept.id,
-        title: trimmed,
-        body: input.answer,
-      });
-    }
-    return { ...concept, linkedAssistantIds: links.map((link) => link.assistantId) };
-  },
+  run: (ctx, input) => saveOrgFaq(ctx, input),
 });
 
 export const recrawlSourceOp = defineOperation({
   name: "knowledge.sources.recrawl",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantIds: string[] }) => [
@@ -844,7 +885,7 @@ export const recrawlSourceOp = defineOperation({
  */
 export const getSourceDocumentOp = defineOperation({
   name: "knowledge.documents.get",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
@@ -907,7 +948,7 @@ export const getSourceDocumentOp = defineOperation({
  */
 export const listDocumentChunksOp = defineOperation({
   name: "knowledge.documents.chunks.list",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
@@ -950,7 +991,7 @@ export const listDocumentChunksOp = defineOperation({
  */
 export const getDocumentSummaryOp = defineOperation({
   name: "knowledge.documents.summary.get",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
@@ -993,7 +1034,7 @@ export const getDocumentSummaryOp = defineOperation({
  */
 export const setDocumentExcludedOp = defineOperation({
   name: "knowledge.documents.excluded.set",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     sourceId: z.string().min(1),
@@ -1031,7 +1072,7 @@ export const setDocumentExcludedOp = defineOperation({
  */
 export const setDocumentsExcludedOp = defineOperation({
   name: "knowledge.documents.excluded.setMany",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({
     sourceId: z.string().min(1),
@@ -1105,7 +1146,7 @@ async function applyDocumentExclusion(
  */
 export const extractSourceMemoriesOp = defineOperation({
   name: "knowledge.sources.memories.extract",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({ sourceId: z.string().min(1) }),
   entities: () => [{ kind: "knowledgeHub" as const }],
@@ -1137,7 +1178,7 @@ export const extractSourceMemoriesOp = defineOperation({
 /** A page's memories, live by default. `includeForgotten` is the opt-in. */
 export const listDocumentMemoriesOp = defineOperation({
   name: "knowledge.documents.memories.list",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({
     sourceId: z.string().min(1),
@@ -1168,7 +1209,7 @@ export const listDocumentMemoriesOp = defineOperation({
  */
 export const forgetKnowledgeMemoryOp = defineOperation({
   name: "knowledge.memories.forget",
-  capability: "edit",
+  capability: "knowledge:delete",
   effect: "consequential",
   input: z.object({
     id: z.string().min(1),
@@ -1189,7 +1230,7 @@ export const forgetKnowledgeMemoryOp = defineOperation({
 /** Restore one. Clears the whole forget state, so nothing is left half-set. */
 export const restoreKnowledgeMemoryOp = defineOperation({
   name: "knowledge.memories.restore",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [{ kind: "knowledgeHub" as const }],
@@ -1237,7 +1278,7 @@ const KNOWLEDGE_SEARCH_QUERY_MAX = 2000;
  */
 export const searchKnowledgeOp = defineOperation({
   name: "knowledge.search",
-  capability: "member",
+  capability: "knowledge:view",
   effect: "read",
   input: z.object({
     query: z
@@ -1279,7 +1320,7 @@ export const searchKnowledgeOp = defineOperation({
 /** Rename the label without changing crawl identity, state, or indexed content. */
 export const renameSourceOp = defineOperation({
   name: "knowledge.sources.rename",
-  capability: "edit",
+  capability: "knowledge:edit",
   effect: "write",
   input: z.object({ sourceId: z.string().min(1), name: z.string().trim().min(1).max(500), assistantId: z.string().min(1).optional() }),
   entities: (_input, result: { assistantIds: string[] }) => [{ kind: "knowledgeHub" as const },
@@ -1287,8 +1328,74 @@ export const renameSourceOp = defineOperation({
   run: async (ctx, { sourceId, name, assistantId }) => {
     const { source } = await requireSource(ctx, sourceId);
     await requireLinkedSource(ctx, source, assistantId);
-    await ctx.db.updateSource(sourceId, { name: name.trim() });
+    if (source.kind === "faq") {
+      const current = await getOrgFaqOp.run(ctx, { sourceId });
+      await updateOrgFaqOp.run(ctx, { sourceId, question: name.trim(), answer: current.answer });
+    } else {
+      await ctx.db.updateSource(sourceId, { name: name.trim() });
+    }
     const links = await ctx.db.listSourceAssistantLinks(sourceId);
     return { assistantIds: links.map((link) => link.assistantId) };
+  },
+});
+
+
+/** Human review is an attestation by this Member, never by a Teammate. */
+export const setDocumentReviewOp = defineOperation({
+  name: "knowledge.documents.review", capability: "knowledge:edit", effect: "write",
+  input: z.object({ sourceId: z.string().min(1), documentId: z.string().min(1), reviewed: z.boolean(), assistantId: z.string().min(1).optional() }),
+  entities: () => [{ kind: "knowledgeHub" as const }],
+  run: async (ctx, input) => {
+    if (ctx.teammate || ctx.agentAuthor) throw new OperationError("invalid_input", "A Member must review the Document personally");
+    const { source } = await requireSource(ctx,input.sourceId);
+    await requireLinkedSource(ctx,source,input.assistantId,"Document not found");
+    const document = await ctx.db.getConcept(input.documentId);
+    if (!document || document.sourceId !== source.id) throw new OperationError("not_found","Document not found");
+    return ctx.db.setDocumentReview(ctx.organizationId, { documentId: document.id, memberId: ctx.userId, reviewed: input.reviewed });
+  },
+});
+
+export const listFaqHistoryOp = defineOperation({
+  name: "knowledge.org.faqs.history", capability: "knowledge:view", effect: "read",
+  input: z.object({ sourceId: z.string().min(1) }), entities: () => [],
+  run: async (ctx, input) => {
+    const { source } = await requireSource(ctx, input.sourceId);
+    if (source.kind !== "faq") throw new OperationError("invalid_input", "Not a FAQ");
+    return ctx.db.table("faqHistory").list({ organizationId: ctx.organizationId, sourceId: source.id }, { limit: 50 });
+  },
+});
+
+export const faqRestoreInput = z.object({ sourceId: z.string().min(1), versionId: z.string().min(1) });
+
+export const restoreFaqVersionOp = defineOperation({
+  name: "knowledge.org.faqs.restore", capability: "knowledge:edit", effect: "write",
+  input: faqRestoreInput,
+  entities: (_input, result: Concept & { linkedAssistantIds: string[] }) => [{ kind: "knowledgeHub" as const }, ...assistantEditors(result.linkedAssistantIds)],
+  run: async (ctx, input) => {
+    await requireSource(ctx, input.sourceId);
+    const version = await ctx.db.table("faqHistory").get(input.versionId);
+    if (!version || version.organizationId !== ctx.organizationId || version.sourceId !== input.sourceId) throw new OperationError("not_found", "FAQ version not found");
+    return saveOrgFaq(ctx, { sourceId: input.sourceId, question: version.question, answer: version.answer }, true);
+  },
+});
+
+
+export const checkFaqDuplicatesOp = defineOperation({
+  name: "knowledge.faqs.duplicates", capability: "knowledge:view", effect: "read",
+  input: z.object({ question: z.string().trim().min(1).max(1000), collectionId: z.string().min(1).optional() }), entities: () => [],
+  run: async (ctx, input) => {
+    const collection = input.collectionId ? await requireCollection(ctx, input.collectionId) : await ctx.db.getOrgLibraryCollection(ctx.organizationId);
+    if (!collection) return [];
+    if (!ctx.ports?.findFaqDuplicates) throw new OperationError("invalid_input", "FAQ duplicate checking is not available on this surface");
+    return ctx.ports.findFaqDuplicates({ collectionId: collection.id, question: input.question });
+  },
+});
+
+export const getSourceUsageOp = defineOperation({
+  name: "knowledge.sources.usage", capability: "knowledge:view", effect: "read",
+  input: z.object({ sourceId: z.string().min(1) }), entities: () => [],
+  run: async (ctx, input) => {
+    await requireSource(ctx, input.sourceId);
+    return readSourceUsage(ctx, input.sourceId);
   },
 });

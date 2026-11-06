@@ -1,3 +1,4 @@
+import { liveBusinessHours } from "./live-business-hours";
 import type { AssistantGoal } from "@agent-hub/core";
 import { fileGoalImprovement } from "./goal-improvement";
 import { enqueueGoalProposalJob } from "./jobs";
@@ -134,7 +135,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalRun> {
       session: createTurnSession(`goal-${goal.id}`, {}),
       // Synthetic traffic has no page, so URL conditions stay unevaluatable, but
       // it does happen at a moment, so a scheduled flow is honored here too.
-      routing: { now: new Date() },
+      routing: { now: new Date(), businessHours: await liveBusinessHours(db, goal.organizationId, config.flows) },
       emit: () => {},
     });
 
@@ -150,6 +151,8 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalRun> {
         credentialKind: u.credentialKind,
         inputTokens: u.inputTokens,
         outputTokens: u.outputTokens,
+        cacheReadTokens: u.cacheReadTokens,
+        cacheWriteTokens: u.cacheWriteTokens,
         // Synthetic traffic: nobody asked, so nobody is named (#849).
         surface: "scheduled" as const,
       })),

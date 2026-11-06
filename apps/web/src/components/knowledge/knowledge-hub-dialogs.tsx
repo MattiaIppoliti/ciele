@@ -1,5 +1,8 @@
 "use client";
+import { FaqImportWarnings } from "./faq-import-warnings";
 
+import { FaqDuplicateCheck } from "./faq-duplicate-check";
+import { FaqHistory } from "./faq-history";
 import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import type { OrgKnowledgeSourceListItem } from "@agent-hub/core";
 import { ChevronDown } from "lucide-react";
@@ -589,7 +592,7 @@ export function FaqDialog({
 }: {
   open: boolean;
   /** The FAQ Source row being edited, or null for a new FAQ. */
-  editing: OrgKnowledgeSourceListItem | null;
+  editing: Pick<OrgKnowledgeSourceListItem, "id" | "name" | "answerPreview"> | null;
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
@@ -699,6 +702,7 @@ export function FaqDialog({
                 }
               />
               <LimitCounter value={question} max={FAQ_QUESTION_MAX} />
+              {!editing && <FaqDuplicateCheck question={question} />}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="hub-faq-answer">Answer</Label>
@@ -735,7 +739,8 @@ export function FaqDialog({
               </p>
             )}
           </DialogBody>
-          <DialogFooter>
+          {editing && <div className="px-6 pb-4"><FaqHistory sourceId={editing.id} onRestored={faq => { setQuestion(faq.question); setAnswer(faq.answer); setLoaded(faq); setLoad("ready"); }} /></div>}
+      <DialogFooter>
             <Button variant="outline" onClick={requestClose}>
               Cancel
             </Button>
@@ -770,6 +775,7 @@ export function ImportFaqsDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
+  const [summary, setSummary] = useState<import("@agent-hub/core").FaqImportDuplicate[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -788,13 +794,18 @@ export function ImportFaqsDialog({
       formData.set("file", file);
       formData.set("assistantIds", JSON.stringify(selected));
       try {
-        const { imported, skipped } = await importOrgFaqsAction(formData);
+        const { imported, skipped, duplicates, duplicateCheckIncomplete } = await importOrgFaqsAction(formData);
         toast.success(
           `Imported ${imported} FAQ${imported === 1 ? "" : "s"}${
             skipped.length > 0 ? ` (${skipped.length} skipped)` : ""
           }.`,
         );
-        onClose();
+        if (duplicates?.length) toast.warning(`${duplicates.length} imported rows may duplicate another FAQ. Review the import summary.`);
+        if (duplicateCheckIncomplete) toast.warning("Some duplicate checks were unavailable. The import completed.");
+        setSummary(duplicates ?? []);
+        setFile(null);
+        setSelected([]);
+        if (!duplicates?.length) onClose();
       } catch {
         toast.error(
           "Import failed. Check the CSV has two columns and try again.",
@@ -824,6 +835,7 @@ export function ImportFaqsDialog({
               selected={selected}
               onChange={setSelected}
             />
+            <FaqImportWarnings duplicates={summary} />
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={requestClose}>

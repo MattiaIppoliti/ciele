@@ -99,7 +99,7 @@ export async function teammateToolset(args: {
   const actor: TeammateActor = {
     id: teammate.id,
     name: teammate.name,
-    ceiling: teammate.capabilityCeiling,
+    ceiling: teammate.actionCeiling,
     grants: grants.map((grant) => grant.domain),
     approvalBypass: teammate.approvalBypass,
     projectId: args.projectId === undefined ? teammate.projectId : args.projectId,
@@ -179,7 +179,7 @@ function platformTools(member: TeammateToolsetMember, authorName: string): Teamm
         return {
           operation: "platform.list",
           entities: [],
-          result: domain ? listPlatformOperations(role, domain) : platformOperationDomains(role),
+          result: domain ? listPlatformOperations(ctx, domain) : platformOperationDomains(ctx),
         };
       },
     },
@@ -195,7 +195,7 @@ function platformTools(member: TeammateToolsetMember, authorName: string): Teamm
       run: async (input) => ({
         operation: "platform.describe",
         entities: [],
-        result: describePlatformOperation(role, String(input.name)),
+        result: describePlatformOperation(ctx, String(input.name)),
       }),
     },
     {

@@ -2,11 +2,12 @@ import { INTERACTIVE_TABLE_TOOLS } from "../interactive-table-tools";
 import { streamText } from "ai";
 import { dispatchToolBatch, modelToolDeclarations } from "../tool-batch";
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
-import type { ChatReplyPart, ReplyComponentName, RuntimeEvent } from "../types";
+import type { ChatReplyPart, ReplyComponentName, RuntimeEvent, UsageTotals } from "../types";
 import {
   RENDER_TABLE_COMPONENT,
   RENDER_TABLE_TOOL_NAME,
 } from "../render-tools";
+import { cachedInstructions, withCachedTail } from "../prompt-cache";
 import { recordStreamUsage } from "../usage";
 import { errorMessageOf } from "../telemetry";
 import { searchBudgetExhausted, type SearchPass } from "./search-pass";
@@ -75,7 +76,7 @@ export interface GatherPhaseInput {
   searchPasses: SearchPass[];
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
-  recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
+  recordUsage?: (usage: UsageTotals) => void;
 }
 
 export interface GatherPhaseResult {
@@ -103,8 +104,10 @@ export async function runGatherPhase(
     const requestMessages = input.projectContext ? await input.projectContext(input.system, responseMessages, declarations) : [...input.messages, ...responseMessages];
     const gather = streamText({
       model: input.chatModel,
-      system: input.system,
-      messages: requestMessages,
+      system: cachedInstructions(input.system),
+      // Each step reads the previous step's prefix from the provider's cache
+      // (see prompt-cache.ts): the gather loop is the call that resends it.
+      messages: withCachedTail(requestMessages),
       tools: declarations,
       abortSignal: input.signal,
     });

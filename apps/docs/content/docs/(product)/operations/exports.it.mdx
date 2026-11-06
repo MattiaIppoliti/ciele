@@ -1,10 +1,10 @@
 ---
 title: Esportazioni
-description: Crea e scarica report Insights ed esportazioni delle conversazioni.
+description: Crea e scarica report Insights ed esportazioni Conversation.
 ---
 
-Ciele offre due tipi di esportazione. Un esportazione Insights è un file di
-report relativo alle tue misure Insights. Un'esportazione di Conversation
+Ciele offre due tipi di esportazione. Un esportazione di Insights è un file di
+report relativo alle tue misure di Insights. Un'esportazione di Conversation
 contiene i record completi delle Conversation selezionate.
 
 ## Crea un esportazione di Insights
@@ -19,16 +19,16 @@ contiene i record completi delle Conversation selezionate.
 7. Seleziona il tipo di file: **CSV**, **JSON** o **XLSX**.
 8. Seleziona **Create**.
 
-Ciele crea il file come job in background. L'esportazione viene visualizzata
-nell'elenco con il suo nome, il tipo e il tipo di file. Quando lo stato è
-**Ready**, seleziona **Download**.
+Ciele crea il file come processo in background. L'esportazione viene
+visualizzata nell'elenco con il suo nome, il tipo e il tipo di file. Quando lo
+stato è **Ready**, seleziona **Download**.
 
 I filtri sono gli stessi della pagina Insights. Un'esportazione e la pagina
 Insights mostrano gli stessi numeri per gli stessi filtri.
 
 ## Tipi di esportazione di Insights
 
-- **Aggregated insights**: ogni serie del grafico, con una riga per ogni giorno,
+- **Aggregated insights**: ogni serie di grafici, con una riga per ogni giorno,
   settimana o mese.
 - **Datapoints**: le misure principali per l'intervallo, con una riga per
   ciascuna misura. Una misura senza dati per l'intervallo presenta una cella
@@ -67,3 +67,43 @@ ciele conversations export <conversation-id> --out export.json
 
 Anche lo strumento MCP `read_inbox` può richiedere un'esportazione. La sua
 azione di esportazione rimane disponibile in modalità di sola lettura di MCP.
+
+## Pianifica un'esportazione di Insights
+
+In **New export**, abilita la pianificazione dopo aver selezionato il nome del
+report, i filtri, il tipo di esportazione e il tipo di file.
+
+Scegli un giorno della settimana o un giorno del mese, un'ora in UTC e i
+destinatari tra i Members dell'Organization. L'interfaccia mostra anche il tuo
+orario locale.
+
+I report settimanali coprono gli ultimi sette giorni completi in UTC. I report
+mensili coprono il mese di calendario precedente. Il giorno 31 utilizza l'ultimo
+giorno del mese quando necessario.
+
+**Exports** elenca le pianificazioni e i relativi destinatari. Gli editor
+possono mettere in pausa, riprendere o eliminare una pianificazione.
+L'eliminazione di una pianificazione lascia intatti i file generati in
+precedenza.
+
+Ogni slot in scadenza crea un normale job di esportazione. Dopo un periodo di
+inattività, il worker crea solo l'ultimo report saltato. Non riproduce ogni slot
+saltato.
+
+I destinatari ricevono un'email quando il file è pronto. L'email contiene un
+link alla console e richiede l'accesso. Non contiene dati del report né
+allegati.
+
+I membri che lasciano l'Organization vengono rimossi dagli elenchi dei
+destinatari. Una pianificazione senza destinatari rimanenti viene messa in pausa
+automaticamente.
+
+Un'esportazione pianificata non riuscita genera un Alert operativo. La
+successiva esecuzione riuscita lo risolve. Gli errori di invio delle email
+generano un Alert separato.
+
+Il worker autenticato deve svuotare gli export almeno ogni cinque minuti. Il
+worker Docker esterno supporta questa pianificazione su Vercel Hobby.
+
+I client API gestiscono le pianificazioni in `/api/v1/exports/schedules`. MCP
+espone le azioni export-schedule tramite `manage_configuration`.

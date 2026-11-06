@@ -75,6 +75,7 @@ export const decideActionApprovalOp = defineOperation({
       decidedAt: new Date().toISOString(),
     });
     if (closed?.status === "rejected") {
+      if (closed.operation.startsWith("mcp.")) await ctx.ports?.afterActionApprovalDecided?.(closed);
       return { status: closed.status, ran: false };
     }
     // Approving a row that is already approved and never ran is the retry of a
@@ -88,7 +89,8 @@ export const decideActionApprovalOp = defineOperation({
     if (!toRun) {
       throw new OperationError("conflict", "That request was already decided");
     }
-    await runApproved(ctx, writes, toRun);
+    const result = await runApproved(ctx, writes, toRun);
+    if (toRun.operation.startsWith("mcp.")) await ctx.ports?.afterActionApprovalDecided?.(toRun, result);
     return { status: "approved" as const, ran: true };
   },
 });
@@ -112,7 +114,7 @@ async function runApproved(
   ctx: OperationContext,
   writes: Pick<Db, "claimActionApprovalRun" | "settleActionApprovalRun">,
   approval: ActionApproval
-): Promise<void> {
+): Promise<unknown> {
   // Through the port, on the org-pinned service-role Db, never on the
   // approving Member's RLS session. Running it here on `ctx.db` would refuse
   // every action whose grant is wider than the approver's own Role, which is
@@ -133,8 +135,9 @@ async function runApproved(
   if (!claimed) {
     throw new OperationError("conflict", "That action is already running, or has run");
   }
+  let result: unknown;
   try {
-    await run({
+    result = await run({
       teammateId: approval.teammateId,
       operation: approval.operation,
       input: approval.input,
@@ -145,7 +148,11 @@ async function runApproved(
     });
   } catch (error) {
     await writes.settleActionApprovalRun(approval.id, "failed", claimedAt);
+    if (approval.operation.startsWith("mcp.")) await ctx.ports?.afterActionApprovalDecided?.(approval, {
+      result: { isError: true, error: "The approved MCP call failed to return a result. Check the remote system before retrying." },
+    });
     throw error;
   }
   await writes.settleActionApprovalRun(approval.id, "ran", claimedAt);
+  return result;
 }

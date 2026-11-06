@@ -18,7 +18,7 @@ async function mintKey() {
   const secret = generateApiKeySecret();
   const key = await getMockDb().createApiKey(DEMO_ORG.id, {
     name: "ask key",
-    role: "viewer",
+    role: "viewer", roleId: "builtin:viewer",
     secretHash: hashApiKeySecret(secret),
     secretHint: apiKeySecretHint(secret),
     createdBy: DEMO_MEMBER.userId,

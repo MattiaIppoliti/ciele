@@ -16,13 +16,13 @@ describe("observed operations", () => {
     const schema = z.object({ privateInput: z.string() });
     const entities = () => [];
     const op = defineOperation({
-      name: "assistants.probe", capability: "edit", effect: "read", input: schema,
+      name: "assistants.probe", capability: "flows:edit", effect: "read", input: schema,
       entities, run: async () => result,
     });
     // A granted Teammate can run an edit for a Viewer. Observation must never
     // replace the caller's permission policy with a second Role check.
     await expect(op.run(ctx, { privateInput: "secret" })).resolves.toBe(result);
-    expect(op.capability).toBe("edit");
+    expect(op.capability).toBe("flows:edit");
     expect(op.input).toBe(schema);
     expect(op.entities).toBe(entities);
     expect(log).toHaveBeenCalledTimes(2);

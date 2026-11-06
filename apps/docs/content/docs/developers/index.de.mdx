@@ -55,7 +55,7 @@ Der gehostete Dienst verwendet standardmäßig `https://ciele.app`. Eine selbst
 gehostete Installation verwendet ihren eigenen öffentlichen Ursprung.
 
 <Callout title="Use the minimum Role">
-Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation).
+Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation). For a key that only reads, create a custom Role in **Settings > Roles** without the **Triage conversations** and **Delete conversations** capabilities, and give that Role to the key.
 </Callout>
 
 ## Verfügbare Domains
@@ -64,5 +64,5 @@ Die [API-Referenz](/api-reference) listet alle verfügbaren `/api/v1`-Operatione
 nach Domäne auf.
 
 Die API stellt nicht alle Funktionen der Konsole bereit. Beispielsweise sind das
-Hochladen von Avataren und das Erstellen von Verbesserungen weiterhin
-ausschließlich über die Konsole möglich.
+Hochladen von Avataren und das Erstellen von Verbesserungen weiterhin nur in der
+Konsole möglich.

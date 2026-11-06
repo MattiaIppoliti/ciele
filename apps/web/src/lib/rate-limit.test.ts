@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientAddress, createRateLimiter } from "./rate-limit";
+import { clientAddress, createRateLimiter, trustedProxyHops } from "./rate-limit";
 
 describe("createRateLimiter", () => {
   it("allows up to the limit inside one window", () => {
@@ -52,5 +52,27 @@ describe("clientAddress", () => {
 
   it("pools unattributable traffic into one bucket rather than exempting it", () => {
     expect(clientAddress(new Headers())).toBe("unknown");
+  });
+
+  // The same cases as `client_address_behind` in services/ciele-api.
+  it("behind trusted proxies, takes the hop the outermost one added", () => {
+    const spoofed = new Headers({ "x-forwarded-for": "6.6.6.6, 203.0.113.7, 10.0.0.1" });
+    expect(clientAddress(spoofed, 0)).toBe("6.6.6.6");
+    expect(clientAddress(spoofed, 1)).toBe("10.0.0.1");
+    expect(clientAddress(spoofed, 2)).toBe("203.0.113.7");
+    // More hops than entries: the left-most is all there is.
+    expect(clientAddress(spoofed, 9)).toBe("6.6.6.6");
+    expect(clientAddress(new Headers({ "x-forwarded-for": "203.0.113.7, ", "x-real-ip": "10.0.0.9" }), 1)).toBe(
+      "10.0.0.9"
+    );
+  });
+
+  it("reads CIELE_TRUSTED_PROXY_HOPS as a whole number, anything else as 0", () => {
+    expect(trustedProxyHops(undefined)).toBe(0);
+    expect(trustedProxyHops("")).toBe(0);
+    expect(trustedProxyHops(" 2 ")).toBe(2);
+    expect(trustedProxyHops("1x")).toBe(0);
+    expect(trustedProxyHops("-1")).toBe(0);
+    expect(trustedProxyHops("1.5")).toBe(0);
   });
 });

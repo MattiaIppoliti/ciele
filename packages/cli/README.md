@@ -209,7 +209,7 @@ ciele help-desks list
 ciele help-desks create --name "Student services" [--description "…"]
 ciele help-desks add-channel <deskId> --file channel.json
 ciele help-desks reorder-channels <deskId> --ids channel-a,channel-b
-ciele help-desks connect-servicenow <deskId> --file servicenow.json
+ciele help-desks set-ticketing <deskId> --connection <connectionId>
 
 ciele skills list
 ciele skills create --file skill.json

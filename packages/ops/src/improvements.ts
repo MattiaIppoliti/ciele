@@ -59,30 +59,58 @@ export const improvementPatchSchema = z
 
 export const listImprovementsOp = defineOperation({
   name: "improvements.list",
-  capability: "member",
+  capability: "improvements:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
   run: (ctx) => ctx.db.listImprovements(ctx.organizationId),
 });
 
+/**
+ * The board's storage filters (`ImprovementQuery`). The Rust port transcribes
+ * this shape in `services/ciele-api/src/zod.rs`, key order included, because
+ * zod reports the first issue in shape order.
+ */
+export const improvementQuerySchema = z.object({
+  search: z.string().max(300).optional(),
+  priority: z.enum(IMPROVEMENT_PRIORITY_VALUES).optional(),
+  /** null lists unassigned work. */
+  assigneeId: z.string().min(1).nullable().optional(),
+  projectId: z.string().min(1).optional(),
+  assistantId: z.string().min(1).optional(),
+});
+
+/**
+ * One page of the board, filtered before paging, with every stage's count
+ * under the same filters. Ported to Rust (`improvements::list_page`), which
+ * `rust-parity.test.ts` holds to this body.
+ */
 export const listImprovementsPageOp = defineOperation({
   name: "improvements.listPage",
-  capability: "member",
+  capability: "improvements:view",
   effect: "read",
   input: z.object({
     limit: z.number().int().min(1).max(100),
     cursor: z.string().min(1).nullable().optional(),
     /** One lane; the board pages each lane on its own cursor. */
     status: z.enum(IMPROVEMENT_STATUS_VALUES).optional(),
+    ...improvementQuerySchema.shape,
   }),
   entities: () => [],
-  run: (ctx, input) => ctx.db.listImprovementsPage(ctx.organizationId, input),
+  run: async (ctx, input) => {
+    const { search, priority, assigneeId, projectId, assistantId } = input;
+    const filters = { search, priority, assigneeId, projectId, assistantId };
+    const [page, counts] = await Promise.all([
+      ctx.db.listImprovementsPage(ctx.organizationId, input),
+      ctx.db.countImprovementsByStatus(ctx.organizationId, filters),
+    ]);
+    return { ...page, counts };
+  },
 });
 
 export const getImprovementOp = defineOperation({
   name: "improvements.get",
-  capability: "member",
+  capability: "improvements:view",
   effect: "read",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
@@ -98,7 +126,7 @@ export const getImprovementOp = defineOperation({
 
 export const updateImprovementOp = defineOperation({
   name: "improvements.update",
-  capability: "edit",
+  capability: "improvements:edit",
   effect: "write",
   input: z.object({ id: z.string().min(1), patch: improvementPatchSchema }),
   entities: ({ id }) => [
@@ -107,6 +135,11 @@ export const updateImprovementOp = defineOperation({
   ],
   run: async (ctx, { id, patch }) => {
     const before = await requireImprovement(ctx, id);
+    if (patch.assigneeId && !(await ctx.db.listMembers(ctx.organizationId)).some((member) => member.userId === patch.assigneeId)) throw new OperationError("invalid_input", "Assignee must belong to the Organization");
+    if (patch.projectId && patch.projectId !== before.projectId) {
+      const project = await ctx.db.table("projects").get(patch.projectId);
+      if (!project || project.organizationId !== ctx.organizationId || project.archived) throw new OperationError("invalid_input", "Project must be active and belong to the Organization");
+    }
     const updated = await ctx.db.updateImprovement(id, patch);
     await ctx.ports?.notifyImprovementUpdate?.({ before, updated, patch });
     return updated;
@@ -148,7 +181,7 @@ async function requireDraftProposal(
 
 export const proposeSuggestedFixOp = defineOperation({
   name: "improvements.fix.propose",
-  capability: "edit",
+  capability: "improvements:edit",
   effect: "write",
   input: z.object({
     improvementId: z.string().min(1),
@@ -221,7 +254,7 @@ export const acceptSuggestedFixOp = defineOperation<
   AcceptedSuggestedFix
 >({
   name: "improvements.fix.accept",
-  capability: "edit",
+  capability: "improvements:edit",
   effect: "write",
   input: z.object({ improvementId: z.string().min(1) }),
   entities: ({ improvementId }, result) => [
@@ -316,7 +349,7 @@ export const acceptSuggestedFixOp = defineOperation<
 
 export const dismissSuggestedFixOp = defineOperation({
   name: "improvements.fix.dismiss",
-  capability: "edit",
+  capability: "improvements:edit",
   effect: "write",
   input: z.object({
     improvementId: z.string().min(1),
@@ -413,7 +446,7 @@ async function triageDecision(
 
 export const triageFeedbackOp = defineOperation({
   name: "improvements.triage_feedback",
-  capability: "edit",
+  capability: "improvements:edit",
   effect: "write",
   input: z.object({}),
   entities: () => [{ kind: "improvementList" as const }, { kind: "inbox" as const }],
@@ -511,6 +544,7 @@ export const triageFeedbackOp = defineOperation({
 
       const improvement = await ctx.db.createImprovement(ctx.organizationId, {
         title,
+        source: "system",
         // The invoking Member on an attended run; on an unattended one there
         // is nobody, and the field says so rather than naming the routine's
         // author as if they had filed it by hand.

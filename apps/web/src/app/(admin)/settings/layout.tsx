@@ -1,6 +1,6 @@
 import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { requirePageMember } from "@/lib/authz";
-import { canManageMembers } from "@/lib/rbac";
+import { can, canManageMembers } from "@/lib/rbac";
 
 /**
  * Every `/settings/*` route renders inside the Settings modal. The tabs the rail
@@ -17,7 +17,7 @@ export default function SettingsLayout({
   // session) surfaces through the page itself, so the rail just hides it.
   // The personal tabs read the session from here instead of asking again.
   const session = requirePageMember().then(
-    ({ session, role }) => {
+    ({ session, role, capabilities }) => {
       const canManageOrg = canManageMembers(role);
       return {
         email: session.email,
@@ -31,6 +31,8 @@ export default function SettingsLayout({
               transcriptRetentionDays: null,
             },
         canManageOrg,
+        canViewMembers: can({ role, capabilities }, "members:view"),
+        canEditBusinessHours: can({ role, capabilities }, "businessHours:edit"),
         demo: session.demo,
       };
     },

@@ -3,9 +3,8 @@ import type { Teammate, TeammateRoutine } from "@agent-hub/core";
 import {
   ROUTINE_CADENCES,
   TEAMMATE_GRANT_DOMAINS,
-  roleAllowsCapability,
 } from "@agent-hub/core";
-import { defineOperation } from "./operation";
+import { contextAllows, defineOperation } from "./operation";
 import { createRoutineOp } from "./routines";
 import { createTeammateOp, teammateInputSchema } from "./teammates";
 import {
@@ -70,7 +69,7 @@ export const provisionTeammateOp = defineOperation({
    * inside its own operation, so declaring the higher capability here would
    * refuse an Editor the create-plus-routines call they are entitled to make.
    */
-  capability: "edit",
+  capability: "teammates:edit",
   effect: "write",
   input: teammateInputSchema.extend({
     grants: z
@@ -118,7 +117,7 @@ export const provisionTeammateOp = defineOperation({
       // precisely the decision `setTeammateGrantsOp` puts a rung above them.
       // A Teammate acting through this path is refused outright: arming another
       // agent is not something any ceiling buys.
-      if (ctx.teammate || !roleAllowsCapability(ctx.role, setTeammateGrantsOp.capability)) {
+      if (ctx.teammate || !contextAllows(ctx, setTeammateGrantsOp.capability)) {
         result.partial = "grants";
         result.reason = `Granting domains needs the ${setTeammateGrantsOp.capability} capability; the teammate was created without grants.`;
         return result;

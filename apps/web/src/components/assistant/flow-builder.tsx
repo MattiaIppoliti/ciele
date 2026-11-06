@@ -1,5 +1,7 @@
 "use client";
 
+import { isProactiveTrigger } from "@agent-hub/core";
+
 import {
   useCallback,
   useEffect,
@@ -390,6 +392,10 @@ export function FlowBuilder({
         // named; the draft is the authority on which one it actually is.
         const trigger = next.trigger !== undefined ? next.trigger : current.trigger;
         const actions = next.actions ?? current.actions;
+        if (trigger && isProactiveTrigger(trigger) && (next.conditions ?? current.conditions).length) {
+          toast.error("Proactive Flows cannot have conditions. The draft was not changed.");
+          return current;
+        }
         if (trigger && !actionsFitTrigger(actions, trigger)) {
           const { kept, discarded } = partitionActionsForTrigger(actions, trigger);
           toast.error(

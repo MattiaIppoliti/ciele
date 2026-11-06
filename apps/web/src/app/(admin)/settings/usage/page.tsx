@@ -1,4 +1,3 @@
-import { Gauge } from "lucide-react";
 import { redirect } from "next/navigation";
 import type {
   UsageResource,
@@ -14,7 +13,7 @@ import {
 } from "@agent-hub/ui";
 import { DailyUsageTable, UsageOperationsTable } from "@/components/settings/usage-tables";
 import { requirePageMember } from "@/lib/authz";
-import { canManageMembers } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { formatCredits, summarizeUsage } from "@/lib/usage-summary";
 import { formatCount } from "@/lib/format";
@@ -109,10 +108,11 @@ async function resolveSpenderLabels(
 }
 
 export default async function UsageSettingsPage() {
-  const { session, organizationId, role, db } = await requirePageMember();
+  const { session, organizationId, role, db, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
   // Usage is org-wide operational data, admins and owners only, like the
   // provider/budget settings it complements.
-  if (!canManageMembers(role)) redirect("/settings/profile");
+  if (!can(access, "usage:view")) redirect("/settings/profile");
 
   // The plan's meters, the 30-day ledger, and the org's own daily ceiling: the
   // three things that can pause an assistant, read together so the page can
@@ -158,7 +158,6 @@ export default async function UsageSettingsPage() {
 
   return (
     <SettingsPanel
-      icon={Gauge}
       title="Usage"
       description={<>{session.organization.name}&apos;s last {USAGE_WINDOW_DAYS} days. 1 credit = 1 cent of estimated cost.</>}
     >

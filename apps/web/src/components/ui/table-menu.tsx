@@ -9,6 +9,8 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuLabel,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/motion/context-menu";
@@ -40,15 +42,29 @@ export interface TableMenuAction {
   destructive?: boolean;
 }
 
+/** One attribute the row's menu can set, drawn as a radio group. */
+export interface TableMenuChoice {
+  label: string;
+  value: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}
+
 export function TableRowMenu({
   title,
   actions,
+  choices = [],
   onOpen,
   children,
 }: {
   /** Names the row at the top of the menu, so it is clear what it acts on. */
   title: string;
   actions: Array<TableMenuAction | null | false>;
+  /**
+   * Attributes set in place, the same ones the row's editable cells change,
+   * listed between the actions and the destructive ones.
+   */
+  choices?: Array<TableMenuChoice | null | false>;
   /**
    * Fires as the menu opens, before anything in it is chosen. Tables with a
    * checkbox column use it to make this row the selection: the menu is titled
@@ -62,7 +78,8 @@ export function TableRowMenu({
   const present = actions.filter((a): a is TableMenuAction => Boolean(a));
   const ordinary = present.filter((a) => !a.destructive);
   const destructive = present.filter((a) => a.destructive);
-  if (present.length === 0) return children;
+  const groups = choices.filter((c): c is TableMenuChoice => Boolean(c));
+  if (present.length === 0 && groups.length === 0) return children;
 
   const render = (action: TableMenuAction) => (
     <ContextMenuItem
@@ -86,7 +103,20 @@ export function TableRowMenu({
       <ContextMenuContent className="w-56">
         <ContextMenuLabel>{title}</ContextMenuLabel>
         {ordinary.map(render)}
-        {destructive.length > 0 && ordinary.length > 0 && (
+        {groups.map((choice, index) => (
+          <React.Fragment key={choice.label}>
+            {(index > 0 || ordinary.length > 0) && <ContextMenuSeparator />}
+            <ContextMenuLabel>{choice.label}</ContextMenuLabel>
+            <ContextMenuRadioGroup value={choice.value} onValueChange={(value) => value !== choice.value && choice.onChange(value)}>
+              {choice.options.map((option) => (
+                <ContextMenuRadioItem key={option.value} value={option.value} textValue={option.label}>
+                  {option.label}
+                </ContextMenuRadioItem>
+              ))}
+            </ContextMenuRadioGroup>
+          </React.Fragment>
+        ))}
+        {destructive.length > 0 && (ordinary.length > 0 || groups.length > 0) && (
           <ContextMenuSeparator />
         )}
         {destructive.map(render)}

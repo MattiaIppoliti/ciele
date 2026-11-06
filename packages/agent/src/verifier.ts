@@ -344,6 +344,7 @@ async function flagFailure(
     db,
     candidate.organizationId,
     {
+      source: "system",
       title: `Verification failed: ${candidate.question ?? reason}`,
       messageId: candidate.messageId,
       conversationId: candidate.conversationId,

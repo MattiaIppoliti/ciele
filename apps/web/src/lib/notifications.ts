@@ -88,6 +88,7 @@ export function mentionNotification(mention: {
 
 const WORK_TAGS: Record<MemberNotificationKind, string> = {
   assigned: "Assigned",
+  conversation_assigned: "Waiting Visitor",
   mentioned: "Mention",
   commented: "Comment",
   status_changed: "Update",

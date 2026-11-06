@@ -11,6 +11,7 @@
     "./local-providers": "./src/local-providers.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
     "@ag-ui/core": "0.0.59",
     "@ag-ui/encoder": "0.0.59",
     "@agent-hub/core": "workspace:*",

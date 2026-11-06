@@ -1,3 +1,4 @@
+import { builtinRoleDefaults, capabilitiesForLadderRole } from "@agent-hub/core";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -12,6 +13,9 @@ import {
   legacyAssistantSectionHref,
   navItem,
   navItemForPath,
+  mayOpenPath,
+  navVisibleTo,
+  supportAgentMayOpen,
   setupHref,
   SETUP_SECTIONS,
 } from "./nav";
@@ -185,5 +189,42 @@ describe("Developer Panel domain claims (#754)", () => {
   it("answers nothing for the setup picker, which has no Assistant in scope", () => {
     // Every snippet there would be an unsubstituted placeholder.
     expect(apiDomainsForPath("/setup/flows")).toEqual([]);
+  });
+});
+
+describe("a narrowed Role's console (ADR-0028)", () => {
+  const dataViewer = { role: "viewer" as const, capabilities: builtinRoleDefaults("data_viewer") };
+
+  it("draws only the entries whose page the Role opens", () => {
+    const visible = GLOBAL_NAV.filter((item) => navVisibleTo(dataViewer, item)).map((item) => item.id);
+    expect(visible.sort()).toEqual(["assistants", "eval", "insights", "notifications", "settings"]);
+  });
+
+  it("shows the permission page on a direct URL to the rest", () => {
+    expect(mayOpenPath(dataViewer, "/insights")).toBe(true);
+    expect(mayOpenPath(dataViewer, "/")).toBe(true);
+    expect(mayOpenPath(dataViewer, "/inbox")).toBe(false);
+    expect(mayOpenPath(dataViewer, "/improvements")).toBe(false);
+    expect(mayOpenPath({ role: "viewer", capabilities: [] }, "/assistants/a1/flows")).toBe(false);
+    expect(mayOpenPath({ role: "viewer", capabilities: [] }, "/settings/profile")).toBe(true);
+  });
+});
+
+describe("the Support Agent's console (#1086)", () => {
+  it("shows only the entries a Support Agent works with", () => {
+    const as = (role: "support_agent" | "viewer") => ({ role, capabilities: capabilitiesForLadderRole(role) });
+    const visible = GLOBAL_NAV.filter((item) => navVisibleTo(as("support_agent"), item)).map((item) => item.id);
+    expect(visible.sort()).toEqual(["help-desks", "inbox", "my-tasks", "notifications", "settings"]);
+    // A Viewer keeps every entry: the built-in defaults change nobody's console.
+    expect(GLOBAL_NAV.every((item) => navVisibleTo(as("viewer"), item))).toBe(true);
+  });
+
+  it("opens the Inbox, Reviews, Help Desks and Settings, and nothing that configures an Assistant", () => {
+    for (const path of ["/inbox", "/inbox?conversation=c1", "/reviews/r1", "/help-desks/d1", "/settings/profile", "/my-tasks"]) {
+      expect(supportAgentMayOpen(path.split("?")[0]!), path).toBe(true);
+    }
+    for (const path of ["/", "/assistants/a1/flows", "/library/websites", "/insights", "/improvements", "/teammates", "/projects", "/alerts", "/setup/general"]) {
+      expect(supportAgentMayOpen(path), path).toBe(false);
+    }
   });
 });

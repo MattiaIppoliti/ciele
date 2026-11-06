@@ -79,6 +79,65 @@ export interface MemoryLayerInput {
   project?: string | null;
   /** Shown in the Project heading so the model can name what it is citing. */
   projectName?: string | null;
+  /**
+   * Today as `YYYY-MM-DD`. When set, every dated line of the Agent layer says
+   * how old it is ({@link annotateMemoryAge}). Only that layer: the User and
+   * Project layers are stated as true, and a cue to doubt them would
+   * contradict their own headings. Clock-free: the caller passes it.
+   */
+  today?: string | null;
+}
+
+const DATED_LINE = /^- (\d{4}-\d{2}-\d{2}): /;
+const DAY_MS = 86_400_000;
+
+function utcDay(value: string): number | null {
+  const time = Date.parse(`${value}T00:00:00Z`);
+  // Date.parse rolls 2026-02-30 over to March; a date that does not round-trip
+  // was never a date.
+  if (Number.isNaN(time) || new Date(time).toISOString().slice(0, 10) !== value) return null;
+  return time;
+}
+
+function ageLabel(days: number): string {
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
+}
+
+/**
+ * Say how old each dated line is: `- 2026-06-01: …` becomes
+ * `- 2026-06-01 (150 days ago): …`.
+ *
+ * A model reads an ISO date as a fact about the calendar, not as a fact about
+ * how far to trust the line; "150 days ago" it reads as staleness. Only the
+ * shape {@link appendAgentLearning} writes is annotated, and a future or
+ * impossible date is left as written rather than guessed at.
+ */
+export function annotateMemoryAge(body: string, today: string): string {
+  const now = utcDay(today);
+  if (now === null) return body;
+  return body
+    .split("\n")
+    .map((line) => {
+      const match = DATED_LINE.exec(line);
+      if (!match) return line;
+      const at = utcDay(match[1]!);
+      if (at === null || at > now) return line;
+      const days = Math.round((now - at) / DAY_MS);
+      return line.replace(DATED_LINE, `- ${match[1]} (${ageLabel(days)}): `);
+    })
+    .join("\n");
+}
+
+const AGE_CUE =
+  "Dated lines say how old they are. A note from weeks or months ago may no longer hold: check it against a source before acting on it.";
+
+/** A layer's body with ages rendered, and the cue when anything was dated. */
+function withAges(body: string, today: string | null | undefined): string[] {
+  if (!today) return [body];
+  const annotated = annotateMemoryAge(body, today);
+  return annotated === body ? [body] : [AGE_CUE, annotated];
 }
 
 /**
@@ -115,7 +174,7 @@ export function memoryPromptSections(input: MemoryLayerInput): string[] {
       [
         "# What you have learned in this role",
         "Your own accumulated notes from earlier conversations. Useful, and weaker than anything below: a decision or a source beats a note you made to yourself.",
-        agent,
+        ...withAges(agent, input.today),
       ].join("\n")
     );
   }

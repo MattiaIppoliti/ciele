@@ -46,6 +46,7 @@ export async function POST(
     teammate,
     memberId: ctx.actorUserId,
     role: ctx.role,
+    capabilities: ctx.capabilities,
     message: parsed.message,
     threadId: `ag-ui:${parsed.input.threadId}`,
     turnId: parsed.input.runId,

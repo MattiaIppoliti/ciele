@@ -3,6 +3,7 @@ import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { Assistant } from "@agent-hub/core";
 import type { HistoryMessage } from "./types";
+import { withModelStage } from "./turn-clock";
 
 /**
  * "AI recommended help desk" (assistant Help Desks setup): when the runtime
@@ -52,7 +53,8 @@ export function buildHelpDeskRecommender(options: {
           `- id: ${desk.id}\n  name: ${desk.name}\n  description: ${desk.description || "(no description)"}`
       )
       .join("\n");
-    const { object, usage } = await generateObject({
+    // Metered as `classify`, so timed as one too (#1112).
+    const { object, usage } = await withModelStage("classify", () => generateObject({
       model,
       schema: z.object({
         deskId: z
@@ -64,7 +66,7 @@ export function buildHelpDeskRecommender(options: {
         "You route a support escalation to the most relevant help desk. Pick the desk whose name/description best matches what the visitor needs. Answer null only when no desk is clearly more relevant.",
       prompt: `Help desks:\n${catalog}\n\nConversation:\n${conversation}`,
       abortSignal: options.signal,
-    });
+    }));
     options.recordUsage?.({
       inputTokens: usage?.inputTokens ?? 0,
       outputTokens: usage?.outputTokens ?? 0,

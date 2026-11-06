@@ -3,13 +3,14 @@
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Moon, Sun } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Moon, Sun } from "lucide-react";
 import { Button, Hint, TooltipProvider, cn } from "@agent-hub/ui";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { SidebarFrame } from "@/components/shell/sidebar-frame";
 import { DEFAULT_WIDTH, isRailWidth } from "@/components/shell/sidebar-drag";
 import { SidebarToggleIcon } from "@/components/ui/sidebar-toggle-icon";
 import { CatalogSidebar } from "./catalog-sidebar";
+import { catalogPath, componentFamily } from "./catalog";
 
 export function CatalogShell({ children }: { children: ReactNode }) {
   return <ThemeProvider><TooltipProvider><CatalogShellContent>{children}</CatalogShellContent></TooltipProvider></ThemeProvider>;
@@ -26,6 +27,8 @@ function CatalogShellContent({ children }: { children: ReactNode }) {
   const [toggleHovered, setToggleHovered] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
   const drawerOpen = drawerPath === pathname;
+  const candidate = componentFamily(pathname.split("/").pop() ?? "");
+  const family = candidate && catalogPath(candidate) === pathname ? candidate : undefined;
   const onRail = docked && isRailWidth(width);
   const navInBar = !docked || onRail;
   const reopenLabel = onRail ? "Expand sidebar" : "Show sidebar";
@@ -44,8 +47,8 @@ function CatalogShellContent({ children }: { children: ReactNode }) {
         renderContent={(options) => <CatalogSidebar {...options} pathname={pathname} query={query} setQuery={setQuery} onNavigate={() => setDrawerOpen(false)} />}
       />
       <div className="admin-workspace">
-        <div className="admin-panel">
-          <header className="relative flex h-14 shrink-0 items-center justify-between gap-2 border-b px-2 sm:gap-3 sm:px-4">
+        <div className="admin-panel shadow-none">
+          <header className="relative flex h-14 shrink-0 items-center justify-between gap-2 px-2 sm:gap-3 sm:px-4">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <button
                 type="button"
@@ -72,11 +75,12 @@ function CatalogShellContent({ children }: { children: ReactNode }) {
                 </button>
               </Hint>}
               <nav aria-label="Library sections" className="flex gap-1">{(["component", "block"] as const).map((section) => <Link key={section} href={section === "block" ? "/components/blocks" : "/components"} aria-current={kind === section ? "true" : undefined} onClick={() => { setQuery(""); setDrawerOpen(false); }} className={cn("press-text rounded-lg px-1.5 py-1.5 text-sm sm:px-2", kind === section ? "bg-alpha-lighter font-medium" : "text-muted-foreground hover:text-foreground")}>{section === "block" ? "Blocks" : "Components"}</Link>)}</nav>
+              {family && <p className="hidden min-w-0 items-center gap-1.5 text-base text-muted-foreground lg:flex"><ChevronRight aria-hidden="true" className="size-3.5 shrink-0" /><span className="truncate">{family.group}</span><ChevronRight aria-hidden="true" className="size-3.5 shrink-0" /><span aria-current="page" className="truncate text-foreground">{family.title}</span></p>}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Link href="https://docs.ciele.app" className="press-text hidden items-center gap-1 text-xs text-muted-foreground hover:text-foreground sm:flex">Docs <ArrowUpRight className="size-3" /></Link>
+              <Link href="https://docs.ciele.app" className="press-text group hidden items-center gap-1 text-base text-muted-foreground hover:text-foreground sm:flex">Docs <ArrowUpRight aria-hidden="true" className="size-3 transition-transform duration-150 ease-out group-hover:translate-x-px group-hover:-translate-y-px motion-reduce:transition-none" /></Link>
               <Button variant="ghost" size="icon-sm" aria-label={resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"} onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>{resolvedTheme === "dark" ? <Sun /> : <Moon />}</Button>
-              <Link href="/home" className="press-text hidden rounded-lg border border-alpha-medium px-3 py-1.5 text-xs md:block">Back to Ciele <span aria-hidden="true">↗</span></Link>
+              <Link href="/home" className="press-text group hidden items-center gap-1 rounded-lg bg-alpha-light px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-alpha-medium md:flex">Back to Ciele <ArrowUpRight aria-hidden="true" className="size-3 transition-transform duration-150 ease-out group-hover:translate-x-px group-hover:-translate-y-px motion-reduce:transition-none" /></Link>
             </div>
           </header>
           <main id="catalog-content" tabIndex={-1} className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain focus:outline-none" key={pathname}>

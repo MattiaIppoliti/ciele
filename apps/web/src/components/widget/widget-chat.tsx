@@ -67,6 +67,12 @@ import { Headphones, HelpCircle, Maximize2, Paperclip } from "lucide-react";
 import { EmojiFeedback } from "@/components/chat/emoji-feedback";
 import { sentAtLabel } from "@/lib/format";
 import { visitorId } from "./visitor-id";
+import {
+  mergeById,
+  nextLivePollDelay,
+  type WidgetLiveState,
+} from "@/lib/widget-live";
+import type { StoredMessage } from "@agent-hub/core";
 
 const LazyChatMarkdown = lazy(async () => {
   const chatMarkdownModule = await import("@/components/chat/chat-markdown");
@@ -219,10 +225,19 @@ function BotMessageView({
     assistantId
   );
   const feedback = msg.feedbackReaction ?? null;
+  // A person's reply (#1082): their name above it, and no rating, it is not
+  // an AI answer.
+  const fromPerson = Boolean(msg.author);
 
   return (
     <Message from="assistant">
       <MessageContent className="gap-2">
+        {msg.author && (
+          <span className="text-muted-foreground text-xs font-medium">
+            {msg.author.name}
+            {msg.author.title ? ` · ${msg.author.title}` : ""}
+          </span>
+        )}
         <ThinkingPanel
           steps={msg.steps}
           phase={msg.phase}
@@ -236,9 +251,9 @@ function BotMessageView({
               <StreamingResponse
                 key={j}
                 status="complete"
-                reactionTarget={isLast && msg.id ? { messageId: msg.id, assistantId, visitorId: visitorId() } : undefined}
+                reactionTarget={isLast && msg.id && !fromPerson ? { messageId: msg.id, assistantId, visitorId: visitorId() } : undefined}
                 copyText={part.text}
-                showActions={isLast && Boolean(msg.id)}
+                showActions={isLast && Boolean(msg.id) && !fromPerson}
                 extraActions={isLast && voiceEnabled && conversationId && msg.id && !active ? (
                   <SpeechPlayback endpoint={`/api/widget/${assistantId}/voice/speech`} visitorId={visitorId} conversationId={conversationId} messageId={msg.id} text={parts.filter((item) => item.type === "text").map((item) => item.text).join("\n\n")} />
                 ) : null}
@@ -434,9 +449,19 @@ interface BotMsg extends TurnView {
   id: string | null;
   feedback: -1 | 0 | 1;
   feedbackReaction?: FeedbackReactionId | null;
+  /** Set when a person from the support team wrote this (#1082). */
+  author?: { name: string; title?: string; avatarSeed: string };
 }
 
-type Msg = { role: "user"; text: string; sentAt: string | null } | BotMsg;
+/** A line about the Conversation itself: "Dana joined the conversation". */
+interface NoticeMsg {
+  role: "notice";
+  id?: string;
+  text: string;
+  sentAt?: string;
+}
+
+type Msg = { role: "user"; id?: string; text: string; sentAt: string | null } | BotMsg | NoticeMsg;
 
 function emptyBot(): BotMsg {
   return {
@@ -528,6 +553,10 @@ export function WidgetChat({
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  // Who answers this Conversation (#1082, #1083): null until the server says.
+  const [live, setLive] = useState<WidgetLiveState | null>(null);
+  const lastVisitorMessageAt = useRef<number | null>(null);
+  const liveCursor = useRef<string | null>(null);
   const [history, setHistory] = useState<WidgetConversationSummary[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   // The ?c= Context Hint is resolved client-side so the page shell can stay
@@ -810,9 +839,14 @@ export function WidgetChat({
     // answer coming back on `done` below. Both mechanical, from the shared
     // vocabulary, so the widget and the console agree about this exchange.
     playFeedback("send");
+    const sentAt = new Date().toISOString();
+    lastVisitorMessageAt.current = Date.now();
+    // Two minutes back, so a Visitor clock ahead of the server's never skips
+    // an operator's message; what was already shown is de-duplicated by id.
+    liveCursor.current ??= new Date(Date.now() - 120_000).toISOString();
     setMessages((prev) => [
       ...prev,
-      { role: "user", text: message, sentAt: new Date().toISOString() },
+      { role: "user", text: message, sentAt },
       emptyBot(),
     ]);
 
@@ -850,6 +884,22 @@ export function WidgetChat({
           }),
         update: updateLastBot,
         failure: () => "Chat unavailable",
+        onEvent: (event) => {
+          if (event.type !== "operator") return;
+          // A person answers here, or is on the way: no AI reply is coming,
+          // so the empty bubble goes and the Widget starts listening.
+          setMessages((prev) => {
+            const last = prev.at(-1);
+            return last?.role === "bot" && !last.id && last.parts.length === 0 ? prev.slice(0, -1) : prev;
+          });
+          setLive((current) => ({
+            state: event.state,
+            operatorName: event.operatorName,
+            waitExpiresAt: current?.waitExpiresAt ?? null,
+            waitTimedOut: false,
+            helpDeskId: current?.helpDeskId ?? null,
+          }));
+        },
         onDone: ({ conversationId }) => {
           setConversationId(conversationId);
           playFeedback("reply");
@@ -992,8 +1042,76 @@ export function WidgetChat({
     attachments.clear();
     setConversationId(id);
     setHistoryOpen(false);
-    setMessages(chatMessagesFromStored(data.messages ?? []));
+    const stored: StoredMessage[] = data.messages ?? [];
+    setMessages(chatMessagesFromStored(stored));
+    seenLiveIds.current = new Set(stored.map((message) => message.id));
+    liveCursor.current = stored.at(-1)?.createdAt ?? new Date().toISOString();
+    lastVisitorMessageAt.current = null;
+    setLive(data.live ?? null);
   }
+
+  // The live poll (#1082, #1083): only while a person answers this
+  // Conversation or is awaited, plus a slow check for a few minutes after the
+  // Visitor last wrote so a takeover reaches them. Otherwise no requests.
+  const seenLiveIds = useRef<Set<string>>(new Set());
+  const liveState = live?.state ?? null;
+  useEffect(() => {
+    if (!conversationId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = (state: WidgetLiveState["state"] | null) => {
+      const delay = nextLivePollDelay({
+        state,
+        lastVisitorMessageAt: lastVisitorMessageAt.current,
+        now: Date.now(),
+      });
+      if (delay !== null && !cancelled) timer = setTimeout(poll, delay);
+    };
+    const poll = async () => {
+      if (pending) return schedule(liveState);
+      try {
+        const after = liveCursor.current ?? new Date(Date.now() - 60_000).toISOString();
+        const response = await fetch(
+          `/api/widget/${assistantId}/live?visitorId=${visitorId()}&conversationId=${encodeURIComponent(conversationId)}&after=${encodeURIComponent(after)}`,
+          { cache: "no-store" }
+        );
+        if (!response.ok || cancelled) return schedule(liveState);
+        const data = (await response.json()) as { live: WidgetLiveState; messages: StoredMessage[] };
+        // Only what a person or the system wrote arrives this way: the
+        // Visitor's own words and the AI's answers are already on screen.
+        const fresh = data.messages.filter(
+          (message) =>
+            (message.role === "operator" || message.role === "system") &&
+            !seenLiveIds.current.has(message.id)
+        );
+        for (const message of fresh) seenLiveIds.current.add(message.id);
+        const latest = data.messages.at(-1)?.createdAt;
+        if (latest) liveCursor.current = latest;
+        if (fresh.length > 0) {
+          setMessages((prev) => mergeById(prev as Array<Msg & { id: string }>, chatMessagesFromStored(fresh) as Array<Msg & { id: string }>));
+          if (fresh.some((message) => message.role === "operator")) playFeedback("reply");
+        }
+        if (data.live.waitTimedOut && liveState === "waiting") {
+          // Nobody took it: say so, hand back to the AI, and offer the
+          // desk's other ways to get in touch (#1083).
+          setMessages((prev) => [
+            ...prev,
+            { role: "notice", text: "Nobody from the team was free in time. The assistant will answer from here, or choose another way to get in touch." },
+          ]);
+          if (data.live.helpDeskId) openSupport(data.live.helpDeskId);
+        }
+        setLive(data.live);
+        if (!cancelled) schedule(data.live.state);
+      } catch {
+        schedule(liveState);
+      }
+    };
+    schedule(liveState);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [assistantId, conversationId, liveState, pending]);
 
   async function vote(bot: BotMsg, reaction: FeedbackReactionId | null) {
     if (!bot.id) return;
@@ -1005,7 +1123,7 @@ export function WidgetChat({
     await fetch(`/api/widget/${assistantId}/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messageId: bot.id, reaction: nextReaction }),
+      body: JSON.stringify({ messageId: bot.id, visitorId: visitorId(), reaction: nextReaction }),
     });
   }
 
@@ -1031,6 +1149,10 @@ export function WidgetChat({
     abortRef.current?.abort();
     setMessages([]);
     setConversationId(null);
+    setLive(null);
+    liveCursor.current = null;
+    lastVisitorMessageAt.current = null;
+    seenLiveIds.current = new Set();
   }
 
   const applyFullscreen = useCallback((next: boolean) => {
@@ -1087,6 +1209,25 @@ export function WidgetChat({
           setView("chat");
         }}
         onHide={close}
+        onConversationCreated={setConversationId}
+        onWaiting={(waiting) => {
+          // The Visitor stays in this chat and waits for a person (#1083).
+          setConversationId(waiting.conversationId);
+          liveCursor.current ??= new Date(Date.now() - 120_000).toISOString();
+          setLive({
+            state: "waiting",
+            operatorName: null,
+            waitExpiresAt: waiting.expiresAt,
+            waitTimedOut: false,
+            helpDeskId: waiting.helpDeskId,
+          });
+          setMessages((prev) => [
+            ...prev,
+            { role: "notice", text: "You asked to talk to a person. Someone from the team will join here shortly." },
+          ]);
+          setSupportHelpDeskId(undefined);
+          setView("chat");
+        }}
       />
     );
   }
@@ -1198,7 +1339,11 @@ export function WidgetChat({
         )}
 
         {messages.map((msg, i) =>
-          msg.role === "user" ? (
+          msg.role === "notice" ? (
+            <p key={i} role="status" className="text-muted-foreground py-1 text-center text-xs">
+              {msg.text}
+            </p>
+          ) : msg.role === "user" ? (
             <Message key={i} from="user" animateIn className="group relative">
               <MessageContent>
                 <MessageBubble>
@@ -1363,7 +1508,11 @@ export function WidgetChat({
             placeholder={
               composerClosed
                 ? "This message doesn't take replies"
-                : `Ask ${nickname}…`
+                : live?.state === "waiting"
+                  ? "Waiting for someone from the team to join…"
+                  : live?.state === "held"
+                    ? `Reply to ${live.operatorName ?? "the support team"}…`
+                    : `Ask ${nickname}…`
             }
             aria-label={`Ask ${nickname}`}
           />

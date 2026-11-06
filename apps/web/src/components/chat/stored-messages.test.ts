@@ -22,7 +22,15 @@ describe("stored conversation restoration", () => {
   });
   it("joins all user text parts and restores the original timestamp", () => {
     const [user] = chatMessagesFromStored([{ ...message, role: "user", content: [{ type: "text", text: "Hello " }, { type: "text", text: "there" }], trace: null }]);
-    expect(user).toEqual({ role: "user", text: "Hello there", sentAt: message.createdAt });
+    expect(user).toEqual({ role: "user", id: message.id, text: "Hello there", sentAt: message.createdAt });
+  });
+  it("draws a person's reply with their name and a system line as a notice (#1082)", () => {
+    const [operator, line] = chatMessagesFromStored([
+      { ...message, id: "op", role: "operator", authorName: "Dana", content: [{ type: "text", text: "Hi, I can help." }], trace: null },
+      { ...message, id: "sys", role: "system", authorName: "Dana", content: [{ type: "text", text: "Dana joined the conversation" }], trace: null },
+    ]);
+    expect(operator).toMatchObject({ role: "bot", id: "op", author: { name: "Dana" } });
+    expect(line).toMatchObject({ role: "notice", id: "sys", text: "Dana joined the conversation" });
   });
   it("restores a legacy or verbatim reply without inventing a running trace", () => {
     expect(chatMessagesFromStored([{ ...message, trace: null }])[0]).toMatchObject({ phase: "done", steps: [], searchCount: 0, iteration: null, terminal: null });

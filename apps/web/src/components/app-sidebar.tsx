@@ -29,6 +29,7 @@ import {
   assistantSectionFromPath,
   navItem,
   navItemActive,
+  navVisibleTo,
   type NavId,
   setupHref,
 } from "@/components/shell/nav";
@@ -45,7 +46,7 @@ import {
 import {
   useShell,
 } from "@/components/shell/shell-provider";
-import { canManageMembers } from "@/lib/rbac";
+import { canManageMembers, roleLabel as displayRole } from "@/lib/rbac";
 import { canAutoFocus } from "@/lib/auto-focus";
 import { formatCount } from "@/lib/format";
 import { RollingNumber } from "@/components/motion/rolling-number";
@@ -66,6 +67,8 @@ interface AppSidebarProps {
   organizations: Organization[];
   email: string;
   role: Role | null;
+  /** The caller's Capabilities: an entry whose page they cannot open is not drawn (ADR-0028). */
+  capabilities: readonly string[];
   demo: boolean;
   /** The signed-in caller's own profile, bottom account row + menu. */
   profile: Profile | null;
@@ -78,6 +81,8 @@ interface AppSidebarProps {
    * single conversation.
    */
   mentionCount: number;
+  /** Visitors waiting for a person (#1083), as the Inbox nav badge. */
+  waitingCount?: number;
   /**
    * The Work group's extras (#1053): the My Tasks badge (open Tasks due today
    * or overdue) and the Member's starred Projects under Projects.
@@ -226,7 +231,7 @@ function OrgAvatarSwitcher({
   /** The row that was clicked, so only it shows the wait. */
   const [pendingId, setPendingId] = useState<string | null>(null);
   const canManage = canManageMembers(role);
-  const roleLabel = demo ? "Demo" : role ?? "Member";
+  const roleLabel = demo ? "Demo" : role ? displayRole(role) : "Member";
 
   const filtered = organizations.filter((org) =>
     org.name.toLowerCase().includes(query.toLowerCase())
@@ -388,10 +393,12 @@ function SidebarContent({
   organizations,
   email,
   role,
+  capabilities,
   demo,
   profile,
   alertCount,
   mentionCount,
+  waitingCount = 0,
   work,
   collapsed,
   onToggle,
@@ -415,17 +422,23 @@ function SidebarContent({
   const OBSERVABILITY: NavId[] = ["improvements", "insights", "eval"];
   // The work section (#1053), its own group after Workspace and Observability.
   const WORK: NavId[] = ["my-tasks", "notifications", "projects", "tasks"];
+  // A Support Agent's console shows only what they work with (#1086).
   const primaryNav = GLOBAL_NAV.filter(
     (item) =>
       !item.bottom &&
       item.id !== "assistants" &&
       !OBSERVABILITY.includes(item.id) &&
-      !WORK.includes(item.id)
+      !WORK.includes(item.id) &&
+      navVisibleTo({ role, capabilities }, item)
   );
-  const workNav = WORK.map((id) => navItem(id));
+  const workNav = WORK.map((id) => navItem(id)).filter((item) => navVisibleTo({ role, capabilities }, item));
   const starred = work?.starredProjects ?? [];
-  const observabilityNav = GLOBAL_NAV.filter((item) => OBSERVABILITY.includes(item.id));
-  const alertsNav = navItem("alerts");
+  const observabilityNav = GLOBAL_NAV.filter(
+    (item) => OBSERVABILITY.includes(item.id) && navVisibleTo({ role, capabilities }, item)
+  );
+  const alertsNav = navVisibleTo({ role, capabilities }, navItem("alerts")) ? navItem("alerts") : null;
+  // The Assistant sections configure Assistants: a Support Agent has none to edit.
+  const showsSetup = role !== "support_agent";
   const settingsNav = navItem("settings");
 
   // Chat swaps the console's navigation for the Teammates roster and history
@@ -561,7 +574,7 @@ function SidebarContent({
 
               Unscoped they still lead to `/setup/<section>`, the "choose an
               assistant to continue" picker, exactly as the flat group did. */}
-          <NavFoldGroup
+          {showsSetup && <NavFoldGroup
             name="setup"
             label="assistant sections"
             collapsed={collapsed}
@@ -603,7 +616,7 @@ function SidebarContent({
             activeIndex={SETUP_SECTIONS.findIndex(
               (section) => section.slug === currentSetup
             )}
-          />
+          />}
           {primaryNav.map((item) => (
             <NavRow
               key={item.label}
@@ -615,13 +628,14 @@ function SidebarContent({
               // Groups where somebody named you (#778). One per group, so the
               // number is how many rooms are waiting, not how many times you
               // were named in them.
-              badge={item.id === "teammates" ? mentionCount : 0}
+              // Visitors waiting for a person (#1083) badge the Inbox.
+              badge={item.id === "teammates" ? mentionCount : item.id === "inbox" ? waitingCount : 0}
             />
           ))}
         </NavSection>
 
         {/* Improvements, Insights and Eval: how the Assistants are doing. */}
-        <NavSection label="Observability" collapsed={collapsed}>
+        {observabilityNav.length > 0 && <NavSection label="Observability" collapsed={collapsed}>
           {observabilityNav.map((item) => (
             <NavRow
               key={item.label}
@@ -632,7 +646,7 @@ function SidebarContent({
               active={navItemActive(item, pathname)}
             />
           ))}
-        </NavSection>
+        </NavSection>}
 
         {/* My Tasks, Projects (with the starred ones under it) and All tasks:
             the work, after the Workspace and Observability groups. */}

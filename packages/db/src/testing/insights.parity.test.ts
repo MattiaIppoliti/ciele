@@ -159,3 +159,35 @@ it(
   },
   30000
 );
+
+/**
+ * A Member's reply to a held Conversation is not an AI answer (#1082), and
+ * neither is the "joined the conversation" line. Both halves filter on
+ * role = 'assistant', so the new roles fall out by construction; this pins
+ * that they still agree and that the AI answer count does not move. The added
+ * rows reuse an existing message's timestamp, so the conversation-time stat
+ * stays comparable and any difference is the role, not the clock.
+ */
+it(
+  "keeps operator replies and system lines out of the AI answer counts, in SQL and in the oracle",
+  async () => {
+    const filter = FILTER_CASES[0];
+    const anchor = messages.find((message) => message.role === "assistant")!;
+    const operatorMessages: InsightsMessage[] = [
+      { ...anchor, role: "system", feedback: 0, proactive: false },
+      { ...anchor, role: "operator", feedback: 0, proactive: false },
+      { ...anchor, role: "operator", feedback: 0, proactive: false },
+    ];
+    const withOperator = [...messages, ...operatorMessages];
+
+    const expected = colorizeOverview(
+      computeInsightsOverview(conversations, withOperator, ASSISTANTS, CHANNELS, filter)
+    );
+    const actual = await harness.run(seedFor(conversations, withOperator), filter);
+    expect(actual).toEqual(expected);
+
+    const withoutOperator = await harness.run(seedFor(conversations, messages), filter);
+    expect(actual.stats).toEqual(withoutOperator.stats);
+  },
+  30000
+);

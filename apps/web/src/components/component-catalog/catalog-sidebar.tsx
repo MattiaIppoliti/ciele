@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import {
-  Boxes, Check, ChevronRight, FormInput, Layers, LayoutDashboard,
+  Boxes, Check, FormInput, Layers, LayoutDashboard,
   MessagesSquare, PanelLeft, Search, Table2, WandSparkles, type LucideIcon,
 } from "lucide-react";
 import { Button, Hint, Input, cn } from "@agent-hub/ui";
@@ -59,15 +59,14 @@ export function CatalogSidebar({
         data-highlight-row
         onClick={onNavigate}
         className={cn(
-          "press relative flex h-8 items-center rounded-md text-sm font-medium transition-[color,background-color,opacity] focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2",
+          "press relative flex h-8 items-center rounded-md text-base font-medium transition-[color,background-color,opacity] focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2",
           collapsed ? "w-9 justify-center self-center" : "w-full gap-2.5 px-2.5",
           active ? "bg-muted text-foreground" : ROW_IDLE,
         )}
       >
         <AnimatedIcon icon={Icon} size={16} className="shrink-0" />
         {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
-        {!collapsed && count !== undefined && <span className="text-2xs tabular-nums text-muted-foreground">{count}</span>}
-        {!collapsed && active && count === undefined && <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />}
+        {!collapsed && count !== undefined && <span className="text-xs tabular-nums text-muted-foreground">{count}</span>}
       </Link>
     );
     return collapsed ? <Hint label={label} side="right">{link}</Hint> : link;
@@ -105,7 +104,7 @@ export function CatalogSidebar({
       {!collapsed && <div className="px-4 pt-3 pb-1">
         <div className="relative">
           <Search aria-hidden="true" className="pointer-events-none absolute top-2.5 left-3 size-3.5 text-muted-foreground" />
-          <Input ref={searchRef} type="search" aria-label={`Search ${title.toLowerCase()}`} placeholder={`Search ${title.toLowerCase()}…`} value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 rounded-md bg-background pl-9 text-xs" />
+          <Input ref={searchRef} type="search" aria-label={`Search ${title.toLowerCase()}`} placeholder={`Search ${title.toLowerCase()}…`} value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 rounded-md border-transparent bg-alpha-light pl-9 text-sm shadow-none" />
         </div>
       </div>}
       <nav aria-label={`${title} navigation`} className={cn("no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3", collapsed ? "px-2 pt-3" : "px-3 pt-3")}>
@@ -124,10 +123,10 @@ export function CatalogSidebar({
           {!collapsed && !visible.length && <p role="status" className="px-3 py-4 text-sm text-muted-foreground">No {title.toLowerCase()} match “{query}”.</p>}
         </HoverHighlight>
       </nav>
-      {!collapsed && <div className="space-y-2 border-t px-4 py-4">
-        <p className="text-2xs text-muted-foreground">Preview palette</p>
+      {!collapsed && <div className="space-y-2 bg-alpha-lighter px-4 py-4">
+        <p className="text-sm text-muted-foreground">Preview palette</p>
         <div className="flex gap-2">
-          {(["midnight", "mist-blue"] as const).map((palette) => <Button key={palette} variant="outline" size="xs" aria-pressed={colorPalette === palette} onClick={() => setColorPalette(palette)}>{colorPalette === palette && <Check className="size-3" />}{palette === "midnight" ? "Midnight" : "Mist Blue"}</Button>)}
+          {(["midnight", "mist-blue"] as const).map((palette) => <Button key={palette} variant="ghost" size="xs" className={colorPalette === palette ? "bg-alpha-medium" : "bg-alpha-light"} aria-pressed={colorPalette === palette} onClick={() => setColorPalette(palette)}>{colorPalette === palette && <Check className="size-3" />}{palette === "midnight" ? "Midnight" : "Mist Blue"}</Button>)}
         </div>
       </div>}
     </div>

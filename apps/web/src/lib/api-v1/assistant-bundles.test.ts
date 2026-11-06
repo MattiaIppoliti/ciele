@@ -1,0 +1,23 @@
+import { expect, it } from "vitest";
+import { apiKeySecretHint, generateApiKeySecret, hashApiKeySecret } from "@agent-hub/core";
+import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
+import { GET } from "@/app/api/v1/assistants/[id]/export/route";
+import { POST } from "@/app/api/v1/assistants/import/route";
+it("exports, rejects unknown versions clearly, and imports a new Assistant on the API-key Db", async () => {
+  const db = getMockDb();
+  const assistant = await db.createAssistant(DEMO_ORG.id, { title: "Bundle API" });
+  const secret = generateApiKeySecret();
+  await db.createApiKey(DEMO_ORG.id, { name: "Bundle API", role: "editor", roleId: "builtin:editor", createdBy: DEMO_MEMBER.userId, secretHash: hashApiKeySecret(secret), secretHint: apiKeySecretHint(secret) });
+  const headers = { authorization: `Bearer ${secret}`, "content-type": "application/json" };
+  const exported = await GET(new Request(`http://local/api/v1/assistants/${assistant.id}/export`, { headers }), { params: Promise.resolve({ id: assistant.id }) });
+  expect(exported.status).toBe(200);
+  const bundle = await exported.json();
+  const invalid = await POST(new Request("http://local/api/v1/assistants/import", { method: "POST", headers, body: JSON.stringify({ bundle: { ...bundle, bundleVersion: 99 } }) }));
+  expect(invalid.status).toBe(422);
+  expect((await invalid.json()).error.message).toContain("Unsupported bundleVersion");
+  const imported = await POST(new Request("http://local/api/v1/assistants/import", { method: "POST", headers, body: JSON.stringify({ bundle }) }));
+  expect(imported.status).toBe(201);
+  const result = await imported.json();
+  expect(result.assistantId).not.toBe(assistant.id);
+  expect((await db.getAssistant(result.assistantId))?.title).toBe("Bundle API");
+});

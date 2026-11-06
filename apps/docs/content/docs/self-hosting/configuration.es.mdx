@@ -1,10 +1,10 @@
 ---
 title: Configuración
-description: Configura orígenes, secretos, cuentas, modelos, correo electrónico y workers opcionales.
+description: Configura orígenes, secretos, cuentas, modelos, correo electrónico y servicios opcionales.
 ---
 
 El script de bootstrap escribe `deploy/.env`. Utiliza `deploy/.env.example` como
-referencia a la variable actual.
+la referencia de variable actual.
 
 ## Orígenes públicos
 
@@ -13,7 +13,7 @@ Establece `PUBLIC_URL` como el origen público de la aplicación. Establece
 desde el navegador.
 
 Vuelve a compilar la aplicación después de cambiar `SUPABASE_PUBLIC_URL`. El
-paquete del navegador contiene este valor en el momento de la compilación.
+paquete del navegador contiene este valor en tiempo de compilación.
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d --build app
@@ -49,9 +49,9 @@ toda la solicitud antes de llamar al modelo. Si el contenido necesario supera
 esta ventana, utiliza un modelo más grande o reduce la solicitud.
 
 La búsqueda de conocimiento utiliza la coincidencia léxica cuando no hay ningún
-modelo de incrustación disponible.
+modelo de *embedding* disponible.
 
-## Capacidad del chat
+## Capacidad de chat
 
 Cada turno de chat que llama a un modelo ocupa un slot antes de su primera
 llamada al modelo. Los slots están en la base de datos, por lo que todas las
@@ -60,7 +60,7 @@ instancias de la aplicación comparten un único contador.
 | Variable | Valor predeterminado | Efecto |
 |---|---|---|
 | `CHAT_MAX_CONCURRENT_TURNS_PER_ORG` | `50` | El número máximo de turnos que se ejecutan al mismo tiempo para una sola organización. |
-| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | El número máximo de turnos que se ejecutan al mismo tiempo con una única clave de proveedor de plataforma. |
+| `CHAT_MAX_CONCURRENT_TURNS_PER_PLATFORM_PROVIDER` | `200` | El número máximo de turnos que se ejecutan al mismo tiempo en una única clave de proveedor de plataforma. |
 | `CHAT_TURN_QUEUE_WAIT_MS` | `15000` | Tiempo que un turno espera a que haya un slot libre, en milisegundos. El máximo es `60000`. |
 
 Establece un límite en `0` o `off` para eliminarlo. Deja la variable vacía para
@@ -71,14 +71,117 @@ El widget le indica al visitante que lo intente de nuevo dentro de unos
 segundos.
 
 Cuando un proveedor rechaza una solicitud debido a su límite de tasa, la
-aplicación vuelve a intentar la solicitud transcurrido un tiempo de espera
-aleatorio. El widget muestra el mismo mensaje si todos los intentos fallan.
+aplicación vuelve a intentar la solicitud tras un retraso aleatorio. El widget
+muestra el mismo mensaje si todos los intentos fallan.
 
-El widget también limita a cada Visitor a 12 mensajes por minuto. Una dirección
-de red puede enviar 300 mensajes por minuto a un asistente. Muchos Visitantes
-pueden compartir una misma dirección, por ejemplo, en una red de oficina.
+El widget también limita a cada Visitor a 12 mensajes por minuto. Una única
+dirección de red puede enviar 300 mensajes por minuto a un único asistente.
+Muchos Visitantes pueden compartir una misma dirección, por ejemplo, en una red
+de oficina.
 
-Los turnos de una suscripción personal no ocupan una plaza.
+La aplicación lee la dirección de red del encabezado `X-Forwarded-For`. De forma
+predeterminada, utiliza la primera dirección del encabezado. Esto es correcto
+sin proxy y con la superposición TLS incluida, porque Caddy elimina el valor que
+envió el cliente.
+
+Algunos proxies añaden su elemento caller al final del encabezado y conservan el
+valor del cliente. Algunos ejemplos son nginx con `$proxy_add_x_forwarded_for` y
+la mayoría de los balanceadores de carga en la nube. Cuando haya tales proxies,
+establece `CIELE_TRUSTED_PROXY_HOPS` al número de esos proxies. A continuación,
+la aplicación utiliza la dirección que añadió el proxy más externo, y un cliente
+no puede cambiarla.
+
+Las suscripciones personales activadas no ocupan una plaza.
+
+## Endpoint MCP alojado
+
+Establece `CIELE_MCP_READ_ONLY=1` en `deploy/.env` para que el endpoint MCP
+alojado, `/api/mcp`, rechace todas las acciones de mutación. El ajuste se aplica
+a todas las claves API. Se aplica cuando la aplicación responde al endpoint y
+cuando el servicio Rust responde a él.
+
+## Servicio de API de Rust
+
+El servicio Rust opcional ejecuta algunas operaciones en lugar de la aplicación.
+También responde directamente a algunos endpoints de `/api/v1`. Está desactivado
+de forma predeterminada. La pila lee su archivo Compose,
+`deploy/docker-compose.rust.yml`, únicamente cuando `COMPOSE_FILE` lo incluye en
+su lista.
+
+Ejecuta el script de arranque con la opción `--rust`:
+
+```bash
+./deploy/bootstrap.sh --rust
+```
+
+El script añade el archivo a `COMPOSE_FILE` en `deploy/.env` y genera el secreto
+compartido. El servicio se compila desde el código fuente, también en modo
+imagen.
+
+| Variable | Valor predeterminado | Efecto |
+|---|---|---|
+| `CIELE_RUST_API_SECRET` | Generated | El secreto que comparten la aplicación y el servicio. |
+| `CIELE_RUST_OPERATIONS` | All ported operations | Las operaciones que se ejecutan en el servicio, separadas por comas. |
+| `CIELE_RUST_DATABASE_URL` | El Postgres incluido | La conexión a la base de datos para el servicio. Establécelo cuando uses una base de datos externa. |
+| `CIELE_RUST_LOG` | `info` | El nivel de registro del servicio. |
+| `CIELE_RUST_MCP` | `1` | Establece `0` para mantener el endpoint MCP alojado en la aplicación. |
+| `CIELE_RUST_WIDGET_ROUTES` | Empty | Los endpoints de widgets a los que responde el servicio, separados por comas. Un valor vacío no envía ningún endpoint de widget al servicio. |
+
+El servicio responde a estos endpoints cuando su operación está en
+`CIELE_RUST_OPERATIONS`:
+
+- `GET /api/v1/alerts` y `POST /api/v1/alerts/{id}/resolve`
+- `GET /api/v1/improvements`
+- `GET /api/v1/task-labels` y `POST /api/v1/task-labels`
+- `PATCH /api/v1/task-labels/{id}` y `DELETE /api/v1/task-labels/{id}`
+
+El servicio comprueba la propia clave de API. Las respuestas son las mismas que
+las respuestas de la aplicación. Todos los demás endpoints van a la aplicación.
+
+El servicio también responde al endpoint MCP alojado, `/api/mcp`, con las mismas
+herramientas. En el servicio se ejecuta una herramienta para uno de los
+endpoints mencionados anteriormente. Otras herramientas invocan a la aplicación
+con la clave API del llamante.
+
+Un cambio realizado a través del servicio no actualiza la consola. Las páginas
+Alerts, Projects y Tasks pueden mostrar datos antiguos hasta que las vuelvas a
+cargar. La paleta de búsqueda puede mostrar el nombre anterior de una etiqueta
+durante un máximo de 30 segundos.
+
+Si el servicio se detiene, la aplicación no responde a estos endpoints en su
+nombre. Las solicitudes fallan hasta que el servicio se reinicia. Para
+recuperarte de inmediato, elimina `docker-compose.rust.yml` de `COMPOSE_FILE` y
+reinicia la pila.
+
+### Puntos de conexión de widgets
+
+El servicio también puede responder a algunos endpoints públicos de widgets.
+Esta opción está desactivada de forma predeterminada. Para activarlo, establece
+`CIELE_RUST_WIDGET_ROUTES` en `deploy/.env` y, a continuación, reinicia la pila.
+Por ejemplo:
+
+```bash
+CIELE_RUST_WIDGET_ROUTES=config,session
+```
+
+El servicio puede responder a estos endpoints de widgets: `config`, `session`,
+`feedback`, `conversation-feedback`, `conversations`, `help-desks`, `memories` y
+`sources`. El endpoint `sources` es la descarga de un archivo Source. Todos los
+demás endpoints de widgets van a la aplicación.
+
+La pila proporciona al servicio la clave de cifrado, las claves del modelo y el
+almacenamiento de archivos de la aplicación. Por este motivo, un Visitor que
+inicia sesión permanece conectado, y la lista de modelos en el widget es la
+misma.
+
+Si el servicio se detiene, falla uno de los endpoints del widget incluidos en la
+lista. El widget muestra un error hasta que el servicio se reinicie. Para
+recuperarte inmediatamente, establece `CIELE_RUST_WIDGET_ROUTES` con un valor
+vacío y reinicia la pila.
+
+Para detener el servicio, elimina `docker-compose.rust.yml` de `COMPOSE_FILE`. A
+continuación, reinicia la pila. A continuación, todas las operaciones se
+ejecutan de nuevo en la aplicación.
 
 ## TLS
 

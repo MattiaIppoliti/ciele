@@ -61,6 +61,8 @@ export type ConnectorLoader =
   | "servicenow.tables"
   | "servicenow.columns"
   | "salesforce.fields"
+  /** Active values of one picklist field, `arg` = `<Object>.<Field>`. */
+  | "salesforce.picklist"
   | "slack.channels"
   | "onedrive.folders"
   | "google_drive.folders";
@@ -190,6 +192,57 @@ function salesforceGet(object: string, noun: string, defaultFields: string): Con
     ],
   };
 }
+
+/**
+ * The writable Case fields both Case actions share (#1087). Each is a template,
+ * resolved as plain text and placed into a JSON body the adapter serializes,
+ * so a Visitor's words are a value and never a key or a second field.
+ * Picklist values come from the connected org; the field stays free text.
+ */
+function salesforceCaseFields(create: boolean): ConnectorField[] {
+  const picklist = (name: string, label: string, defaultValue?: string): ConnectorField => ({
+    name: name.toLowerCase(),
+    label,
+    type: "string",
+    template: true,
+    dynamic: { loader: "salesforce.picklist", arg: `Case.${name}` },
+    ...(defaultValue ? { defaultValue } : {}),
+  });
+  return [
+    {
+      name: "subject",
+      label: "Subject",
+      type: "string",
+      template: true,
+      ...(create ? { defaultValue: "{{workflow.message}}" } : {}),
+    },
+    { name: "description", label: "Description", type: "text", template: true },
+    picklist("Priority", "Priority"),
+    picklist("Status", "Status"),
+    picklist("Origin", "Origin", create ? "Web" : undefined),
+    {
+      name: "supplied_email",
+      label: "Requester email",
+      type: "string",
+      template: true,
+      placeholder: "{{user.email}}",
+      hint: "Stored as the Case's web email, so a requester who is not a Contact can still open one.",
+    },
+    {
+      name: "supplied_name",
+      label: "Requester name",
+      type: "string",
+      template: true,
+      placeholder: "{{user.name}}",
+    },
+  ];
+}
+
+const SALESFORCE_CASE_OUTPUTS: ConnectorOutput[] = [
+  { name: "case_id", label: "Case id" },
+  { name: "case_number", label: "Case number" },
+  { name: "case_url", label: "Case link" },
+];
 
 const ONEDRIVE_FOLDER: ConnectorField = {
   name: "folder",
@@ -409,6 +462,7 @@ export const CONNECTOR_ACTIONS: readonly ConnectorAction[] = [
     outputs: [
       { name: "sys_id", label: "Record sys_id" },
       { name: "number", label: "Record number" },
+      { name: "url", label: "Record link" },
     ],
   },
   {
@@ -422,6 +476,7 @@ export const CONNECTOR_ACTIONS: readonly ConnectorAction[] = [
     outputs: [
       { name: "sys_id", label: "Record sys_id" },
       { name: "number", label: "Record number" },
+      { name: "url", label: "Record link" },
     ],
   },
   {
@@ -463,6 +518,37 @@ export const CONNECTOR_ACTIONS: readonly ConnectorAction[] = [
   salesforceGet("Case", "case", "Id, CaseNumber, Subject, Status, Priority"),
   salesforceGet("User", "user", "Id, Name, Email, Username"),
   salesforceGet("Product2", "product", "Id, Name, ProductCode, IsActive"),
+  {
+    key: "salesforce.case.create",
+    provider: "salesforce",
+    title: "Create case",
+    description: "Open a Case in Salesforce. The connecting user must be allowed to create Cases.",
+    effect: "write",
+    requiredScopes: [],
+    fields: salesforceCaseFields(true),
+    outputs: SALESFORCE_CASE_OUTPUTS,
+  },
+  {
+    key: "salesforce.case.update",
+    provider: "salesforce",
+    title: "Update case",
+    description:
+      "Change the fields you fill in on an existing Case. The connecting user must be allowed to edit Cases.",
+    effect: "write",
+    requiredScopes: [],
+    fields: [
+      {
+        name: "case_id",
+        label: "Case id",
+        type: "string",
+        required: true,
+        template: true,
+        placeholder: "{{connector.case_id}} or a Case id",
+      },
+      ...salesforceCaseFields(false),
+    ],
+    outputs: SALESFORCE_CASE_OUTPUTS,
+  },
   {
     key: "slack.message.post",
     provider: "slack",

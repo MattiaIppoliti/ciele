@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Invite, Member, Role } from "@agent-hub/core";
+import { builtinRoleDefaults, type Invite, type Member } from "@agent-hub/core";
 import {
-  assignableRoles,
+  assignableRoleChoices,
   buildMemberRows,
   canManageRow,
   type MemberRow,
@@ -39,6 +39,8 @@ function row(overrides: Partial<MemberRow> = {}): MemberRow {
     name: "Ada",
     email: "ada@example.edu",
     role: "editor",
+    roleId: "role-editor",
+    roleName: "Editor",
     status: "active",
     since: "2026-01-01T00:00:00.000Z",
     isSelf: false,
@@ -129,9 +131,32 @@ describe("canManageRow", () => {
   });
 });
 
-describe("assignableRoles", () => {
-  it("withholds owner from an admin", () => {
-    expect(assignableRoles(false)).not.toContain<Role>("owner");
-    expect(assignableRoles(true)[0]).toBe("owner");
+describe("assignableRoleChoices", () => {
+  const choice = (key: string | null, capabilities: readonly string[], organizationLevel = true) => ({
+    id: `role-${key ?? "custom"}`,
+    name: key ?? "Custom",
+    key,
+    tier: "viewer" as const,
+    capabilities,
+    organizationLevel,
+    assistantLevel: true,
+    memberDefault: false,
+    assistantDefault: false,
+  });
+  const roles = [
+    choice("owner", []),
+    choice("admin", builtinRoleDefaults("admin")),
+    choice("viewer", builtinRoleDefaults("viewer")),
+    choice(null, ["inbox:view"], false),
+  ];
+
+  it("withholds Owner, and any Role above the caller's Capabilities, from a non-Owner", () => {
+    const offered = assignableRoleChoices(roles, { canManageOwners: false, capabilities: builtinRoleDefaults("editor") });
+    expect(offered.map((role) => role.key)).toEqual(["viewer"]);
+  });
+
+  it("offers an Owner everything held Organization-wide", () => {
+    const offered = assignableRoleChoices(roles, { canManageOwners: true, capabilities: [] });
+    expect(offered.map((role) => role.key)).toEqual(["owner", "admin", "viewer"]);
   });
 });

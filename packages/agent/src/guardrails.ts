@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ProviderConnection } from "@agent-hub/core";
 import {
   GUARDRAIL_TOPIC_CAP,
@@ -102,12 +103,15 @@ async function runOne(
   if (outcome.kind === "error") return failed(errorText(outcome.error));
   const verdict = outcome.value;
   if (verdict.kind === "unavailable") return failed(verdict.detail);
+  const moderation = guardrail.type === "moderation" ? { flagged: verdict.blocks, scores: verdict.scores ?? [] } : {};
   return verdict.blocks
-    ? { ...base, outcome: "blocked", ...(verdict.detail ? { detail: verdict.detail } : {}) }
-    : { ...base, outcome: "pass" };
+    ? { ...base, ...moderation, outcome: "blocked", ...(verdict.detail ? { detail: verdict.detail } : {}) }
+    : { ...base, ...moderation, outcome: "pass" };
 }
 
-type Verdict = { kind: "ok"; blocks: boolean; detail?: string } | { kind: "unavailable"; detail: string };
+type Verdict = { kind: "ok"; blocks: boolean; detail?: string; scores?: GuardrailTraceEntry["scores"] } | { kind: "unavailable"; detail: string };
+
+const moderationResponse = z.object({ results: z.array(z.object({ flagged: z.boolean().optional(), categories: z.record(z.string(), z.boolean()).optional(), category_scores: z.record(z.string(), z.number().min(0).max(1)).optional() })).min(1) });
 
 async function moderationBlocks(
   guardrail: Extract<InputGuardrail, { type: "moderation" }>,
@@ -126,10 +130,10 @@ async function moderationBlocks(
     signal,
   });
   if (!response.ok) return { kind: "unavailable", detail: `Moderation returned ${response.status}` };
-  const body = (await response.json()) as {
-    results?: { flagged?: boolean; categories?: Record<string, boolean> }[];
-  };
-  const result = body.results?.[0];
+  const body = await response.json();
+  const parsed = moderationResponse.safeParse(body);
+  if (!parsed.success) return { kind: "unavailable", detail: "Moderation returned an invalid result" };
+  const result = parsed.data.results[0];
   if (!result) return { kind: "unavailable", detail: "Moderation returned no result" };
   const flagged = Object.entries(result.categories ?? {})
     .filter(([, on]) => on)
@@ -139,9 +143,8 @@ async function moderationBlocks(
     guardrail.categories.length === 0
       ? result.flagged === true
       : flagged.some((category) => guardrail.categories.includes(category));
-  return blocks
-    ? { kind: "ok", blocks: true, detail: flagged.join(", ") || "flagged" }
-    : { kind: "ok", blocks: false };
+  const scores = Object.entries(result.category_scores ?? {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3).map(([category, score]) => ({ category, score }));
+  return { kind: "ok", blocks, scores, ...(blocks ? { detail: flagged.join(", ") || "flagged" } : {}) };
 }
 
 const OFF_TOPIC = "other";

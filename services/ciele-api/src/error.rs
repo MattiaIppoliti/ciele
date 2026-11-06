@@ -61,6 +61,15 @@ impl ApiError {
         )
     }
 
+    /// `requireApiCapability`'s refusal, word for word (`apps/web/src/lib/api-v1/auth.ts`).
+    pub fn forbidden_capability(capability: &str) -> Self {
+        Self::new(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            format!("This API key's role does not allow this operation: it needs {capability}"),
+        )
+    }
+
     pub fn forbidden() -> Self {
         Self::new(
             StatusCode::FORBIDDEN,

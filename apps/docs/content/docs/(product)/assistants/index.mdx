@@ -41,3 +41,19 @@ link. Sources without an inline reference remain available in the Sources list b
 Duplication copies configuration and Flows. It does not copy Knowledge content.
 
 Review the new Assistant before publication. In particular, add its required Sources and confirm its Help Desk connections.
+
+## Move an Assistant between Organizations
+
+Open the Assistant menu and select **Export bundle** to download a versioned JSON file. Reading an Assistant permits export.
+
+Select **Import bundle as new Assistant** to upload the file. Import requires edit access and always creates a new Assistant. Existing Assistants stay unchanged.
+
+The bundle contains the Publication configuration, Flows, Skills, Guardrails, quick replies, and style. It names Collections, Help Desks, and connection providers.
+
+Import matches these names in the destination Organization. Read the import report for missing or ambiguous matches. Flows with unresolved references stay disabled.
+
+Credentials, encrypted values, Conversations, and Visitor data are excluded. Configure credentials after import. API Integrations show **Needs setup** until credentials are available.
+
+Collection content is not included. Import links existing destination Sources from a matching Collection. Unknown bundle versions are refused before creation.
+
+The API provides `GET /api/v1/assistants/{id}/export` and `POST /api/v1/assistants/import`. MCP provides the export and import actions of `manage_assistants`.

@@ -607,27 +607,45 @@ class ShimQueryBuilder implements PromiseLike<{
           break;
         }
         case "or": {
-          const parts = String(f.value)
-            .split(",")
-            .map((segment) => {
-              const m = segment.match(
-                /^([a-z0-9_]+)\.(is|eq|lt|gt|lte|gte|ilike)\.(.*)$/
-              );
-              if (!m) {
-                throw new Error(`postgrest-shim: unsupported or() segment ${segment}`);
+          // Top-level commas only: `and(a,b)` is one segment, the keyset
+          // cursor's "older, or as old with a smaller id".
+          const splitTop = (text: string): string[] => {
+            const out: string[] = [];
+            let depth = 0;
+            let start = 0;
+            for (let i = 0; i < text.length; i += 1) {
+              if (text[i] === "(") depth += 1;
+              else if (text[i] === ")") depth -= 1;
+              else if (text[i] === "," && depth === 0) {
+                out.push(text.slice(start, i));
+                start = i + 1;
               }
-              const [, column, op, raw] = m;
-              const target = `${alias}.${quoteIdent(column)}`;
-              if (op === "is" && raw === "null") return `${target} is null`;
-              const expr = this.rest.encodeValue(raw, cols.get(column), params);
-              if (op === "ilike") return `${target} ilike ${expr}`;
-              // The strict comparisons arrived with the Routine over-fetch
-              // (#772): "never run OR last run before the cutoff".
-              const sqlOp = { eq: "=", lt: "<", gt: ">", lte: "<=", gte: ">=" }[
-                op as "eq" | "lt" | "gt" | "lte" | "gte"
-              ];
-              return `${target} ${sqlOp} ${expr}`;
-            });
+            }
+            out.push(text.slice(start));
+            return out;
+          };
+          const condition = (segment: string): string => {
+            const nested = segment.match(/^and\((.*)\)$/);
+            if (nested) return `(${splitTop(nested[1]!).map(condition).join(" and ")})`;
+            const m = segment.match(
+              /^([a-z0-9_]+)\.(is|eq|lt|gt|lte|gte|ilike)\.(.*)$/
+            );
+            if (!m) {
+              throw new Error(`postgrest-shim: unsupported or() segment ${segment}`);
+            }
+            const [, column, op, raw] = m;
+            const target = `${alias}.${quoteIdent(column)}`;
+            if (op === "is" && raw === "null") return `${target} is null`;
+            const expr = this.rest.encodeValue(raw, cols.get(column), params);
+            if (op === "ilike") return `${target} ilike ${expr}`;
+            // The strict comparisons arrived with the Routine over-fetch
+            // (#772): "never run OR last run before the cutoff".
+            const sqlOp = { eq: "=", lt: "<", gt: ">", lte: "<=", gte: ">=" }[
+              op as "eq" | "lt" | "gt" | "lte" | "gte"
+            ];
+            return `${target} ${sqlOp} ${expr}`;
+          };
+          const parts = splitTop(String(f.value)).map(condition);
           clauses.push(`(${parts.join(" or ")})`);
           break;
         }

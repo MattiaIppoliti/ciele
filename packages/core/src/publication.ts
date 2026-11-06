@@ -50,7 +50,7 @@ export function buildPublicationConfig(
       style: assistant.style,
       allowedDomains: assistant.allowedDomains,
       helpDeskSettings: assistant.helpDeskSettings,
-      tools: assistant.tools,
+      tools: { ...assistant.tools, ...(assistant.tools.remoteMcp ? { remoteMcp: assistant.tools.remoteMcp.map(selection => ({ serverId: selection.serverId, tools: selection.tools.map(tool => ({ name: tool.name, definitionHash: tool.definitionHash })) })) } : {}) },
       requireSignIn: assistant.requireSignIn,
     },
     flows,

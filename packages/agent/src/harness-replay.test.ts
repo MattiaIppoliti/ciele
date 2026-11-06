@@ -110,7 +110,9 @@ describe("production harness replays", () => {
     const first = await events(input);
     const second = await events(input);
     expect(first.at(-1)).toMatchObject({ type: "done" });
-    expect(second.at(-1)).toEqual(first.at(-1));
+    // The same reply under the same ids; only the outcome says it is a replay,
+    // because the first turn's reason is not stored with the message.
+    expect(second.at(-1)).toEqual({ ...first.at(-1), outcome: "replayed" });
     expect(replay.native.doStreamCalls).toHaveLength(2);
     expect(spent(usage)).toHaveLength(2);
     replay.assertConsumed();

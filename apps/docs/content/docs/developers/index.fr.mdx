@@ -1,24 +1,24 @@
 ---
-title: Outils pour les développeurs
-description: Utilisez une seule clé API avec l'API Ciele, la CLI ou le serveur MCP.
+title: Outils pour développeurs
+description: Utilisez une seule clé API avec l’API Ciele, la CLI ou le serveur MCP.
 ---
 
-Ciele propose trois interfaces pour l'administration par programmation. Chaque
+Ciele propose trois interfaces pour l’administration par programmation. Chaque
 interface utilise les mêmes opérations et les mêmes vérifications de rôles que
-la console d'administration.
+l’administrator console.
 
-Pour identifier l'opération associée à un contrôle de la console, ouvrez le
+Pour identifier l’opération associée à un contrôle de la console, ouvrez le
 [Developer Panel](/developers/developer-panel) sur cette page.
 
-Pour explorer l'interface, ouvrez la
+Pour explorer l’interface, ouvrez la
 [bibliothèque de composants](https://ciele.app/components) publique. Chaque page
-traite d'un composant et de ses états ou variantes. La
-[Blocks section](https://ciele.app/components/blocks) contient des
+traite d’un composant et de ses états ou variantes. La
+[section Blocks](https://ciele.app/components/blocks) contient des
 fonctionnalités complètes, telles que des tableaux, des conversations et des
 éditeurs. Les deux sections comportent les onglets **Preview**, **Usage** et
 **Code**. Vous pouvez effectuer une recherche dans chaque section et modifier
-son thème ou sa palette. Les aperçus utilisent du contenu d'exemple. L'onglet
-**Code** affiche les fichiers sources de la build actuelle.
+son thème ou sa palette. Les aperçus utilisent du contenu d’exemple. L’onglet
+**Code** affiche les fichiers source de la build actuelle.
 
 <Cards>
   <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
@@ -30,11 +30,11 @@ son thème ou sa palette. Les aperçus utilisent du contenu d'exemple. L'onglet
 
 ## Modèle de connexion commun
 
-Les trois interfaces nécessitent une clé API d'organisation. Le Role attribué
+Les trois interfaces nécessitent une clé API d’organisation. Le Role attribué
 détermine les opérations que la clé peut utiliser.
 
 <Mermaid
-  title="Trois clients, une seule API, un seul ensemble d'opérations"
+  title="Trois clients, une seule API, un seul ensemble d’opérations"
   chart={`
 flowchart TB
   CLI["Ciele CLI"]
@@ -55,7 +55,7 @@ Le service hébergé utilise `https://ciele.app` par défaut. Une installation
 auto-hébergée utilise sa propre origine publique.
 
 <Callout title="Use the minimum Role">
-Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation).
+Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation). For a key that only reads, create a custom Role in **Settings > Roles** without the **Triage conversations** and **Delete conversations** capabilities, and give that Role to the key.
 </Callout>
 
 ## Domaines disponibles
@@ -63,6 +63,6 @@ Create a Viewer key for read operations. Create a higher-role key only when the 
 La [API reference](/api-reference) répertorie toutes les opérations `/api/v1`
 disponibles, par domaine.
 
-L'API n'expose pas toutes les fonctions de la console. Par exemple, le
-téléchargement d'avatar et la création d'Improvement restent réservés à la
+L’API n’expose pas toutes les fonctions de la console. Par exemple, le
+téléchargement d’avatar et la création d’Improvement restent réservés à la
 console.

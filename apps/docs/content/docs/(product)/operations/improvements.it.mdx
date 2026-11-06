@@ -14,20 +14,51 @@ correzione.
 - Un amministratore può contrassegnare una risposta dalla Inbox.
 - Se configurata, la ricerca nella knowledge base può creare un elemento per una
   query irrisolta.
-- Un Goal permanente che non viene raggiunto crea un item. I successivi errori
-  aggiungono prove allo stesso elemento.
+- Un Goal permanente che non viene raggiunto crea un elemento. I successivi
+  fallimenti aggiungono prove allo stesso elemento.
 
-## Gestisci un elemento
+Quando segnali una risposta dalla Inbox, scrivi la risposta o il comportamento
+attesi sotto il titolo.
 
-Apri un elemento per esaminare i messaggi collegati e la correzione suggerita
-disponibile. Puoi modificare lo stato, la priorità, i tag, l'assegnatario e la
-data di scadenza.
+## Fasi
+
+La board mostra cinque fasi. L'API, la CLI e il server MCP utilizzano i valori
+di stato riportati nella seconda colonna.
+
+| Stage | Status | Cosa fare |
+| --- | --- | --- |
+| **Triage** | `to_do` | Leggi le evidenze, scrivi la risposta prevista e imposta un owner e una priorità. |
+| **Fix** | `in_progress` | Correggi la Source, la FAQ, il Flow o l'istruzione che ha generato la risposta. |
+| **Validate** | `in_review` | Riponi la domanda originale, esamina le Sources e controlla il widget del cliente. |
+| **Resolved** | `done` | Conserva l'esito e le evidenze per una diagnosi successiva. |
+| **Archived** | `archived` | Tieni un elemento duplicato o obsoleto al di fuori del lavoro attivo. |
+
+L'azione principale su un elemento lo sposta alla fase successiva. Il selettore
+di stato e la funzionalità drag-and-drop consentono ancora di spostare un
+elemento in qualsiasi fase. Quando risolvi un elemento, la tua decisione viene
+registrata. Non esegue alcun test né pubblica le modifiche.
+
+## Trova elementi
+
+La ricerca individua il testo nel titolo, nella chiave `IMP-n` e nei tag. Apri
+**Filters** per filtrare per priorità, assegnatario, Assistente o Progetto.
+
+- In **Assignee**, seleziona **Assigned to me** per i tuoi elementi oppure
+  **Unassigned** per gli elementi senza proprietario.
+- **Assistant** mostra gli elementi con prove tratte dalle conversazioni di
+  quell'Assistente.
+- **Project** mostra gli elementi di un singolo Project.
+
+Ciele applica i filtri a tutti gli Improvements prima di mostrare una pagina. I
+conteggi delle fasi e le esportazioni utilizzano gli stessi filtri, quindi
+includono anche elementi meno recenti. Un'esportazione include anche la
+descrizione e l'identificatore del progetto.
 
 L'API, la CLI e il server MCP possono elencare, leggere e aggiornare gli
-Improvement esistenti. La creazione di un Improvement rimane un'operazione
-eseguita durante il runtime del prodotto.
+Improvements. L'elenco accetta gli stessi filtri e restituisce il conteggio per
+ogni stage. Solo il prodotto crea Improvements.
 
-## Pianifica il lavoro come Tasks
+## Pianifica il lavoro sotto forma di Tasks
 
 Un Improvement registra il problema. Una Task registra il lavoro che risolve il
 problema. La pagina Improvement mostra le Tasks che lo risolvono.
@@ -37,23 +68,68 @@ problema. La pagina Improvement mostra le Tasks che lo risolvono.
    dell'Improvement.
 3. Modifica la Task se necessario, quindi seleziona **Create task**.
 
-Puoi anche collegare una Task esistente: apri la Task e seleziona l'Improvement
-nel suo campo **Resolves**.
+Puoi anche collegare un'attività esistente: apri l'attività e seleziona il
+miglioramento nel suo campo **Resolves**.
 
 Quando tutte le Task collegate sono completate, Ciele sposta l'Improvement da
-**To do** o **In progress** a **In review**. Quindi una persona esamina la
-risposta e chiude l'Improvement. Se riapri una Task, l'Improvement non viene
-spostato indietro.
+**Triage** o **Fix** a **Validate**. Quindi una persona esamina la risposta e
+chiude l'Improvement. Se riapri una Task, l'Improvement non torna indietro.
+
+Il completamento delle Task non dimostra che la risposta sia ora corretta.
+Registra le prove di convalida prima di risolvere l'Improvement.
 
 ## Correggi la risposta
 
 1. Leggi la Conversation collegata.
 2. Identifica la Source, la FAQ, il Flow o l'istruzione errati.
-3. Correggi la configurazione della bozza.
+3. Correggi la knowledge o la configurazione bozza.
 4. Poni la domanda originale in Preview.
 5. Conferma la risposta e le Sources.
-6. Pubblica l'Assistente.
-7. Contrassegna il miglioramento come completato.
+6. Pubblica le modifiche alla configurazione e conferma la correzione nel widget
+   del cliente. Le modifiche alla Knowledge sono attive.
+7. Registra le prove di convalida, quindi risolvi l'Improvement.
+
+L'elemento mostra **Correct knowledge**, **Review Flows**, **Test in Preview** e
+**Review publication**. Questi link aprono l'Assistant delle evidenze della
+conversazione sullo schermo. Se un elemento contiene prove provenienti da più di
+un Assistente, apri ciascun messaggio collegato e controlla ogni Assistente.
 
 Rivedi le correzioni suggerite generate prima di utilizzarle. Il suggerimento
 memorizzato non costituisce una modifica alla pubblicazione.
+
+## Registra le prove di convalida
+
+In **Validation evidence**, scrivi il comportamento previsto, le risorse
+modificate e il controllo del widget: l'URL, i passaggi e il risultato. Quindi
+seleziona **Record widget pass** oppure **Record widget failure**.
+
+Un controllo registra il membro, l'ora e la Publication corrente. Non modifica
+la fase dell'Improvement. Non puoi modificare o eliminare un controllo dopo
+averlo registrato. Gli elementi risolti più vecchi non hanno alcun controllo
+registrato.
+
+Per eseguire un test con un modello, apri **Replay a representative question**.
+Scrivi la domanda e il testo che la risposta deve contenere. Puoi anche
+richiedere le citazioni delle fonti. Un replay utilizza i crediti AI e i limiti
+di spesa dell'Organization. Esegue il test dell'ultima Publication con la
+knowledge in tempo reale. Per ogni Improvement può essere in attesa un solo
+replay.
+
+Un replay funziona solo per gli Assistenti che rispondono e non fanno
+nient'altro. Se un Flow può inviare email, chiamare un'API o eseguire altre
+azioni esterne, Ciele rifiuta il replay. Un replay non crea alcuna Conversation
+e non modifica i dati di Insights.
+
+Seleziona **Refresh** per leggere il risultato di un replay. Quando la
+Publication o la knowledge cambiano, Ciele contrassegna le evidenze precedenti
+come obsolete. Registra un nuovo controllo prima di utilizzare quel risultato.
+Un replay non verifica il sito web host, l'identità del Visitor né le condizioni
+dell'URL. Controlla personalmente il widget del cliente prima di risolvere
+l'elemento.
+
+## Progetti
+
+Un Project mostra il numero dei suoi Improvements in ogni fase. Seleziona
+**Review project improvements** per aprire la board con il filtro Project. I
+colleghi del team collegati a un Project leggono le sue decisioni attraverso la
+Project memory, in base alle loro autorizzazioni correnti.

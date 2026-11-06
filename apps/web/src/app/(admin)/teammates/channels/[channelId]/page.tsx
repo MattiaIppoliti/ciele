@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { PageCrumb } from "@/components/shell/top-bar-slots";
 import { OperationError, getChannelOp } from "@ciele/ops";
 import { canAddTeammateToChannel, memberDisplayName } from "@agent-hub/core";
-import { canViewReasoning } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { ChannelWorkspace } from "@/components/teammates/channel-workspace";
 import { requirePageMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
@@ -26,7 +26,8 @@ export default async function ChannelPage({
   params: Promise<{ channelId: string }>;
 }) {
   const { channelId } = await params;
-  const { organizationId, role, session, db } = await requirePageMember();
+  const { organizationId, role, session, db, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
 
   let view;
   try {
@@ -65,7 +66,7 @@ export default async function ChannelPage({
       teammates={view.teammates}
       messages={view.messages}
       canManage={view.canManage}
-      canViewReasoning={canViewReasoning(role)}
+      canViewReasoning={can(access, "inbox:reasoning")}
       currentUserId={session.userId}
       /** Colleagues not in the channel yet. */
       invitableMembers={members

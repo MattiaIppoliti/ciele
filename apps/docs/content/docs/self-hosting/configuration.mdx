@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Configure origins, secrets, accounts, models, email, and optional workers.
+description: Configure origins, secrets, accounts, models, email, and optional services.
 ---
 
 The bootstrap script writes `deploy/.env`. Use `deploy/.env.example` as the current variable reference.
@@ -55,7 +55,67 @@ When a provider refuses a request because of its rate limit, the application tri
 
 The widget also limits each Visitor to 12 messages per minute. One network address can send 300 messages per minute to one Assistant. Many Visitors can share one address, for example on an office network.
 
+The application reads the network address from the `X-Forwarded-For` header. By default, it uses the first address in the header. This is correct with no proxy and with the bundled TLS overlay, because Caddy removes the value that the client sent.
+
+Some proxies add their caller to the end of the header and keep the value from the client. Examples are nginx with `$proxy_add_x_forwarded_for` and most cloud load balancers. Behind such proxies, set `CIELE_TRUSTED_PROXY_HOPS` to the number of these proxies. Then the application uses the address that the outermost proxy added, and a client cannot change it.
+
 Turns on a personal subscription do not take a slot.
+
+## Hosted MCP endpoint
+
+Set `CIELE_MCP_READ_ONLY=1` in `deploy/.env` to make the hosted MCP endpoint, `/api/mcp`, refuse every mutation action. The setting applies to every API key. It applies when the application answers the endpoint and when the Rust service answers it.
+
+## Rust API service
+
+The optional Rust service runs some operations instead of the application. It also answers some `/api/v1` endpoints directly. It is off by default. The stack reads its Compose file, `deploy/docker-compose.rust.yml`, only when `COMPOSE_FILE` lists it.
+
+Run the bootstrap script with the `--rust` option:
+
+```bash
+./deploy/bootstrap.sh --rust
+```
+
+The script adds the file to `COMPOSE_FILE` in `deploy/.env` and generates the shared secret. The service builds from source, also in image mode.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `CIELE_RUST_API_SECRET` | Generated | The secret that the application and the service share. |
+| `CIELE_RUST_OPERATIONS` | All ported operations | The operations that run in the service, separated by commas. |
+| `CIELE_RUST_DATABASE_URL` | The bundled Postgres | The database connection for the service. Set it when you use an external database. |
+| `CIELE_RUST_LOG` | `info` | The log level of the service. |
+| `CIELE_RUST_MCP` | `1` | Set `0` to keep the hosted MCP endpoint in the application. |
+| `CIELE_RUST_WIDGET_ROUTES` | Empty | The widget endpoints that the service answers, separated by commas. An empty value sends no widget endpoint to the service. |
+
+The service answers these endpoints when their operation is in `CIELE_RUST_OPERATIONS`:
+
+- `GET /api/v1/alerts` and `POST /api/v1/alerts/{id}/resolve`
+- `GET /api/v1/improvements`
+- `GET /api/v1/task-labels` and `POST /api/v1/task-labels`
+- `PATCH /api/v1/task-labels/{id}` and `DELETE /api/v1/task-labels/{id}`
+
+The service checks the API key itself. The responses are the same as the responses from the application. All other endpoints go to the application.
+
+The service also answers the hosted MCP endpoint, `/api/mcp`, with the same tools. A tool for one of the endpoints above runs in the service. Other tools call the application with the API key of the caller.
+
+A change through the service does not refresh the console. The Alerts, Projects and Tasks pages can show old data until you reload them. The search palette can show the old name of a Label for up to 30 seconds.
+
+If the service stops, the application does not answer these endpoints for it. The requests fail until the service starts again. To recover immediately, remove `docker-compose.rust.yml` from `COMPOSE_FILE` and restart the stack.
+
+### Widget endpoints
+
+The service can also answer some public widget endpoints. This is off by default. To turn it on, set `CIELE_RUST_WIDGET_ROUTES` in `deploy/.env`, then restart the stack. For example:
+
+```bash
+CIELE_RUST_WIDGET_ROUTES=config,session
+```
+
+The service can answer these widget endpoints: `config`, `session`, `feedback`, `conversation-feedback`, `conversations`, `help-desks`, `memories` and `sources`. The `sources` endpoint is the download of a Source file. All other widget endpoints go to the application.
+
+The stack gives the service the encryption key, the model keys and the file storage of the application. Because of this, a Visitor who signs in stays signed in, and the model list in the widget is the same.
+
+If the service stops, a listed widget endpoint fails. The widget shows an error until the service starts again. To recover immediately, set `CIELE_RUST_WIDGET_ROUTES` to an empty value and restart the stack.
+
+To stop the service, remove `docker-compose.rust.yml` from `COMPOSE_FILE`. Then restart the stack. All operations then run in the application again.
 
 ## TLS
 

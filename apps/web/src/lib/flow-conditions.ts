@@ -1,4 +1,5 @@
 import type {
+  BusinessHours,
   FlowCondition,
   FlowTrigger,
   FlowUrlOperator,
@@ -166,6 +167,7 @@ const DEFECT_MESSAGES: Record<string, string> = {
   url_value_missing: "URL is required",
   url_pattern_too_long: "This URL is too long",
   url_regex_invalid: "Enter a valid regular expression",
+  schedule_business_hours_missing: "Select an existing business hours schedule",
   schedule_start_missing: "Start date & time is required",
   schedule_start_invalid: "Enter a valid start date & time",
   schedule_end_invalid: "Enter a valid end date & time",
@@ -176,8 +178,8 @@ const DEFECT_MESSAGES: Record<string, string> = {
  * The inline validation message for a condition, or null when it is fine.
  * Derived from the domain package's defect, never from a second rule set.
  */
-export function flowConditionIssue(condition: FlowCondition): string | null {
-  const defect = flowConditionDefect(condition);
+export function flowConditionIssue(condition: FlowCondition, businessHours?: readonly BusinessHours[]): string | null {
+  const defect = flowConditionDefect(condition, businessHours);
   return defect ? (DEFECT_MESSAGES[defect] ?? "Complete this condition") : null;
 }
 
@@ -212,6 +214,7 @@ export function cleanFlowConditions(
       cleaned.push({ ...condition, value: condition.value.trim() });
       continue;
     }
+    if (condition.mode === "business_hours") { cleaned.push(condition); continue; }
     cleaned.push({
       ...condition,
       startAt: condition.startAt.trim(),

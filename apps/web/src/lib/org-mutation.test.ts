@@ -31,12 +31,12 @@ describe("orgMutation", () => {
 
   it("enforces the capability, runs the mutation, and derives revalidation", async () => {
     const assistant = await orgMutation(
-      { capability: "edit", entities: [{ kind: "assistantList" }] },
+      { operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit", entities: [{ kind: "assistantList" }] },
       ({ db, session }) =>
         db.createAssistant(session.organization.id, { title: "Helper made" })
     );
 
-    expect(requireMemberMock).toHaveBeenCalledWith("edit");
+    expect(requireMemberMock).toHaveBeenCalledWith("assistants:edit");
     // Observable Db state, not call ordering.
     const listed = await db.listAssistants(DEMO_ORG.id);
     expect(listed.some((a) => a.id === assistant.id)).toBe(true);
@@ -47,7 +47,7 @@ describe("orgMutation", () => {
     requireMemberMock.mockRejectedValue(new Error("Not allowed"));
     const fn = vi.fn();
     await expect(
-      orgMutation({ capability: "publish", entities: [] }, fn)
+      orgMutation({ operation: { name: "test.mutation", effect: "write" }, capability: "assistants:publish", entities: [] }, fn)
     ).rejects.toThrow("Not allowed");
     expect(fn).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
@@ -60,7 +60,7 @@ describe("orgMutation", () => {
       [{ kind: "improvement" as const, id: "imp_1" }],
     ]) {
       revalidateTagMock.mockReset();
-      await orgMutation({ capability: "edit", entities }, async () => null);
+      await orgMutation({ operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit", entities }, async () => null);
       expect(revalidateTagMock).toHaveBeenCalledExactlyOnceWith(
         `insights:${DEMO_ORG.id}`,
         { expire: 0 },
@@ -95,11 +95,11 @@ describe("orgMutation", () => {
 
   it("leaves the Insights cache alone for mutations the aggregate never reads", async () => {
     await orgMutation(
-      { capability: "changeRoles", entities: [{ kind: "members" }] },
+      { operation: { name: "test.mutation", effect: "write" }, capability: "personalSubscriptions:manage", entities: [{ kind: "members" }] },
       async () => null,
     );
     await orgMutation(
-      { capability: "edit", entities: [{ kind: "helpDeskList" }] },
+      { operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit", entities: [{ kind: "helpDeskList" }] },
       async () => null,
     );
     expect(revalidateTagMock).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe("orgMutation", () => {
 
   it("fans one entity out to all its routes, layout scope included", async () => {
     await orgMutation(
-      { capability: "edit", entities: [{ kind: "assistant", id: "as_1" }] },
+      { operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit", entities: [{ kind: "assistant", id: "as_1" }] },
       async () => null
     );
     expect(revalidatePathMock.mock.calls).toEqual([
@@ -119,7 +119,7 @@ describe("orgMutation", () => {
   it("dedupes overlapping routes across entities", async () => {
     await orgMutation(
       {
-        capability: "edit",
+        operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit",
         entities: [
           { kind: "assistantList" },
           { kind: "assistant", id: "as_1" },
@@ -139,7 +139,7 @@ describe("orgMutation", () => {
   it("derives entities from the result when ids are only known afterwards", async () => {
     await orgMutation(
       {
-        capability: "edit",
+        operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit",
         entities: (result: { id: string }) => [
           { kind: "assistant", id: result.id },
         ],
@@ -155,7 +155,7 @@ describe("orgMutation", () => {
   it("skips revalidation when revalidateIf rejects the result", async () => {
     const result = await orgMutation(
       {
-        capability: "edit",
+        operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit",
         entities: [{ kind: "assistantList" }],
         revalidateIf: (r: { error?: string }) => !r.error,
       },
@@ -167,7 +167,7 @@ describe("orgMutation", () => {
 
   it("returns the mutation result untouched for redirect/return flows", async () => {
     const result = await orgMutation(
-      { capability: "member", entities: [] },
+      { operation: { name: "test.mutation", effect: "write" }, capability: "member", entities: [] },
       async () => ({ nested: { value: 42 } })
     );
     expect(result).toEqual({ nested: { value: 42 } });
@@ -235,14 +235,14 @@ describe("orgMutation", () => {
     [{ kind: "task", id: "tsk_1" }, [["/tasks/tsk_1", undefined]]],
     [{ kind: "myNotifications" }, [["/notifications", undefined], ["/settings/notifications", undefined]]],
   ] as const)("maps %o to its route(s)", async (entity, expectedCalls) => {
-    await orgMutation({ capability: "edit", entities: [entity] }, async () => null);
+    await orgMutation({ operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit", entities: [entity] }, async () => null);
     expect(revalidatePathMock.mock.calls).toEqual(expectedCalls);
   });
 
   it("composes atomic entities into the exact hand-listed set (updateHelpDesk)", async () => {
     await orgMutation(
       {
-        capability: "edit",
+        operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit",
         entities: [{ kind: "helpDeskList" }, { kind: "helpDesk", id: "hd_1" }],
       },
       async () => null
@@ -258,7 +258,7 @@ describe("orgMutation", () => {
     // of them. The routes they share are revalidated once.
     await orgMutation(
       {
-        capability: "edit",
+        operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit",
         entities: [{ kind: "project", id: "prj_1" }, { kind: "projectList" }],
       },
       async () => null
@@ -277,7 +277,7 @@ describe("orgMutation", () => {
   it("composes the improvement-link fan-out (list + item + inbox)", async () => {
     await orgMutation(
       {
-        capability: "edit",
+        operation: { name: "test.mutation", effect: "write" }, capability: "assistants:edit",
         entities: [
           { kind: "improvementList" },
           { kind: "improvement", id: "IMP_1" },

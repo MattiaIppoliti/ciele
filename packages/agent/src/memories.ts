@@ -146,7 +146,8 @@ export async function promoteConversationMemories(
   if (!extractor) return { promoted: 0, skipped: "no-model" };
 
   const transcript = messages
-    .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${messageText(m.content)}`)
+    .filter((m) => m.role !== "system")
+    .map((m) => `${m.role === "user" ? "User" : m.role === "operator" ? "Support agent" : "Assistant"}: ${messageText(m.content)}`)
     .join("\n");
   const sessionFacts = createTurnSession(
     conversationId,

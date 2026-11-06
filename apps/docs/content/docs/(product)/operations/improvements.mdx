@@ -13,11 +13,33 @@ An Improvement records one answer-quality problem. It can include linked message
 - Search knowledge can create an item for an unresolved query when configured.
 - A standing Goal that fails creates an item. Later failures add evidence to the same item.
 
-## Manage an item
+When you flag an answer from the Inbox, write the expected answer or behavior below the title.
 
-Open an item to review its linked messages and available suggested fix. You can change its status, priority, tags, assignee, and due date.
+## Stages
 
-The API, CLI, and MCP server can list, read, and update existing Improvements. Improvement creation remains a product-runtime operation.
+The board shows five stages. The API, the CLI, and the MCP server use the status values in the second column.
+
+| Stage | Status | What to do |
+| --- | --- | --- |
+| **Triage** | `to_do` | Read the evidence, write the expected answer, and set an owner and a priority. |
+| **Fix** | `in_progress` | Correct the Source, FAQ, Flow, or instruction that caused the answer. |
+| **Validate** | `in_review` | Ask the original question again, examine the Sources, and check the customer widget. |
+| **Resolved** | `done` | Keep the outcome and the evidence for later diagnosis. |
+| **Archived** | `archived` | Keep a duplicate or obsolete item outside the active work. |
+
+The primary action on an item moves it to the next stage. The status picker and drag-and-drop still move an item to any stage. Resolving an item records your decision. It does not run a test or publish changes.
+
+## Find items
+
+Search finds text in the title, the `IMP-n` key, and the tags. Open **Filters** to filter by priority, assignee, Assistant, or Project.
+
+- In **Assignee**, select **Assigned to me** for your own items, or **Unassigned** for items without an owner.
+- **Assistant** shows the items with evidence from the conversations of that Assistant.
+- **Project** shows the items in one Project.
+
+Ciele applies the filters to all the Improvements before it shows a page. The stage counts and the exports use the same filters, so they include older items. An export also includes the description and the Project identifier.
+
+The API, the CLI, and the MCP server can list, read, and update Improvements. The list accepts the same filters and returns the count for each stage. Only the product creates Improvements.
 
 ## Plan the work as Tasks
 
@@ -29,16 +51,36 @@ An Improvement records the problem. A Task records the work that fixes it. The I
 
 You can also link an existing Task: open the Task and select the Improvement in its **Resolves** field.
 
-When all the linked Tasks are complete, Ciele moves the Improvement from **To do** or **In progress** to **In review**. A person then examines the answer and closes the Improvement. If you open a Task again, the Improvement does not move back.
+When all the linked Tasks are complete, Ciele moves the Improvement from **Triage** or **Fix** to **Validate**. A person then examines the answer and closes the Improvement. If you open a Task again, the Improvement does not move back.
+
+Complete Tasks do not prove that the answer is now correct. Record validation evidence before you resolve the Improvement.
 
 ## Correct the answer
 
 1. Read the linked Conversation.
 2. Identify the incorrect Source, FAQ, Flow, or instruction.
-3. Correct the draft configuration.
+3. Correct the knowledge or the draft configuration.
 4. Ask the original question in Preview.
-5. Confirm the answer and Sources.
-6. Publish the Assistant.
-7. Mark the Improvement as complete.
+5. Confirm the answer and the Sources.
+6. Publish configuration changes and confirm the fix in the customer widget. Knowledge changes are live.
+7. Record validation evidence, then resolve the Improvement.
+
+The item shows **Correct knowledge**, **Review Flows**, **Test in Preview**, and **Review publication**. These links open the Assistant of the conversation evidence on the screen. If an item has evidence from more than one Assistant, open each linked message and check each Assistant.
 
 Review generated suggested fixes before you use them. The stored suggestion is not a publication change.
+
+## Record validation evidence
+
+In **Validation evidence**, write the expected behavior, the changed resources, and the widget check: the URL, the steps, and the result. Then select **Record widget pass** or **Record widget failure**.
+
+A check records the member, the time, and the current Publication. It does not change the stage of the Improvement. You cannot change or delete a check after you record it. Older resolved items have no recorded check.
+
+To test with a model, open **Replay a representative question**. Write the question and the text that the answer must contain. You can also require Source citations. A replay uses AI credits and the spend limits of the Organization. It tests the latest Publication with the live knowledge. Only one replay can wait for each Improvement.
+
+A replay works only for Assistants that answer and do nothing else. If a Flow can send email, call an API, or do other external actions, Ciele refuses the replay. A replay creates no Conversation and does not change the Insights data.
+
+Select **Refresh** to read the result of a replay. When the Publication or the knowledge changes, Ciele marks the earlier evidence as stale. Record a new check before you use that result. A replay does not check the host website, the Visitor identity, or the URL conditions. Check the customer widget yourself before you resolve the item.
+
+## Projects
+
+A Project shows the count of its Improvements in each stage. Select **Review project improvements** to open the board with the Project filter. Teammates connected to a Project read its decisions through the Project memory, under their current grants.

@@ -287,17 +287,26 @@ ciele help-desks list
 ciele teammates list
 ciele channels list
 ciele skills list
+ciele quick-texts list
 ciele goals list <assistant-id>
 ciele alerts list
 ciele organization get
 ciele members list
+ciele members set-role <user-id> --role-id <role-id>
+ciele members set-assistants <user-id> --scope selected --assistants <assistant-id>:editor
+ciele roles list
+ciele roles create --name "Content reviewer" --capabilities knowledge:view,knowledge:edit
+ciele roles set-defaults --member <role-id>
 ciele invites list
 ciele api-keys list
+ciele audit-log list --action members.updateRole --from 2026-10-01
 ciele providers list
 ciele sso connection
 ```
 
 Commands that delete data require `--yes`. The Default behavior Flow cannot be deleted.
+
+`--role` takes a built-in Role name. `--role-id` takes the ID of any Role, also a custom Role. `ciele roles list` shows the IDs. `ciele whoami` also shows how many capabilities the key has.
 
 Run `ciele help` for every command group and accepted option. Add `--file` when a command accepts a complete JSON input or patch.
 
@@ -310,3 +319,41 @@ ciele publish status "$ASSISTANT_ID" --json
 ```
 
 Store all values in the CI secret store. Do not write a key in a workflow file.
+
+## Portable Assistant bundles
+
+Export writes a versioned JSON bundle to standard output. Import creates a new Assistant and returns a report of unresolved destination references.
+
+```bash
+ciele assistants export <assistant-id> > assistant.json
+ciele assistants import assistant.json
+```
+
+Bundles exclude credentials and Visitor data. Import requires edit access. Configure missing credentials and references before publishing the new Assistant.
+
+## Scheduled Insights exports
+
+Create a schedule from a JSON definition. Weekly cadence uses `weekday` from zero for Sunday through six for Saturday.
+
+```json
+{
+  "name": "Weekly Insights",
+  "kind": "insights_overview",
+  "format": "csv",
+  "filters": {},
+  "cadence": { "kind": "weekly", "weekday": 1 },
+  "hour": 8,
+  "recipientMemberIds": ["member-uuid"]
+}
+```
+
+```bash
+ciele exports create --file schedule.json --yes
+ciele exports list
+ciele exports update <schedule-id> --file patch.json --yes
+ciele exports pause <schedule-id> --yes
+ciele exports resume <schedule-id> --yes
+ciele exports delete <schedule-id> --yes
+```
+
+Monthly cadence uses `{"kind":"monthly","day":1}`. The hour is UTC. Recipients must be current Members of the Organization.

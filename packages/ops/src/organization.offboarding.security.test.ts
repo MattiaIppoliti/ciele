@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Member, OrgApiKey, Role } from "@agent-hub/core";
+import { BUILTIN_ROLE_KEYS, builtinOrgRole } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
-import type { OperationContext } from "./operation";
+import { defineOperation, type OperationContext } from "./operation";
+import { z } from "zod";
 import {
   leaveOrganizationOp,
   removeMemberOp,
@@ -25,20 +27,31 @@ interface World {
   db: Db;
   members: Member[];
   keys: OrgApiKey[];
+  audit: Array<Parameters<Db["recordAuditEntry"]>[0]>;
 }
 
 function world(members: Member[], keys: OrgApiKey[] = []): World {
   const state: World = {
     members: [...members],
     keys: [...keys],
+    audit: [],
     db: {} as Db,
   };
   state.db = {
     listMembers: async () => state.members,
+    recordAuditEntry: async (entry: Parameters<Db["recordAuditEntry"]>[0]) => { state.audit.push(entry); },
+    leaveOrganization: async (orgId: string, userId: string, entry: Parameters<Db["recordAuditEntry"]>[0]) => {
+      await state.db.recordAuditEntry(entry);
+      await state.db.removeMember(orgId, userId);
+      return { auditRecorded: true };
+    },
     removeMember: async (_orgId: string, userId: string) => {
       state.members = state.members.filter((member) => member.userId !== userId);
     },
-    updateMemberRole: async (_orgId: string, userId: string, role: Role) => {
+    // The built-ins as `builtin:<key>`, so a role id is its ladder name.
+    listOrgRoles: async () => BUILTIN_ROLE_KEYS.map((key) => builtinOrgRole(ORG, key)),
+    updateMemberRole: async (_orgId: string, userId: string, roleId: string) => {
+      const role = roleId.replace(/^builtin:/, "") as Role;
       state.members = state.members.map((member) =>
         member.userId === userId ? { ...member, role } : member,
       );
@@ -105,6 +118,17 @@ describe("removing a member revokes what they delegated (CYB-04)", () => {
     await leaveOrganizationOp.run(ctx(state, { userId: "admin-2", role: "admin" }), {});
 
     expect(state.keys[0]?.revokedAt).toBeTruthy();
+    expect(state.audit).toHaveLength(1);
+    expect(state.audit[0]).toMatchObject({ operation: "members.leave", memberId: "admin-2", outcome: "ok" });
+  });
+
+  it("attributes a nested self-leave to the outer operation with its entities", async () => {
+    const state = world([member("owner-1", "owner"), member("admin-2", "admin")]);
+    const composite = defineOperation({ name: "members.compositeLeave", capability: "member", effect: "consequential", input: z.object({}), entities: () => [{ kind: "members" as const }], run: async context => { await leaveOrganizationOp.run(context, {}); return "done"; } });
+    await expect(composite.run(ctx(state, { userId: "admin-2", role: "admin" }), {})).resolves.toBe("done");
+    expect(state.audit).toHaveLength(1);
+    expect(state.audit[0]).toMatchObject({ operation: "members.compositeLeave", entities: [{ kind: "members" }], outcome: "ok" });
+    expect(state.members.some(row => row.userId === "admin-2")).toBe(false);
   });
 
   it("revokes before the membership row goes, so a partial failure over-revokes", async () => {

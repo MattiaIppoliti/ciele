@@ -1,3 +1,4 @@
+import { capabilitiesForLadderRole } from "@agent-hub/core";
 import { describe, expect, it } from "vitest";
 import type { ApplicationConnection } from "@agent-hub/core";
 import {
@@ -54,13 +55,13 @@ describe("Application Connection authorization", () => {
   } satisfies ApplicationConnection;
 
   it("lets Editors authorize personal providers but not Organization providers", () => {
-    expect(canAuthorizeApplicationProvider("google_drive", "editor")).toBe(true);
-    expect(canAuthorizeApplicationProvider("salesforce", "editor")).toBe(false);
+    expect(canAuthorizeApplicationProvider("google_drive", { role: "editor", capabilities: capabilitiesForLadderRole("editor") })).toBe(true);
+    expect(canAuthorizeApplicationProvider("salesforce", { role: "editor", capabilities: capabilitiesForLadderRole("editor") })).toBe(false);
   });
 
   it("keeps reconnect personal to the owner while allowing admin deletion", () => {
-    expect(canReconnectApplicationConnection(personal, "member-1", "editor")).toBe(true);
-    expect(canReconnectApplicationConnection(personal, "member-2", "admin")).toBe(false);
-    expect(canDeleteApplicationConnection(personal, "member-2", "admin")).toBe(true);
+    expect(canReconnectApplicationConnection(personal, "member-1", { role: "editor", capabilities: capabilitiesForLadderRole("editor") })).toBe(true);
+    expect(canReconnectApplicationConnection(personal, "member-2", { role: "admin", capabilities: capabilitiesForLadderRole("admin") })).toBe(false);
+    expect(canDeleteApplicationConnection(personal, "member-2", { role: "admin", capabilities: capabilitiesForLadderRole("admin") })).toBe(true);
   });
 });

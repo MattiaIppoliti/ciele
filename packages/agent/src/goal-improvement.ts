@@ -133,6 +133,8 @@ export async function fileGoalImprovement(
     }
     const raised = await raiseImprovement(db, goal.organizationId, {
       title: goalImprovementTitle(goal.question),
+      source: "system",
+      assistantId: goal.assistantId,
     });
     if (!raised) return null;
     const updated = await db.updateImprovement(raised.id, {

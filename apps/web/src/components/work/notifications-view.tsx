@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { RollInText } from "@/components/motion/roll-in-text";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { AlarmClock, Archive, ArrowLeft, AtSign, Bell, CheckCheck, Circle, CircleDot, ExternalLink, MessageSquare, Trash2, UserPlus, type LucideIcon } from "lucide-react";
+import { AlarmClock, Archive, ArrowLeft, AtSign, CheckCheck, Circle, CircleDot, ExternalLink, MessageSquare, Trash2, UserPlus, type LucideIcon } from "lucide-react";
 import { Button, Skeleton } from "@agent-hub/ui";
 import type { MemberNotificationKind, Task } from "@agent-hub/core";
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from "@agent-hub/core";
-import type { NotificationItem } from "@ciele/ops";
+import type { NotificationItem, WorkNotificationItem } from "@ciele/ops";
 import { Switch } from "@/components/ui/switch";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -33,6 +34,7 @@ import {
 } from "@/app/work-actions";
 import { SwipeActions, SwipeActionsRow, type SwipeAction } from "@/components/motion/swipe-actions";
 import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
+import { TableRowMenu } from "@/components/ui/table-menu";
 import { RollingNumber } from "@/components/motion/rolling-number";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import type { WorkResult } from "@/app/work-actions";
@@ -54,6 +56,7 @@ import { PillButton, WorkAvatar } from "./work-ui";
  */
 
 const KIND_ICON: Record<MemberNotificationKind, LucideIcon> = {
+  conversation_assigned: MessageSquare,
   assigned: UserPlus,
   mentioned: AtSign,
   commented: MessageSquare,
@@ -187,16 +190,18 @@ export function NotificationsView({ items: initial, initialId }: { items: Notifi
       <div className="grid min-h-0 flex-1 grid-cols-1 @3xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
         {/* The list */}
         <section aria-label="Notifications" className={cn("border-alpha-medium flex min-h-0 flex-col @3xl:border-r", selected && "hidden @3xl:flex")}>
-          <header className="flex shrink-0 items-center gap-2 px-6 pt-5 pb-2">
-            <SectionHeading icon={Bell} title="Notifications" />
-            <span className="flex-1" />
-            <label className="text-muted-foreground flex items-center gap-2 text-xs">
-              Unread
-              <Switch checked={unreadOnly} onCheckedChange={setUnreadOnly} aria-label="Show unread only" />
-            </label>
-            <PillButton className="text-muted-foreground hover:text-foreground h-7 px-2 text-xs font-medium" onClick={markAll} disabled={!unread(tab)}>
-              <CheckCheck className="size-3.5" /> Mark all as read
-            </PillButton>
+          {/* Its own container: the display-size title sizes on this 420px column, not the page, and the controls wrap under it when they no longer fit beside it. */}
+          <header className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-3 px-6 pt-5 pb-2 [container-type:inline-size]">
+            <SectionHeading title="Notifications" className="mb-0" />
+            <div className="ml-auto flex items-center gap-2">
+              <label className="text-muted-foreground flex items-center gap-2 text-xs">
+                Unread
+                <Switch checked={unreadOnly} onCheckedChange={setUnreadOnly} aria-label="Show unread only" />
+              </label>
+              <PillButton className="text-muted-foreground hover:text-foreground h-7 px-2 text-xs font-medium" onClick={markAll} disabled={!unread(tab)}>
+                <CheckCheck className="size-3.5" /> Mark all as read
+              </PillButton>
+            </div>
           </header>
           <nav aria-label="Notification types" className="border-alpha-medium shrink-0 border-b px-6 pb-2">
             <Tabs value={tab} onValueChange={(value) => setTab(value as NotificationTab)}>
@@ -246,7 +251,20 @@ export function NotificationsView({ items: initial, initialId }: { items: Notifi
                           { label: "Archive", icon: <Archive />, tone: "accent", onSelect: () => archive(item) },
                         ]}
                       >
-                        <NotificationRow item={item} selected={item.id === selectedId} onOpen={() => open(item)} />
+                        <TableRowMenu
+                          title={notificationText(item)}
+                          actions={[
+                            { label: "Open", icon: ExternalLink, onSelect: () => open(item) },
+                            { label: item.readAt ? "Mark as unread" : "Mark as read", icon: item.readAt ? Circle : CheckCheck, onSelect: () => setRead([item.id], !item.readAt) },
+                            { label: "Snooze", icon: AlarmClock, onSelect: () => snooze(item) },
+                            { label: "Archive", icon: Archive, onSelect: () => archive(item) },
+                            { label: "Delete", icon: Trash2, destructive: true, onSelect: () => remove(item) },
+                          ]}
+                        >
+                          <div className="contents">
+                            <NotificationRow item={item} selected={item.id === selectedId} onOpen={() => open(item)} />
+                          </div>
+                        </TableRowMenu>
                       </SwipeActionsRow>
                     ))}
                   </SwipeActions>
@@ -312,12 +330,12 @@ function NotificationRow({ item, selected, onOpen }: { item: NotificationItem; s
         <WorkAvatar person={dir.person(item.actorMemberId)} size="md" className="mt-0.5" />
         <span className="min-w-0 flex-1">
           <span className={cn("block text-sm", unread ? "font-semibold" : "font-medium")}>{notificationText(item)}</span>
-          <span className="text-muted-foreground block truncate text-sm">{item.task.title}</span>
+          <span className="text-muted-foreground block truncate text-sm">{item.kind === "conversation_assigned" ? item.conversation.title : item.task.title}</span>
           {item.excerpt && <span className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">“{item.excerpt}”</span>}
           <span className="text-muted-foreground mt-1.25 flex items-center gap-1.5 text-xs">
             <Icon aria-hidden className="size-3" />
-            <ProjectGlyph icon={item.project.icon} color={item.project.color} className="size-3" />
-            <span className="truncate">{item.project.name}</span>
+            {item.project && <ProjectGlyph icon={item.project.icon} color={item.project.color} className="size-3" />}
+            <span className="truncate">{item.project?.name ?? "Inbox"}</span>
             <span aria-hidden>·</span>
             <time dateTime={item.createdAt}>{agoText(item.createdAt)}</time>
           </span>
@@ -329,6 +347,10 @@ function NotificationRow({ item, selected, onOpen }: { item: NotificationItem; s
 
 /** The selected notification's Task: pickers, the latest comments and a reply. */
 function NotificationPreview({ item, onBack }: { item: NotificationItem; onBack: () => void }) {
+  if (item.kind !== "conversation_assigned") return <TaskNotificationPreview item={item} onBack={onBack} />;
+  return <div className="space-y-4 p-4"><Button variant="ghost" onClick={onBack}>Back</Button><h2 className="text-lg font-medium">A Visitor is waiting for you</h2><p><RollInText text={item.conversation.title} /></p><Button nativeButton={false} render={<Link href={`/inbox?conversation=${encodeURIComponent(item.conversationId)}`} />}>Open Conversation</Button></div>;
+}
+function TaskNotificationPreview({ item, onBack }: { item: WorkNotificationItem; onBack: () => void }) {
   const dir = useWorkDirectory();
   const [detail, setDetail] = useState<LoadedTask | null>(null);
   const [error, setError] = useState<string | null>(null);

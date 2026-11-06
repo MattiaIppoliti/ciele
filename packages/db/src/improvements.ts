@@ -21,11 +21,7 @@ export const IMPROVEMENT_TITLE_MAX = 120;
  * caller, and the one caller that skipped it cloned items the verifier had
  * already opened.
  */
-export interface RaiseImprovementInput {
-  title: string;
-  messageId?: string | null;
-  createdBy?: string | null;
-}
+export type RaiseImprovementInput = Parameters<Db["createImprovement"]>[1];
 
 /** Null only with `swallowErrors`; otherwise a failure throws. */
 export async function raiseImprovement(
@@ -37,10 +33,14 @@ export async function raiseImprovement(
   try {
     const title = input.title.trim().slice(0, IMPROVEMENT_TITLE_MAX);
     if (!title) throw new Error("Title is required");
+    if (input.description && input.description.length > 10000) throw new Error("Description must be at most 10000 characters");
     return await db.createImprovement(organizationId, {
       title,
+      description: input.description?.trim() ?? "",
       messageId: input.messageId ?? null,
       createdBy: input.createdBy ?? null,
+      source: input.source,
+      assistantId: input.assistantId,
     });
   } catch (error) {
     if (options.swallowErrors) {
@@ -102,12 +102,7 @@ export async function findOpenImprovementByTag(
 export async function raiseOrAttachImprovement(
   db: Db,
   organizationId: string,
-  input: {
-    title: string;
-    messageId: string | null;
-    conversationId: string;
-    createdBy?: string | null;
-  },
+  input: RaiseImprovementInput & { messageId: string | null; conversationId: string },
   options: { swallowErrors?: boolean } = {}
 ): Promise<{ improvement: Improvement; attached: boolean } | null> {
   try {
@@ -125,6 +120,8 @@ export async function raiseOrAttachImprovement(
       title: input.title,
       messageId: input.messageId,
       createdBy: input.createdBy,
+      source: input.source,
+      assistantId: input.assistantId,
     });
     if (!improvement) return null; // unreachable: no swallowErrors above
     return { improvement, attached: false };

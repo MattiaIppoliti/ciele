@@ -1,10 +1,10 @@
 ---
 title: Outils et compétences
-description: Contrôlez les outils d'exécution et associez des instructions réutilisables à un Assistant.
+description: Contrôlez les outils d’exécution et associez des instructions réutilisables à un Assistant.
 ---
 
 Ouvrez un Assistant et sélectionnez **Tools & Skills**. Cette section permet de
-contrôler les fonctionnalités d'exécution et les instructions réutilisables.
+contrôler les fonctionnalités d’exécution et les instructions réutilisables.
 
 ## Outils intégrés
 
@@ -12,19 +12,19 @@ contrôler les fonctionnalités d'exécution et les instructions réutilisables.
 | --- | :---: | --- |
 | Search knowledge | Activé | Effectue une recherche dans la Knowledge connectée et renvoie des réponses citées. |
 | Session memory | On | Utilise les informations de la session de conversation en cours. |
-| Fetch URL | Off | Lit une URL lorsque l'environnement d'exécution sélectionne l'outil. |
-| Interactive tables | Off | Affiche les faits sous la forme d'un tableau simple, d'une grille d'enregistrements CRM ou d'un tableau de tâches avec des filtres de statut. |
+| Fetch URL | Off | Lit une URL lorsque l’environnement d’exécution sélectionne l’outil. |
+| Interactive tables | Off | Affiche les faits sous la forme d’un tableau simple, d’une grille d’enregistrements CRM ou d’un tableau de tâches avec des filtres de statut. |
 
-L'outil Search knowledge est toujours disponible. Vous pouvez activer ou
+L’outil Search knowledge est toujours disponible. Vous pouvez activer ou
 désactiver les autres outils intégrés.
 
-**Interactive tables** organise les faits que l'Assistant a trouvés dans cette
+**Interactive tables** organise les faits que l’Assistant a trouvés dans cette
 réponse. Le runtime sélectionne le tableau en fonction de votre requête et des
 données disponibles.
 
 - Un tableau simple compare des faits et peut inclure des questions de suivi par
   ligne.
-- Une grille d'enregistrements CRM affiche les entreprises, les catégories, la
+- Une grille d’enregistrements CRM affiche les entreprises, les catégories, la
   dernière interaction, le statut de la relation et les liens vers les sites
   web. Sélectionnez des lignes, triez, redimensionnez ou épinglez des colonnes.
 - Un tableau des tâches affiche les dates, le statut et les propriétaires.
@@ -32,80 +32,79 @@ données disponibles.
   ses lignes.
 
 Les nombres de filtres proviennent des données affichées. Les données manquantes
-restent vides. Les paramètres du tableau affectent l'affichage actuel et ne
+restent vides. Les paramètres du tableau affectent l’affichage actuel et ne
 modifient pas les enregistrements du CRM.
 
 Utilisez **New property** ou **Add calculation** dans la grille CRM pour
 préparer une demande de propriété. Vérifiez son prompt, puis sélectionnez **Go
 calculate**. Cela envoie une requête de chat normale. Le harness actuel, les
-sources connectées et les autorisations continuent de s'appliquer. L'interface
+sources connectées et les autorisations s’appliquent toujours. L’interface
 utilisateur ne simule pas les valeurs générées.
 
 Les mêmes tableaux apparaissent dans Preview, dans le Widget publié et dans la
-transcription de l'Inbox. Publiez l'Assistant après avoir activé cet outil.
-L'Inbox prend en charge l'affichage, la sélection, le filtrage et la disposition
-des colonnes. Elle n'envoie pas de demandes de propriétés.
+transcription de l’Inbox. Publiez l’Assistant après avoir activé cet outil.
+L’Inbox prend en charge l’affichage, la sélection, le filtrage et la disposition
+des colonnes. Elle n’envoie pas de requêtes de propriétés.
 
-L'Assistant peut ajouter une question de suivi à une ligne. Le Visitor
-sélectionne la ligne pour poser cette question. La transcription de l'Inbox
+L’Assistant peut ajouter une question de suivi à une ligne. Le Visitor
+sélectionne la ligne pour poser cette question. La transcription de l’Inbox
 affiche ces lignes, mais un Member ne peut pas les sélectionner.
 
 ## Activer le mode Étude
 
 **Study Mode** est désactivé par défaut. Activez-le pour permettre aux Visiteurs
-de s'exercer à utiliser les Connaissances de l'Assistant grâce à des exercices
-interactifs.
+de s'exercer sur la Knowledge de l'Assistant grâce à des exercices interactifs.
 
 1. Ouvrez **Tools & Skills** et activez **Study Mode**.
 2. Activez au moins un format de question.
 3. Ajoutez **Custom instructions** pour définir le style d'enseignement.
 4. Testez un exercice dans Preview.
-5. Publiez l'Assistant pour mettre à jour le Widget.
+5. Publiez l’Assistant pour mettre à jour le Widget.
 
 Le champ de saisie du chat affiche un bouton **Study exercises**. Sélectionnez
 un format, ajoutez un sujet, puis envoyez la requête.
 
-Lorsqu'il est activé, **Study Mode** apparaît également dans **Flows**. Son
+Lorsqu’il est activé, **Study Mode** apparaît également dans **Flows**. Son
 bouton Settings ouvre cette section. Désactivez le mode Étude dans **Tools &
 Skills**. Le Flow n'a pas de commutateur distinct. Les requêtes provenant du
 menu Study exercises sont directement acheminées vers ce Flow. Une icône
-représentant un chapeau de diplômé s'affiche dans Thinking.
+représentant un chapeau de diplômé apparaît dans Thinking.
 
 Les exercices nécessitent des ressources pertinentes dans la Knowledge de
-l'Assistant. Si aucun support n'est trouvé, l'Assistant vous demande un sujet
-pris en charge ou un support d'étude.
+l’Assistant. Si aucun support n’est trouvé, l’Assistant vous demande un sujet
+pris en charge ou un support d’étude.
 
 | Format | Comment le visiteur répond |
 | --- | --- |
-| Choix multiple | Sélectionnez une option. Aucune réponse en texte libre n'est disponible. |
+| Choix multiple | Sélectionnez une option. Aucune réponse en texte libre n’est disponible. |
 | Drag the words | Faites glisser ou sélectionnez un mot pour remplir un espace vide par question. |
-| True / False | Sélectionnez l'une des deux options. |
+| True / False | Sélectionnez l’une des deux options. |
 | Flashcards | Saisissez le mot manquant ou une courte expression. |
 
 **Choose for me** sélectionne un format activé. Chaque exercice contient au
 maximum cinq questions distinctes basées sur les Knowledge extraites.
 
 Sélectionnez **Check** pour enregistrer une réponse. Ciele indique si la réponse
-est correcte, affiche la bonne réponse et fournit une explication. Une réponse
+est correcte, fournit la bonne réponse et donne une explication. Une réponse
 soumise ne peut pas être modifiée. Les flashcards acceptent les variantes
-orthographiques définies lors de la création de l'exercice.
+d’orthographe définies lors de la création de l’exercice.
 
-L'Inbox affiche les questions, les réponses soumises, les bonnes réponses et le
+L’Inbox affiche les questions, les réponses soumises, les bonnes réponses et le
 score. Les exercices non terminés indiquent le nombre de questions restées sans
-réponse. Les exercices s'exécutent dans le chat. Ils n'ont pas besoin d'un
+réponse. Les exercices s’exécutent dans le chat. Ils n’ont pas besoin d’un
 lecteur H5P externe.
 
-## Configurer une intégration d'API
+## Configurer une intégration d’API
 
-Un Assistant peut utiliser une intégration d'API enregistrée. L'intégration
+Un Assistant peut utiliser une intégration d’API enregistrée. L’intégration
 contient une URL de base, un identifiant protégé et des points de terminaison
 décrits.
 
-Pour chaque endpoint, définissez la méthode, le chemin, l'objectif, les
-paramètres et la structure de la réponse. L'environnement d'exécution valide
+Pour chaque endpoint, définissez la méthode, le chemin, l’objectif, les
+paramètres et la structure de la réponse. L’environnement d’exécution valide
 chaque chemin demandé par rapport à ce catalogue.
 
-L'agent peut examiner les détails du point de terminaison avant d'envoyer une
+L’agent peut examiner les détails du point de terminaison avant d’envoyer une
 requête. Les réponses volumineuses restent disponibles via des lectures par
 fenêtres.
 
@@ -115,12 +114,12 @@ Add only the endpoints that the Assistant must use. The runtime cannot call an u
 
 ### Empêcher une écriture en double
 
-Une requête peut être envoyée à nouveau après un délai d'expiration ou un échec.
-Si l'endpoint écrit des données, la deuxième requête peut créer un deuxième
-enregistrement.
+Une requête peut être envoyée à nouveau après un délai d’expiration ou un échec.
+Si le point de terminaison écrit des données, la deuxième requête peut créer un
+deuxième enregistrement.
 
 Pour éviter cela, attribuez une clé d'idempotence au point de terminaison. Dans
-le formulaire de l'endpoint, indiquez où votre API lit la clé :
+le formulaire de l’endpoint, indiquez où votre API lit la clé :
 
 - `header:Idempotency-Key` envoie la clé dans un en-tête de requête.
 - `body:request_id` envoie la clé dans le corps JSON.
@@ -128,27 +127,27 @@ le formulaire de l'endpoint, indiquez où votre API lit la clé :
 Utilisez le nom que votre API lit. Ciele ne devine pas ce nom. Différentes API
 lisent différents noms.
 
-Ciele crée une clé pour chaque appel. Une nouvelle tentative du même appel
+Ciele génère une clé pour chaque appel. Une nouvelle tentative du même appel
 envoie la même clé. Un appel différent envoie une clé différente. Votre API peut
 alors considérer les deux requêtes comme une seule écriture.
 
 Votre API doit également jouer son rôle. Elle doit stocker la clé et renvoyer le
-premier résultat lorsqu'elle rencontre à nouveau cette clé.
+premier résultat lorsqu’elle rencontre à nouveau cette clé.
 
 <Callout title="An endpoint with no key is not protected">
 If you give no key, a retry of the call can write two times. A `GET` endpoint does not need a key, because a read does not change data.
 </Callout>
 
-## Associer une Skill d'organisation
+## Associer une Skill d’organisation
 
-Une Skill est un modèle d'instruction réutilisable. Une Organisation peut
+Une Skill est un modèle d’instruction réutilisable. Une Organisation peut
 associer une même Skill à plusieurs Assistants.
 
 1. Ouvrez **Tools & Skills**.
-2. Recherchez la Skill d'organisation requise.
-3. Associez la Skill à l'Assistant.
+2. Recherchez la Skill d’organisation requise.
+3. Associez la Skill à l’Assistant.
 4. Testez le résultat dans Preview.
-5. Publiez l'Assistant lorsque le résultat est correct.
+5. Publiez l’Assistant lorsque le résultat est correct.
 
 Les modifications apportées aux compétences sont immédiatement disponibles dans
 Preview. Le Widget publié utilise le dernier instantané de Publication.
@@ -156,29 +155,33 @@ Preview. Le Widget publié utilise le dernier instantané de Publication.
 ### Permettre aux utilisateurs de lancer une Skill depuis la fenêtre de chat
 
 Une Skill peut avoir un **Opening line**. Rédigez-le du point de vue de la
-personne qui pose la question, et non de celui de l'Assistant.
+personne qui pose la question, et non de celui de l’Assistant.
 
 La fenêtre de discussion affiche un menu **/** avec chaque Skill qui dispose
-d'une phrase d'ouverture. Lorsque l'utilisateur sélectionne une Skill, la
-fenêtre de discussion inscrit la phrase d'ouverture dans la zone de message.
-Vous pouvez modifier le texte avant de l'envoyer.
+d’une phrase d’ouverture. Lorsque vous sélectionnez une Skill, la fenêtre de
+discussion insère la phrase d’ouverture dans la zone de message. Vous pouvez
+modifier le texte avant de l’envoyer.
 
-Si la phrase d'ouverture est vide, la Skill n'apparaît pas dans le menu **/**.
-L'invite de la Skill continue de s'appliquer à chaque réponse.
+Si la phrase d’ouverture est vide, la Skill n’apparaît pas dans le menu **/**.
+Pour les ensembles de compétences courts (jusqu’à 4 000 caractères au total),
+saisissez les instructions pour chaque réponse. Pour les ensembles plus
+volumineux, le modèle voit les noms et les descriptions et charge les playbooks
+correspondants à la demande. Pour chaque Skill, fournissez une description
+claire des situations dans lesquelles elle s’applique.
 
-Publiez l'Assistant après avoir rédigé une phrase d'ouverture. Le Widget utilise
+Publiez l’Assistant après avoir rédigé une phrase d’ouverture. Le Widget utilise
 le dernier instantané de Publication.
 
-## Les pièces jointes et la Connaissance ne sont pas la même chose
+## Les pièces jointes et la Knowledge ne sont pas la même chose
 
 Une pièce jointe et une Knowledge Source deviennent toutes deux du texte, et
 Ciele les lit avec le même extracteur. Ce qui se passe ensuite est différent.
 
-Une Knowledge Source est permanente. Ciele stocke son texte, l'indexe, et
-l'Assistant peut le citer dans toutes les conversations ultérieures.
+Une Knowledge Source est permanente. Ciele stocke son texte, l’indexe, et
+l’Assistant peut le citer dans toutes les conversations ultérieures.
 
 Une pièce jointe appartient à sa conversation. Ciele le lit une seule fois, en
-jette les octets et ne l'ajoute jamais à la Library. Aucune autre conversation
+ignore les octets et ne l’ajoute jamais à la Library. Aucune autre conversation
 ne le voit.
 
 Pour rendre un fichier permanent, ajoutez-le plutôt dans **Library**.
@@ -189,5 +192,5 @@ Posez une question qui nécessite chacun des outils activés. Inspectez le panne
 Thinking et les Sources avant de publier.
 
 Pour les données structurées, testez une recherche d'attribut exacte et une
-recherche textuelle. Testez l'accès au niveau de l'utilisateur avec deux comptes
+recherche de texte. Testez l’accès au niveau de l’utilisateur avec deux comptes
 connectés différents.

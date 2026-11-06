@@ -170,10 +170,9 @@ export function DayRow({
           <div className="space-y-2">
             <AnimatePresence initial={false}>
               {state.ranges.map((r) => {
-                // A window that closes at or before it opens is never open;
-                // say so beside it instead of saving a dead range silently.
+                // Equal endpoints are empty; an earlier closing time means overnight.
                 const errorId =
-                  closesMinutes(r) <= opensMinutes(r) ? `${day}-${r.id}-error` : undefined;
+                  closesMinutes(r) === opensMinutes(r) ? `${day}-${r.id}-error` : undefined;
                 return (
                   <motion.div
                     key={r.id}
@@ -216,7 +215,7 @@ export function DayRow({
                     </div>
                     {errorId && (
                       <p id={errorId} role="alert" className="text-destructive mt-1 text-xs">
-                        Closing time must be later than opening time.
+                        Opening and closing times must differ.
                       </p>
                     )}
                   </motion.div>

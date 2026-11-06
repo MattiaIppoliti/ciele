@@ -78,3 +78,16 @@ describe("runDueExportJobs", () => {
     expect((await db.getExportJob(job.id))?.status).toBe("done");
   });
 });
+
+it("raises a failed-schedule Alert and clears it on the next successful report", async () => {
+  const scheduleId = `alert-schedule-${Date.now()}`;
+  const job = await db.createExportJob(DEMO_ORG.id, { kind: "insights_overview", format: "csv", params: { scheduleId } });
+  const failing = deps({ render: vi.fn(async () => { throw new Error("Report unavailable"); }) });
+  for (let attempt = 0; attempt < 3; attempt++) await runDueExportJobs(failing, { workerId: "schedule-failure", limit: 100 });
+  expect((await db.getExportJob(job.id))?.status).toBe("error");
+  expect((await db.listActiveAlerts(DEMO_ORG.id)).some(row => row.sourceKey === `scheduled-export:${scheduleId}`)).toBe(true);
+  const next = await db.createExportJob(DEMO_ORG.id, { kind: "insights_overview", format: "csv", params: { scheduleId } });
+  await runDueExportJobs(deps(), { workerId: "schedule-success", limit: 100 });
+  expect((await db.getExportJob(next.id))?.status).toBe("done");
+  expect((await db.listActiveAlerts(DEMO_ORG.id)).some(row => row.sourceKey === `scheduled-export:${scheduleId}`)).toBe(false);
+});

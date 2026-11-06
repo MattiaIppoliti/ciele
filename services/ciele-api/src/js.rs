@@ -26,35 +26,46 @@ fn is_js_whitespace(c: char) -> bool {
     )
 }
 
-/// `Number(raw)`: `NaN` where JavaScript answers `NaN`. Covers what `Number`
-/// accepts that a float parser does not (`0x`/`0o`/`0b`, surrounding
-/// whitespace, a blank string meaning 0) and refuses what a float parser
-/// accepts that `Number` does not (`inf`, `nan`).
+/// `Number(raw)` for a string. Covers what `Number` accepts that a float
+/// parser does not (`0x`/`0o`/`0b`, surrounding whitespace, a blank string
+/// meaning 0) and refuses what a float parser accepts that `Number` does not
+/// (`inf`, `nan`, a sign before a radix prefix). NaN where `Number` says NaN.
 pub fn js_number(raw: &str) -> f64 {
     let text = js_trim(raw);
     if text.is_empty() {
         return 0.0;
     }
-    let radix = |prefix: &str, radix: u32| {
-        text.strip_prefix(prefix)
-            .or_else(|| text.strip_prefix(&prefix.to_uppercase()))
-            .map(|digits| u64::from_str_radix(digits, radix).map_or(f64::NAN, |n| n as f64))
-    };
-    if let Some(parsed) = radix("0x", 16)
-        .or_else(|| radix("0o", 8))
-        .or_else(|| radix("0b", 2))
-    {
-        return parsed;
+    for (prefix, radix) in [("0x", 16), ("0o", 8), ("0b", 2)] {
+        if text
+            .get(..2)
+            .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
+        {
+            let digits = &text[2..];
+            if digits.is_empty() {
+                return f64::NAN;
+            }
+            // Accumulated as a float, as JavaScript does past 2^53.
+            return digits
+                .chars()
+                .try_fold(0.0, |value, c| {
+                    c.to_digit(radix)
+                        .map(|digit| value * f64::from(radix) + f64::from(digit))
+                })
+                .unwrap_or(f64::NAN);
+        }
     }
-    let bare = text.trim_start_matches(['+', '-']);
-    let numeric = bare.starts_with(|c: char| c.is_ascii_digit() || c == '.');
-    if !numeric && bare != "Infinity" {
+    let unsigned = text.strip_prefix(['+', '-']).unwrap_or(text);
+    let decimal = unsigned.starts_with(|c: char| c.is_ascii_digit() || c == '.')
+        && unsigned
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '.' | 'e' | 'E' | '+' | '-'));
+    if !decimal && unsigned != "Infinity" {
         return f64::NAN;
     }
     text.parse::<f64>().unwrap_or(f64::NAN)
 }
 
-/// `Number(raw)` kept only when it is a safe integer, what a numeric cursor
+/// [`js_number`] kept only when it is a safe integer, what a numeric cursor
 /// goes through on the TypeScript side.
 pub fn js_number_to_safe_integer(raw: &str) -> Option<i64> {
     const MAX_SAFE: f64 = 9_007_199_254_740_991.0;
@@ -70,6 +81,42 @@ mod tests {
     fn trims_what_javascript_trims_and_keeps_nel() {
         assert_eq!(js_trim("\u{feff}\u{3000} a \u{2028}\t"), "a");
         assert_eq!(js_trim("\u{85}a\u{85}"), "\u{85}a\u{85}");
+    }
+
+    /// Each expectation is what `Number(raw)` answers in Node.
+    #[test]
+    fn reads_a_number_as_javascript_number_does() {
+        for (raw, expected) in [
+            ("", 0.0),
+            ("  7 ", 7.0),
+            ("1e2", 100.0),
+            (".5", 0.5),
+            ("5.", 5.0),
+            ("+3", 3.0),
+            ("-0x10", f64::NAN),
+            ("0x10", 16.0),
+            ("0B11", 3.0),
+            ("0o", f64::NAN),
+            ("0x+1", f64::NAN),
+            ("1_000", f64::NAN),
+            ("Infinity", f64::INFINITY),
+            ("-Infinity", f64::NEG_INFINITY),
+            ("infinity", f64::NAN),
+            ("inf", f64::NAN),
+            ("nan", f64::NAN),
+            ("abc", f64::NAN),
+            ("1e400", f64::INFINITY),
+            ("0xffffffffffffffffff", 4.722366482869645e21),
+        ] {
+            let got = js_number(raw);
+            assert!(
+                got == expected || (got.is_nan() && expected.is_nan()),
+                "Number({raw:?}) is {expected}, got {got}"
+            );
+        }
+        assert_eq!(js_number_to_safe_integer(""), Some(0));
+        assert_eq!(js_number_to_safe_integer("1.5"), None);
+        assert_eq!(js_number_to_safe_integer("Infinity"), None);
     }
 
     #[test]

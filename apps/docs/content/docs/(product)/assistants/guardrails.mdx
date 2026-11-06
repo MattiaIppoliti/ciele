@@ -111,3 +111,19 @@ Open the Conversation in **Inbox**. A turn that a Guardrail blocked shows the fl
 A **PII masking** badge shows how many values of each type Ciele masked in the turn. The badge shows counts only, not the values or the placeholders. Put the pointer on the badge to see where the values came from: the Visitor, knowledge, tool results, or the instructions and earlier answers.
 
 The Visitor does not see which Guardrail fired.
+
+## Moderation scores and generated answers
+
+Moderation records the three highest category scores, including checks that pass. Scores range from zero to one.
+
+Enable **Also score answers** on a Moderation Guardrail to check generated answers after they are saved. This option is off by default.
+
+The background check uses the Organization's OpenAI connection. It never delays, blocks, or replaces the answer. Provider failures record an unavailable check.
+
+Generated knowledge answers, courtesy replies, and clarification questions are eligible. Verbatim messages, proactive Notifications, and Teammate replies are excluded.
+
+In **Inbox**, use the flagged-answer filter to find affected Conversations. Open a moderation badge to inspect the scores and check target.
+
+The first flagged answer for an Assistant each day creates an operational Alert. Resolving that Alert does not create another for that day.
+
+**Observability** shows flagged Visitor-check and answer-check counts for its selected time window. Historical turns without stored scores are not backfilled.

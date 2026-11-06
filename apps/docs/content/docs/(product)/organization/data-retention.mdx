@@ -1,39 +1,60 @@
 ---
 title: Data retention
-description: Set how long conversations and reasoning traces are kept, and hold one conversation back.
+description: Set how long conversations, messages, improvements and audit records are kept, and hold one conversation back.
 ---
 
-An Organization sets two retention windows in **Settings**, on the **General** tab. Both are off by default: nothing is deleted until an administrator selects a window.
+An Organization sets its retention periods in **Settings**, on the **Data retention** tab. Each data type has a **Keep for** period and an **Auto-delete** switch. **Auto-delete** is off by default for conversations, messages and improvements: nothing is deleted until an administrator turns it on.
 
-## The two windows
+## The data types
 
-| Setting | What the nightly sweep does after the window |
+| Data type | What the nightly sweep does after the period |
 | --- | --- |
-| **Reasoning trace retention** | Removes the Thinking panel from old messages. The messages stay. |
-| **Conversation retention** | Deletes the whole conversation, transcript included. It also deletes the long-term memories about a Visitor that were not updated during the window. It also deletes the activity of Projects and Tasks that is older than the window. |
+| **Conversations** | Deletes the whole conversation and its messages. It also deletes the long-term memories about a Visitor that were not updated during the period. It also deletes the activity of Projects and Tasks that is older than the period. |
+| **Messages** | Deletes old messages from conversations that stay. The transcript in the **Inbox** shows that earlier messages were deleted. |
+| **Improvements** | Deletes improvements that were not updated during the period, whatever their status. |
+| **Audit records** | Deletes entries of the audit log that are older than the period. This type is **Always on**. The default period is 180 days. |
 
-The two windows are independent. An Organization can set either, both, or neither. For example, keep transcripts for one year but remove reasoning traces after 30 days.
+Each period is between 1 month and 5 years. One month is 30 days and one year is 365 days. A period outside these limits shows an error, and **Save changes** stays unavailable.
 
-A sweep runs once per night. It measures the window from the conversation's last message, not from its first. A conversation that is still in use is not deleted, however long ago it started. The sweep is permanent: a deleted conversation does not go to a trash area.
+The data types are independent. For example, keep conversations for two years but delete messages after six months.
 
-<Callout type="warn" title="Conversation retention deletes data">
-After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+## How the periods are measured
+
+- A conversation's period starts at its last message, not at its first message. With a 30-day period, a conversation that started 3 months ago and received its last message 10 days ago is kept for 20 more days.
+- A message's period starts when the message is sent.
+- An improvement's period starts at its last update.
+
+## What deletion does
+
+- The sweep runs once per night.
+- Deletion is permanent. The deleted data does not go to a trash area and you cannot recover it.
+- Deleted data no longer shows in the **Inbox**, in **Insights**, in exports, in chat history or in **Improvements**. The audit log never records the content of messages or conversations.
+- When the sweep deletes a message, the linked improvements stay. They no longer show that message.
+- When you turn **Auto-delete** off, the sweep stops. Data that the sweep deleted before does not come back.
+
+<Callout type="warn" title="Retention deletes data">
+Export what you must keep before you turn on **Auto-delete** or shorten a period.
 </Callout>
 
-## Set a window
+## Set a period
 
 1. Open **Settings**.
-2. Stay on the **General** tab.
-3. Select a window under **Reasoning trace retention** or **Conversation retention**.
-4. Select **Save changes**.
+2. Select the **Data retention** tab.
+3. Turn on **Auto-delete** for the data type.
+4. Type a number under **Keep for** and select **Days**, **Months** or **Years**.
+5. Select **Save changes**.
 
-If the new window is shorter than the current window, Ciele asks you to confirm. The next nightly sweep deletes the older data.
+If the change starts a deletion or makes a period shorter, Ciele asks you to confirm. The next nightly sweep deletes the older data. Select **Cancel** to go back to the saved settings.
 
-Only a member who can manage members can change these settings.
+Only a member who can manage members can change these settings. Each change shows in the audit log.
+
+## Reasoning traces
+
+The **General** tab has one more window, **Reasoning trace retention**. After that window, the nightly sweep removes the Thinking panel from old messages. The messages stay.
 
 ## Legal hold
 
-A legal hold exempts one conversation from the conversation-retention sweep. Use it when a preservation obligation applies to one conversation, without turning retention off for every other conversation.
+A legal hold exempts one conversation from the retention sweep. The sweep does not delete the conversation or its messages. Use a hold when a preservation obligation applies to one conversation, without turning retention off for every other conversation.
 
 1. Open **Inbox** and select the conversation.
 2. Open the details panel.

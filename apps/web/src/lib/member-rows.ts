@@ -1,5 +1,5 @@
-import type { Invite, Member, Role } from "@agent-hub/core";
-import { memberDisplayName, memberRoleRank } from "@agent-hub/core";
+import type { Invite, Member, OrgRole, Role } from "@agent-hub/core";
+import { memberDisplayName, memberRoleRank, roleLabel } from "@agent-hub/core";
 
 /**
  * One line of the Members table. Accepted Members and pending Invites share
@@ -15,7 +15,11 @@ export interface MemberRow {
   /** Display name, falling back to the email local-part then the id. */
   name: string;
   email: string;
+  /** The ladder tier of the Role, for sorting and the owner-tier rules. */
   role: Role;
+  /** The Role held (`org_roles.id`), and its name as the Organization calls it. */
+  roleId: string | null;
+  roleName: string;
   status: "active" | "pending";
   /** Joined (member) or invited (invite). */
   since: string;
@@ -45,6 +49,8 @@ export function buildMemberRows(
       name: memberDisplayName(member),
       email: member.email,
       role: member.role,
+      roleId: member.roleId ?? null,
+      roleName: member.roleName ?? roleLabel(member.role),
       status: "active" as const,
       since: member.createdAt,
       isSelf: member.userId === currentUserId,
@@ -62,6 +68,8 @@ export function buildMemberRows(
     name: invite.email || "Anyone with the link",
     email: invite.email,
     role: invite.role,
+    roleId: invite.roleId ?? null,
+    roleName: invite.roleName ?? roleLabel(invite.role),
     status: "pending" as const,
     since: invite.createdAt,
     isSelf: false,
@@ -88,8 +96,50 @@ export function canManageRow(
   return true;
 }
 
-/** Roles the signed-in Member is allowed to assign. */
-export function assignableRoles(canManageOwners: boolean): Role[] {
-  const roles: Role[] = ["admin", "editor", "viewer"];
-  return canManageOwners ? ["owner", ...roles] : roles;
+/** A Role as the Members, invitation and API key pickers offer it. */
+export interface RoleChoice {
+  id: string;
+  name: string;
+  /** The built-in this is, null for a custom Role. */
+  key: string | null;
+  tier: Role;
+  capabilities: readonly string[];
+  organizationLevel: boolean;
+  assistantLevel: boolean;
+  /** The Role a new invitation starts with. */
+  memberDefault: boolean;
+  /** The Role a new Assistant assignment starts with. */
+  assistantDefault: boolean;
+}
+
+/**
+ * The Roles the signed-in Member may give (ADR-0028): offered Organization-wide,
+ * Owner only to an Owner, and only Roles whose every Capability the Member
+ * holds, so the picker never offers what the server would refuse.
+ */
+export function assignableRoleChoices(
+  roles: readonly RoleChoice[],
+  caller: { canManageOwners: boolean; capabilities: readonly string[] }
+): RoleChoice[] {
+  const held = new Set(caller.capabilities);
+  return roles.filter((role) => {
+    if (!role.organizationLevel) return false;
+    if (role.key === "owner") return caller.canManageOwners;
+    return caller.canManageOwners || role.capabilities.every((id) => held.has(id));
+  });
+}
+
+/** The picker shape of the Organization's Roles, built server-side. */
+export function roleChoices(roles: readonly OrgRole[]): RoleChoice[] {
+  return roles.map((role) => ({
+    id: role.id,
+    name: role.name,
+    key: role.key,
+    tier: role.tier,
+    capabilities: role.capabilities,
+    organizationLevel: role.organizationLevel,
+    assistantLevel: role.assistantLevel,
+    memberDefault: role.memberDefault,
+    assistantDefault: role.assistantDefault,
+  }));
 }

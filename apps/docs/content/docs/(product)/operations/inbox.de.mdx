@@ -4,9 +4,9 @@ description: Überprüfen Sie Conversations, Sources, Runtime Traces und Session
 ---
 
 Die Inbox speichert die Beiträge von Visitor und Assistant. Öffnen Sie eine
-Conversation, um das exakte, gespeicherte Transkript einzusehen.
+Conversation, um das exakte gespeicherte Transkript einzusehen.
 
-## Liste der Konversationen
+## Conversation list
 
 Verwenden Sie die Suche und die verfügbaren Filter, um die Liste einzugrenzen.
 Jede Zeile zeigt die jüngsten Aktivitäten und den aktuellen Status der
@@ -14,7 +14,7 @@ Conversation an.
 
 Eine Sitzung, die nur proaktive Notifications enthält, ist mit dem Marker
 **Notification only** gekennzeichnet. Nachdem ein Visitor geantwortet hat, wird
-daraus eine normale Conversation.
+es zu einer normalen Conversation.
 
 Wischen Sie eine Zeile nach links oder wählen Sie die Schaltfläche **Actions**
 aus, um **Archive**, **Flag** und **Delete** anzuzeigen. Ein vollständiges
@@ -22,28 +22,85 @@ Wischen archiviert die Conversation. Wählen Sie **Archived**, um sie
 wiederherzustellen, oder **Flagged**, um Ihre markierten Conversations zu
 finden. Archive und Flag wirken sich nur auf Ihre eigene Liste aus. Sie ändern
 weder das Transkript noch dessen Analysen. Delete fordert eine Bestätigung an
-und entfernt das Transkript. Eine Conversation, die einer gesetzlichen
-Aufbewahrungspflicht (legal hold) unterliegt, kann nicht gelöscht werden.
+und entfernt das Transkript. Eine Conversation, die einer Legal Hold unterliegt,
+kann nicht gelöscht werden.
 
 ## Details der Konversation
 
 Die Detailansicht kann Folgendes anzeigen:
 
-- Nachrichten von Besucher und Assistent
+- Nachrichten von Besucherinnen und Besuchern sowie von Assistentinnen und
+  Assistenten
 - der Flow, der einen Turn abgewickelt hat
 - benannte Quellenangaben
 - Feedback von Besucherinnen und Besuchern
 - Eskalationsstatus
 - Start- und Gerätemetadaten
-- das verifizierte SSO-Subject und der konfigurierte Identity Claim
+- der verifizierte SSO-Subject und der konfigurierte Identity Claim
 - gespeicherte Thinking-Informationen, wenn die Member-Rolle den Zugriff erlaubt
 
 Verbatim Message-Aktionen und Basic-Antworten enthalten keine Thinking-Trace.
 Antworten aus der Wissenssuche können Tool- und Fortschrittsereignisse
 enthalten.
 
-API-Integrationsaufrufe werden ebenfalls im Trace angezeigt. Ihre Events zeigen,
-welcher Endpoint die Antwort unterstützt hat.
+API-Integrationsaufrufe werden ebenfalls im Trace angezeigt. Ihre Events zeigen
+an, welcher Endpoint die Antwort unterstützt hat.
+
+## Eine Konversation übernehmen
+
+Sie können einem Visitor selbst antworten. Öffnen Sie die Conversation und
+wählen Sie **Take over**. Sie müssen Editor, Admin, Owner oder Support Agent
+sein.
+
+Wenn Sie eine Conversation führen:
+
+- Der Assistant antwortet nicht. Jede Nachricht eines Visitors wird gespeichert
+  und in der Inbox angezeigt, aber es wird kein Flow ausgeführt und kein Modell
+  aufgerufen.
+- Unter dem Transkript wird ein Antwortfeld angezeigt. Ihre Antwort wird an das
+  geöffnete Widget mit Ihrem Anzeigenamen gesendet. Der Visitor muss nicht
+  zuerst eine Nachricht senden.
+- Das Widget und die Inbox zeigen eine Zeile an, wenn Sie beitreten und wenn Sie
+  verlassen.
+- Andere Mitglieder sehen, wer die Conversation führt. Es kann jeweils nur ein
+  Mitglied die Conversation halten.
+
+Wählen Sie **Release**, um die Konversation wieder an den Assistenten zu
+übergeben. Die nächste Nachricht des Visitors startet einen normalen Turn. Ein
+Admin oder ein Owner kann eine Conversation freigeben, die ein Kollege hält.
+
+Ihre Antworten sind Operator-Nachrichten. Es handelt sich nicht um KI-Antworten,
+daher werden sie bei Insights, der Antwortüberprüfung und dem Feedback nicht
+berücksichtigt. Der JSON-Export und das ausgedruckte Transkript kennzeichnen sie
+mit dem Absender `Operator` und Ihrem Namen.
+
+Das Widget überprüft alle paar Sekunden, ob es Antworten von Ihnen gibt, während
+Sie die Conversation führen. Es überprüft außerdem alle 15 Sekunden über einen
+Zeitraum von 5 Minuten, nachdem der Besucher eine Nachricht gesendet hat, damit
+angezeigt werden kann, dass Sie beigetreten sind. Ein inaktives Widget sendet
+keine zusätzlichen Anfragen.
+
+## Quick Texts
+
+Quick Texts sind gespeicherte Antworten für das Antwortfeld. Editors, Admins und
+Owners erstellen, bearbeiten und löschen sie unter **Settings** > **Quick
+Texts**. Jeder Quick Text hat einen Titel, einen Textkörper und einen optionalen
+Ordner.
+
+Um einen Quick Text einzufügen, geben Sie **/** in das Antwortfeld ein. Geben
+Sie weitere Zeichen ein, um die Liste nach dem Titel zu filtern. Wählen Sie
+einen Quick Text aus oder drücken Sie die Eingabetaste, um dessen Text an der
+Stelle einzufügen, an der Sie **/** eingegeben haben. Sie können den Text
+ändern, bevor Sie ihn senden.
+
+Ein Textkörper kann die gleichen Vorlagenvariablen verwenden, die auch von
+Flow-Aktionen genutzt werden, zum Beispiel `{{user.name}}`. Ciele füllt sie
+anhand der Conversation aus, auf die Sie antworten. Eine Variable, die keinen
+Wert hat, wird zu leerem Text.
+
+Jedes Mitglied, das antworten kann, kann jeden Quick Text verwenden. Sie können
+Quick Texts auch über die API, den CLI-Befehl `ciele quick-texts` und das
+MCP-Tool `manage_configuration` verwalten.
 
 ## Hochwertige Arbeit erstellen
 

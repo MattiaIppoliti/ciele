@@ -46,5 +46,5 @@ export async function POST(
     assistantIds,
   });
   if (outcome instanceof Response) return outcome;
-  return Response.json({ imported: outcome.result.imported, skipped });
+  return Response.json({ imported: outcome.result.imported, skipped, duplicates: outcome.result.duplicates, duplicateCheckIncomplete: outcome.result.duplicateCheckIncomplete });
 }

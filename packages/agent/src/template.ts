@@ -217,3 +217,31 @@ export function resolveTemplate(
     return escapeValue(context[name] ?? "", mode);
   });
 }
+
+/**
+ * A Quick Text body (#1085) resolved against the Conversation a Member is
+ * answering. The same catalogue a Flow action's text reads, with one rule a
+ * Flow does not have: a token that resolves to nothing becomes empty text,
+ * never the raw `{{…}}`, because the result lands in a reply a person sends.
+ */
+export function resolveQuickText(
+  body: string,
+  conversation: {
+    id: string;
+    subjectId: string;
+    metadata: ConversationMetadata;
+  },
+  appOrigin: string = platformAppOrigin()
+): string {
+  const context = buildTemplateContext({
+    user: {
+      name: conversation.metadata.userName,
+      email: conversation.metadata.userEmail,
+      id: conversation.subjectId,
+    },
+    metadata: conversation.metadata,
+    conversationId: conversation.id,
+    appOrigin,
+  });
+  return resolveTemplate(body, context).replace(TOKEN, "");
+}

@@ -7,7 +7,7 @@ import {
 import { DocumentView } from "@/components/knowledge/document-view";
 import { requirePageMember } from "@/lib/authz";
 import { runPageOperation } from "@/lib/operations";
-import { canEdit } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { isKnowledgeTabSlug } from "@/lib/knowledge-hub";
 import { parseDocumentTab } from "@/lib/document-view";
 import {
@@ -35,7 +35,8 @@ export default async function LibraryDocumentPage({
   // Where in the Documents table this row was opened from: the breadcrumb and
   // every tab link keep it, so "back" is the same page and sort (#928).
   const list = parseSourceDocumentsParams(search);
-  const { role } = await requirePageMember();
+  const { role, session, capabilities } = await requirePageMember();
+  const access = { role, capabilities };
 
   // The two tabs' data, read here so each paints with the route rather than
   // after a client round trip. Memories include the forgotten ones: the
@@ -60,6 +61,7 @@ export default async function LibraryDocumentPage({
   const sourcePath = libraryDocumentsHref(view.source.kind, view.source.id);
   return (
     <DocumentView
+      currentMemberId={session.userId}
       source={view.source}
       collection={view.collection}
       document={view.document}
@@ -77,7 +79,7 @@ export default async function LibraryDocumentPage({
       rootHref={`/library/${tab}`}
       rootLabel="Library"
       listQuery={sourceDocumentsQuery(list)}
-      canEdit={canEdit(role)}
+      canEdit={can(access, "knowledge:edit")}
     />
   );
 }

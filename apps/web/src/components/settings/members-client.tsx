@@ -4,34 +4,29 @@ import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 import { TableCategory, type TableCategoryTone } from "@/components/ui/table-editable-cell";
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
 import { useMemo, useState, useTransition } from "react";
-import type { Invite, Member, Role } from "@agent-hub/core";
-import { Check, Minus, Plus, Trash2 } from "lucide-react";
+import type { Invite, Member, MemberAssistantScope, Role } from "@agent-hub/core";
+import { ArrowRight, Plus, Trash2 } from "lucide-react";
 import { ChevronDown, Link2 } from "lucide-react";
+import Link from "next/link";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { createInvitesAction, updateMemberRoleAction } from "@/app/actions";
 import { MAX_INVITES_PER_SUBMIT, describeInviteOutcome, parseInviteEmails } from "@/lib/invite-emails";
-import { MATRIX_ROLES, roleMatrix } from "@/lib/role-matrix";
+
 import { Table, type TableColumn } from "@/components/motion/table";
-import {
-  Table as SheetTable,
-  TableBody,
-  TableCard,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { RemoveMemberModal } from "@/components/settings/remove-member-modal";
+import { AssistantScopeDialog } from "@/components/settings/assistant-scope-dialog";
+import { scopeSummary } from "@/lib/members/assistant-scope";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
-import { capitalize, formatDay } from "@/lib/format";
+import { formatDay } from "@/lib/format";
 import {
-  assignableRoles,
+  assignableRoleChoices,
   buildMemberRows,
   canManageRow,
   type MemberRow,
+  type RoleChoice,
 } from "@/lib/member-rows";
 import {
   Badge,
@@ -57,50 +52,12 @@ const ROLE_TONES = {
   admin: "blue",
   editor: "green",
   viewer: "gray",
+  support_agent: "pink",
 } as const satisfies Record<Role, TableCategoryTone>;
 
-/**
- * What each Role may do (#1074), asked of the predicate the operations use.
- * On the shared table, read-only: a fixed reference, so no search or sort.
- */
-function RolesMatrix() {
-  const rows = useMemo(() => roleMatrix(), []);
-  return (
-    <TableCard title="Roles" results={{ total: rows.length, noun: "permission" }}>
-      <SheetTable aria-label="What each role can do" className="min-w-[34rem]">
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead>Permission</TableHead>
-            {MATRIX_ROLES.map((role) => (
-              <TableHead key={role} className="w-28 text-center [&>[data-table-value]]:justify-center">
-                <TableCategory tone={ROLE_TONES[role]}>{capitalize(role)}</TableCategory>
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.capability}>
-              <TableCell className="whitespace-normal">
-                <span className="block font-medium">{row.label}</span>
-                <span className="text-muted-foreground block text-xs">{row.detail}</span>
-              </TableCell>
-              {MATRIX_ROLES.map((role) => (
-                <TableCell key={role} className="text-center">
-                  {row.allowed[role] ? (
-                    <Check aria-hidden className="text-foreground mx-auto size-4" />
-                  ) : (
-                    <Minus aria-hidden className="text-muted-foreground/50 mx-auto size-4" />
-                  )}
-                  <span className="sr-only">{row.allowed[role] ? "Allowed" : "Not allowed"}</span>
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </SheetTable>
-    </TableCard>
-  );
+/** A built-in keeps its colour; a custom Role reads in the colour of its tier, outlined by name. */
+function roleTone(row: Pick<MemberRow, "role">): TableCategoryTone {
+  return ROLE_TONES[row.role];
 }
 
 export function MembersClient({
@@ -111,17 +68,34 @@ export function MembersClient({
   canManageOwners,
   canInvite,
   demo,
+  assistantAccess,
+  roles,
+  capabilities,
 }: {
   members: Member[];
   invites: Invite[];
   currentUserId: string;
+  /** Every Role of the Organization, for the pickers. */
+  roles: RoleChoice[];
+  /** The signed-in Member's Capabilities: a Role is offered only when they hold all of it. */
+  capabilities: readonly string[];
   /** Admins and owners edit roles and remove people. */
   canManageRoles: boolean;
   /** Only owners may grant or revoke ownership. */
   canManageOwners: boolean;
   canInvite: boolean;
   demo: boolean;
+  /**
+   * Each Member's Assistant scope and row count, and the Assistants to pick
+   * from. Present only for those who manage members.
+   */
+  assistantAccess?: {
+    assistants: Array<{ id: string; title: string }>;
+    members: Record<string, { scope: MemberAssistantScope; rows: number }>;
+  };
 }) {
+  const [scopes, setScopes] = useState(assistantAccess?.members ?? {});
+  const [scopeFor, setScopeFor] = useState<Member | null>(null);
   const [inviteEmails, setInviteEmails] = useState("");
   const parsedEmails = useMemo(() => parseInviteEmails(inviteEmails), [inviteEmails]);
   const inviteProblem = parsedEmails.invalid.length
@@ -129,7 +103,15 @@ export function MembersClient({
     : parsedEmails.tooMany
       ? `Invite at most ${MAX_INVITES_PER_SUBMIT} people at a time`
       : null;
-  const [inviteRole, setInviteRole] = useState<Role>("editor");
+  const assignable = useMemo(
+    () => assignableRoleChoices(roles, { canManageOwners, capabilities }),
+    [roles, canManageOwners, capabilities]
+  );
+  const inviteChoices = useMemo(() => assignable.filter((role) => role.key !== "owner"), [assignable]);
+  const [inviteRoleId, setInviteRoleId] = useState<string>(
+    () => (inviteChoices.find((role) => role.memberDefault) ?? inviteChoices.find((role) => role.key === "editor") ?? inviteChoices.at(-1))?.id ?? ""
+  );
+  const inviteRole = inviteChoices.find((role) => role.id === inviteRoleId) ?? inviteChoices[0];
   const [pendingRemoval, setPendingRemoval] = useState<MemberRow | null>(null);
   const [isPending, startTransition] = useTransition();
   const [inviting, startInvite] = useTransition();
@@ -161,7 +143,8 @@ export function MembersClient({
     startInvite(async () => {
       let outcome: Awaited<ReturnType<typeof createInvitesAction>>;
       try {
-        outcome = await createInvitesAction(inviteRole, inviteEmails);
+        if (!inviteRole) throw new Error("Choose a role for the invitation");
+        outcome = await createInvitesAction(inviteRole.id, inviteEmails);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Could not create the invite",
@@ -187,25 +170,26 @@ export function MembersClient({
     });
   }
 
-  async function applyRole(row: MemberRow, role: Role) {
-    await updateMemberRoleAction(row.subjectId, role);
-    toast.success(`Role updated to ${role}`);
+  async function applyRole(row: MemberRow, role: RoleChoice) {
+    await updateMemberRoleAction(row.subjectId, role.id);
+    toast.success(`Role updated to ${role.name}`);
   }
 
-  function changeRole(row: MemberRow, role: Role) {
-    if (role === row.role) return;
+  function changeRole(row: MemberRow, roleId: string) {
+    const role = roles.find((item) => item.id === roleId);
+    if (!role || role.id === row.roleId) return;
     // Ownership is the one role that can take the organization away from
     // whoever holds it now, so granting or removing it asks first.
-    if (role === "owner" || row.role === "owner") {
-      const granting = role === "owner";
+    if (role.tier === "owner" || row.role === "owner") {
+      const granting = role.tier === "owner";
       confirmDelete({
         title: granting
           ? `Make ${row.name} an owner?`
           : `Remove ${row.name} as an owner?`,
         description: granting
           ? "Owners have full control of the organization, including billing, every member's role and granting ownership to others."
-          : `They become ${role === "admin" ? "an" : "a"} ${role} and lose control of billing and ownership.`,
-        confirmLabel: granting ? "Make owner" : `Change to ${role}`,
+          : `They become ${role.name} and lose control of billing and ownership.`,
+        confirmLabel: granting ? "Make owner" : `Change to ${role.name}`,
         onConfirm: () => applyRole(row, role),
       });
       return;
@@ -229,7 +213,7 @@ export function MembersClient({
       header: "User",
       accessor: (row) => row.name,
       sortable: true,
-      width: "38%",
+      width: assistantAccess ? "28%" : "38%",
       cell: (row) => (
         <div className="flex min-w-0 items-center gap-3">
           {/* One face per person, generated from who they are, so a row is
@@ -262,7 +246,7 @@ export function MembersClient({
       header: "Status",
       accessor: (row) => row.status,
       sortable: true,
-      width: "14%",
+      width: assistantAccess ? "12%" : "14%",
       cell: (row) =>
         row.status === "active" ? (
           <StatusPill status="online" primaryText={<RollInText text="Active" />} />
@@ -275,7 +259,7 @@ export function MembersClient({
       header: "Joined",
       accessor: (row) => row.since,
       sortable: true,
-      width: "18%",
+      width: assistantAccess ? "14%" : "18%",
       hideBelowSm: true,
       cell: (row) => (
         <span className="text-muted-foreground"><RollInText text={formatDay(row.since)} /></span>
@@ -283,19 +267,53 @@ export function MembersClient({
     },
     {
       key: "role",
-      filterOptions: ["owner", "admin", "editor", "viewer"].map((value) => ({ value, label: capitalize(value) })),
+      filterOptions: roles.map((role) => ({ value: role.name, label: role.name })),
       filterLabel: "Role",
       header: "Role",
-      accessor: (row) => row.role,
+      accessor: (row) => row.roleName,
       sortable: true,
-      width: "18%",
-      editor: (row) => row.kind === "member" && canManageRow(row, manageOpts) ? {
-        value: row.role, label: `Role for ${row.name}`,
-        options: assignableRoles(canManageOwners).map((value) => ({ value, label: capitalize(value) })),
-        onSave: (value) => changeRole(row, value as Role),
+      width: assistantAccess ? "14%" : "18%",
+      editor: (row) => row.kind === "member" && row.roleId && canManageRow(row, manageOpts) ? {
+        value: row.roleId, label: `Role for ${row.name}`,
+        // The Role they hold stays listed even when the editor could not give it.
+        options: [...assignable, ...roles.filter((role) => role.id === row.roleId && !assignable.includes(role))]
+          .map((role) => ({ value: role.id, label: role.name })),
+        onSave: (value) => changeRole(row, value),
       } : undefined,
-      cell: (row) => <TableCategory tone={ROLE_TONES[row.role]}>{capitalize(row.role)}</TableCategory>,
+      cell: (row) => <TableCategory tone={roleTone(row)}>{row.roleName}</TableCategory>,
     },
+    ...(assistantAccess
+      ? [
+          {
+            key: "assistants",
+            header: "Assistants",
+            accessor: (row: MemberRow) => (row.kind === "member" ? scopeSummary({ role: row.role, scope: scopes[row.subjectId]?.scope ?? "all", rows: scopes[row.subjectId]?.rows ?? 0 }) : ""),
+            width: "20%",
+            hideBelowSm: true,
+            cell: (row: MemberRow) =>
+              row.kind !== "member" ? (
+                <span className="text-muted-foreground">On joining</span>
+              ) : (
+                <span className="flex min-w-0 flex-col items-start">
+                  <span className="truncate text-sm">
+                    <RollInText
+                      text={scopeSummary({ role: row.role, scope: scopes[row.subjectId]?.scope ?? "all", rows: scopes[row.subjectId]?.rows ?? 0 })}
+                    />
+                  </span>
+                  {row.role !== "owner" && canManageRow(row, manageOpts) && (
+                    <button
+                      type="button"
+                      className="press-text text-primary text-xs underline-offset-4 hover:underline"
+                      onClick={() => setScopeFor(members.find((member) => member.userId === row.subjectId) ?? null)}
+                    >
+                      Manage assistants
+                    </button>
+                  )}
+                </span>
+              ),
+          } satisfies TableColumn<MemberRow>,
+        ]
+      : []),
     {
       key: "actions",
       header: "Actions",
@@ -358,6 +376,13 @@ export function MembersClient({
         getRowId={(row) => row.id}
         emptyState="No members yet"
         noun="member"
+        rowMenu={(row) => ({
+          title: row.name,
+          actions: [
+            row.kind === "invite" && canManageRoles && { label: "Copy invite link", icon: Link2, onSelect: () => void copyInvite(row) },
+            canManageRow(row, manageOpts) && { label: row.kind === "invite" ? "Revoke invitation" : "Remove member", icon: Trash2, destructive: true, onSelect: () => setPendingRemoval(row) },
+          ],
+        })}
       />
       </TimelineSection>
 
@@ -395,21 +420,20 @@ export function MembersClient({
                     type="button"
                     variant="outline"
                     className="h-9"
-                    aria-label={`Invite role: ${inviteRole}`}
+                    aria-label={`Invite role: ${inviteRole?.name ?? "none"}`}
                   />
                 }
               >
-                <RollInText text={capitalize(inviteRole)} />
+                <RollInText text={inviteRole?.name ?? "Choose a role"} />
                 <ChevronDown className="size-3.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {assignableRoles(false).map((role) => (
+                {inviteChoices.map((role) => (
                   <DropdownMenuItem
-                    key={role}
-                    className="capitalize"
-                    onClick={() => setInviteRole(role)}
+                    key={role.id}
+                    onClick={() => setInviteRoleId(role.id)}
                   >
-                    {role}
+                    {role.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -436,11 +460,30 @@ export function MembersClient({
           )}
         </TimelineSection>
       )}
-      <TimelineSection title="Roles">
-        <RolesMatrix />
+      <TimelineSection title="Roles" boxed>
+        <p className="text-muted-foreground text-sm">
+          {roles.length} roles decide what each member can do. Edit the built-in ones or create your own.
+        </p>
+        <Button variant="outline" className="mt-3 h-9" render={<Link href="/settings/roles" />}>
+          Open Roles
+          <ArrowRight className="size-4" />
+        </Button>
       </TimelineSection>
       </SectionTimeline>
       {confirmDeleteModal}
+      {assistantAccess && scopeFor && (
+        <AssistantScopeDialog
+          key={scopeFor.userId}
+          member={scopeFor}
+          assistants={assistantAccess.assistants}
+          roles={roles
+            .filter((role) => role.assistantLevel && role.key !== "owner")
+            .map((role) => ({ id: role.id, name: role.name, key: role.key, assistantDefault: role.assistantDefault }))}
+          open
+          onClose={() => setScopeFor(null)}
+          onSaved={(summary) => setScopes((current) => ({ ...current, [scopeFor.userId]: summary }))}
+        />
+      )}
     </div>
   );
 }

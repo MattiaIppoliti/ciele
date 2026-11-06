@@ -114,6 +114,8 @@ export type AssistantGuardrail =
       model: ModerationModel;
       /** Categories that block. Empty: any flagged category blocks. */
       categories: string[];
+      /** Score generated answers after they are saved; never blocks output. */
+      alsoScoreAnswers?: boolean;
       onError: GuardrailFailureMode;
     })
   | (GuardrailCommon & {
@@ -376,6 +378,10 @@ export interface GuardrailTraceEntry {
   type: InputGuardrail["type"];
   name: string;
   outcome: "pass" | "blocked" | "logged" | "unavailable";
+  /** Defaults to Visitor for traces written before answer scoring. */
+  target?: "visitor" | "answer";
+  flagged?: boolean;
+  scores?: Array<{ category: string; score: number }>;
   /** Why it blocked or could not run. Never shown to a Visitor. */
   detail?: string;
 }

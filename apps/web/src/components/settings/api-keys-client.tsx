@@ -3,8 +3,8 @@
 import { StatusBadge as StatusPill } from "@/components/spaceui/status-badge";
 
 import { SectionTimeline, TimelineSection } from "@/components/settings/section-timeline";
-import { useState, useTransition } from "react";
-import type { OrgApiKey, Role } from "@agent-hub/core";
+import { useMemo, useState, useTransition } from "react";
+import type { OrgApiKey } from "@agent-hub/core";
 import { Ban, BookOpen, ChevronDown, KeyRound, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
@@ -12,8 +12,9 @@ import { createApiKeyAction, deleteApiKeyAction, revokeApiKeyAction } from "@/ap
 import { MorphingModal } from "@/components/motion/morphing-modal";
 import { RollInText } from "@/components/motion/roll-in-text";
 import { Table, type TableColumn } from "@/components/motion/table";
-import { capitalize, formatDay } from "@/lib/format";
-import { canAssignApiKeyRole } from "@/lib/rbac";
+import { formatDay } from "@/lib/format";
+import { roleLabel } from "@/lib/rbac";
+import { assignableRoleChoices, type RoleChoice } from "@/lib/member-rows";
 import { DialogBody, DialogFooter,
   Badge,
   Button,
@@ -28,8 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-const ALL_ROLES: Role[] = ["owner", "admin", "editor", "viewer"];
 
 /** The two confirmations a key row can ask for: revoke an active key, delete a revoked one. */
 const CONFIRM = {
@@ -53,18 +52,30 @@ const CONFIRM = {
 
 export function ApiKeysClient({
   keys,
-  currentRole,
+  roles,
+  capabilities,
+  isOwner,
   demo,
   apiDocumentationUrl,
 }: {
   keys: OrgApiKey[];
-  /** Caps the roles offered for a new key at the signed-in Member's own. */
-  currentRole: Role | null;
+  /** Every Role of the Organization; a key can carry any of them. */
+  roles: RoleChoice[];
+  /** Caps the Roles offered for a new key at what the signed-in Member holds. */
+  capabilities: readonly string[];
+  isOwner: boolean;
   demo: boolean;
   apiDocumentationUrl: string;
 }) {
   const [name, setName] = useState("");
-  const [role, setRole] = useState<Role>("viewer");
+  const assignable = useMemo(
+    () => assignableRoleChoices(roles, { canManageOwners: isOwner, capabilities }),
+    [roles, isOwner, capabilities]
+  );
+  const [roleId, setRoleId] = useState<string>(
+    () => (assignable.find((item) => item.key === "viewer") ?? assignable[0])?.id ?? ""
+  );
+  const role = assignable.find((item) => item.id === roleId) ?? assignable[0];
   const [mintedSecret, setMintedSecret] = useState<string | null>(null);
   // The secret cannot be shown twice, so a stray Escape or backdrop click must
   // not throw it away before it was copied.
@@ -77,15 +88,12 @@ export function ApiKeysClient({
   const [isPending, startTransition] = useTransition();
   const { copyText, isCopied } = useCopyFeedback<string>();
 
-  const assignable = ALL_ROLES.filter((r) =>
-    canAssignApiKeyRole(currentRole, r)
-  );
-
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
       try {
-        const { secret } = await createApiKeyAction(name, role);
+        if (!role) throw new Error("Choose a role for the key");
+        const { secret } = await createApiKeyAction(name, role.id);
         setSecretCopied(false);
         setConfirmingClose(false);
         setMintedSecret(secret);
@@ -144,15 +152,15 @@ export function ApiKeysClient({
     },
     {
       key: "role",
-      filterOptions: ALL_ROLES.map((value) => ({ value, label: capitalize(value) })),
+      filterOptions: roles.map((item) => ({ value: item.name, label: item.name })),
       filterLabel: "Role",
       header: "Role",
-      accessor: (key) => key.role,
+      accessor: (key) => key.roleName ?? roleLabel(key.role),
       sortable: true,
       width: "14%",
       cell: (key) => (
-        <Badge variant="outline" className="capitalize">
-          <RollInText text={key.role} />
+        <Badge variant="outline">
+          <RollInText text={key.roleName ?? roleLabel(key.role)} />
         </Badge>
       ),
     },
@@ -261,6 +269,12 @@ export function ApiKeysClient({
               getRowId={(key) => key.id}
               emptyState="No API keys yet, you'll need one to call the API, CLI or MCP server."
               noun="API key"
+              rowMenu={(key) => ({
+                title: key.name,
+                actions: [key.revokedAt
+                  ? { label: "Delete key", icon: Trash2, destructive: true, onSelect: () => setPending({ key, action: "delete" }) }
+                  : { label: "Revoke key", icon: Ban, destructive: true, onSelect: () => setPending({ key, action: "revoke" }) }],
+              })}
             />
           </div>
         </TimelineSection>
@@ -285,21 +299,20 @@ export function ApiKeysClient({
                   <Button
                     type="button"
                     variant="outline"
-                    aria-label={`Role: ${role}`}
+                    aria-label={`Role: ${role?.name ?? "none"}`}
                   />
                 }
               >
-                <RollInText text={capitalize(role)} />
+                <RollInText text={role?.name ?? "Choose a role"} />
                 <ChevronDown className="size-3.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {assignable.map((r) => (
+                {assignable.map((item) => (
                   <DropdownMenuItem
-                    key={r}
-                    className="capitalize"
-                    onClick={() => setRole(r)}
+                    key={item.id}
+                    onClick={() => setRoleId(item.id)}
                   >
-                    {r}
+                    {item.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

@@ -1,10 +1,10 @@
 ---
 title: Mejoras
-description: Haz un seguimiento y completa el trabajo para corregir las respuestas deficientes del Asistente.
+description: Haz un seguimiento y completa el trabajo para corregir las respuestas deficientes del asistente.
 ---
 
 Una Improvement registra un problema de calidad de la respuesta. Puede incluir
-mensajes vinculados, Sources, una descripción y una solución sugerida.
+mensajes vinculados, Sources, una descripción y una sugerencia de solución.
 
 ## Fuentes de las mejoras
 
@@ -16,22 +16,53 @@ mensajes vinculados, Sources, una descripción y una solución sugerida.
 - Un Goal permanente que falla crea un elemento. Los fallos posteriores añaden
   evidencias al mismo elemento.
 
-## Gestionar un elemento
+Cuando marques una respuesta desde la Inbox, escribe la respuesta o el
+comportamiento esperados debajo del título.
 
-Abre un elemento para revisar sus mensajes vinculados y la solución sugerida
-disponible. Puedes cambiar su estado, su prioridad, sus etiquetas, su
-responsable y su fecha de vencimiento.
+## Etapas
 
-La API, la CLI y el servidor MCP pueden listar, leer y actualizar las
-Improvements existentes. La creación de mejoras sigue siendo una operación en
-tiempo de ejecución del producto.
+El tablero muestra cinco etapas. La API, la CLI y el servidor MCP utilizan los
+valores de estado de la segunda columna.
+
+| Stage | Status | Qué hacer |
+| --- | --- | --- |
+| **Triage** | `to_do` | Lee las evidencias, escribe la respuesta esperada y asigna un responsable y una prioridad. |
+| **Fix** | `in_progress` | Corrige la Source, las FAQ, el Flow o la instrucción que provocó la respuesta. |
+| **Validate** | `in_review` | Vuelve a formular la pregunta original, examina las Sources y comprueba el widget del cliente. |
+| **Resolved** | `done` | Conserva el resultado y las evidencias para un diagnóstico posterior. |
+| **Archived** | `archived` | Deja un elemento duplicado u obsoleto fuera del trabajo activo. |
+
+La acción principal sobre un elemento lo desplaza a la siguiente etapa. El
+selector de estado y la función de arrastrar y soltar siguen permitiendo mover
+un elemento a cualquier etapa. Al resolver un elemento, se registra tu decisión.
+No ejecuta ninguna prueba ni publica cambios.
+
+## Buscar elementos
+
+La búsqueda localiza texto en el título, en la clave `IMP-n` y en las etiquetas.
+Abre **Filters** para filtrar por prioridad, asignado, Asistente o Proyecto.
+
+- En **Assignee**, selecciona **Assigned to me** para tus propios elementos o
+  **Unassigned** para los elementos sin propietario.
+- **Assistant** muestra los elementos con evidencias procedentes de las
+  conversaciones de ese asistente.
+- **Project** muestra los elementos de un proyecto.
+
+Ciele aplica los filtros a todas las Mejoras antes de mostrar una página. Los
+recuentos de etapas y las exportaciones utilizan los mismos filtros, por lo que
+incluyen elementos más antiguos. Una exportación también incluye la descripción
+y el identificador del proyecto.
+
+La API, la CLI y el servidor MCP pueden listar, leer y actualizar Improvements.
+La lista acepta los mismos filtros y devuelve el recuento para cada etapa. Solo
+el producto crea Improvements.
 
 ## Planifica el trabajo como Tasks
 
 Una Improvement registra el problema. Una Task registra el trabajo que lo
 soluciona. La página Improvement muestra las Tasks que la resuelven.
 
-1. Abre la Mejora.
+1. Abre la Improvement.
 2. Selecciona **Create task**. La tarea hereda el título y el proyecto de la
    mejora.
 3. Modifica la tarea si es necesario y, a continuación, selecciona **Create
@@ -40,20 +71,66 @@ soluciona. La página Improvement muestra las Tasks que la resuelven.
 También puedes vincular una tarea existente: abre la tarea y selecciona la
 mejora en su campo **Resolves**.
 
-Cuando todas las tareas vinculadas están completadas, Ciele desplaza la mejora
-de **To do** o **In progress** a **In review**. A continuación, una persona
-examina la respuesta y cierra la Improvement. Si vuelves a abrir una Task, la
-Improvement no retrocede.
+Cuando todas las tareas vinculadas están completadas, Ciele traslada la mejora
+de **Triage** o **Fix** a **Validate**. A continuación, una persona examina la
+respuesta y cierra la Improvement. Si vuelves a abrir una Task, la Improvement
+no retrocede.
+
+Las Tasks completadas no demuestran que la respuesta sea ahora correcta.
+Registra las pruebas de validación antes de resolver la Improvement.
 
 ## Corrige la respuesta
 
-1. Lee la Conversation vinculada.
+1. Lee la Conversation enlazada.
 2. Identifica la Source, la FAQ, el Flow o la instrucción incorrectos.
-3. Corrige la configuración del borrador.
-4. Formula la pregunta original en Preview.
+3. Corrige el conocimiento o el borrador de la configuración.
+4. Plantea la pregunta original en Preview.
 5. Confirma la respuesta y las Sources.
-6. Publica el asistente.
-7. Marca la mejora como completada.
+6. Publica los cambios de configuración y confirma la corrección en el widget
+   del cliente. Los cambios en el conocimiento ya están activos.
+7. Registra las evidencias de validación y, a continuación, resuelve la
+   Improvement.
+
+El elemento muestra **Correct knowledge**, **Review Flows**, **Test in Preview**
+y **Review publication**. Estos enlaces abren el Assistant de las evidencias de
+la conversación en la pantalla. Si un elemento tiene evidencias de más de un
+asistente, abre cada mensaje enlazado y revisa cada asistente.
 
 Revisa las correcciones sugeridas generadas antes de usarlas. La sugerencia
-almacenada no constituye un cambio de publicación.
+almacenada no es un cambio de publicación.
+
+## Registra las evidencias de validación
+
+En **Validation evidence**, escribe el comportamiento esperado, los recursos
+modificados y la comprobación del widget: la URL, los pasos y el resultado. A
+continuación, selecciona **Record widget pass** o **Record widget failure**.
+
+Una comprobación registra el miembro, la hora y la Publicación actual. No cambia
+la etapa de la Improvement. No puedes modificar ni eliminar una comprobación una
+vez que la hayas registrado. Los elementos resueltos más antiguos no tienen
+ninguna comprobación registrada.
+
+Para probar con un modelo, abre **Replay a representative question**. Escribe la
+pregunta y el texto que debe contener la respuesta. También puedes exigir citas
+de fuentes. Una reproducción consume créditos de IA y se rige por los límites de
+gasto de la organización. Prueba la última Publication con el conocimiento en
+tiempo real. Solo puede haber una reproducción en espera por cada Improvement.
+
+Una repetición solo funciona con los asistentes que responden y no hacen nada
+más. Si un Flow puede enviar correos electrónicos, llamar a una API o realizar
+otras acciones externas, Ciele rechaza la reproducción. Una reproducción no crea
+ninguna Conversation ni modifica los datos de Insights.
+
+Selecciona **Refresh** para leer el resultado de una reproducción. Cuando la
+Publication o el conocimiento cambian, Ciele marca las evidencias anteriores
+como obsoletas. Registra una nueva comprobación antes de usar ese resultado. Una
+repetición no comprueba el sitio web del host, la identidad del visitante ni las
+condiciones de la URL. Comprueba tú mismo el widget del cliente antes de
+resolver el elemento.
+
+## Proyectos
+
+Un Project muestra el número de sus Improvements en cada etapa. Selecciona
+**Review project improvements** para abrir el tablero con el filtro Project. Los
+compañeros de equipo conectados a un proyecto leen sus decisiones a través de la
+memoria del proyecto, conforme a sus concesiones actuales.

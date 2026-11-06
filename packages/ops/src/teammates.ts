@@ -89,7 +89,7 @@ export const teammatePatchSchema = z
  */
 export const listTeammatesOp = defineOperation({
   name: "teammates.list",
-  capability: "member",
+  capability: "teammates:view",
   effect: "read",
   input: z.object({}),
   entities: () => [],
@@ -178,7 +178,7 @@ export const unhideTeammateOp = defineOperation({
 
 export const getTeammateOp = defineOperation({
   name: "teammates.get",
-  capability: "member",
+  capability: "teammates:view",
   effect: "read",
   input: idSchema,
   entities: () => [],
@@ -198,7 +198,7 @@ export const teammateInputSchema = z.object({
 
 export const createTeammateOp = defineOperation({
   name: "teammates.create",
-  capability: "edit",
+  capability: "teammates:edit",
   effect: "write",
   input: teammateInputSchema,
   entities: () => [{ kind: "teammateList" as const }],
@@ -228,7 +228,7 @@ export const createTeammateOp = defineOperation({
 
 export const updateTeammateOp = defineOperation({
   name: "teammates.update",
-  capability: "edit",
+  capability: "teammates:edit",
   effect: "write",
   input: z.object({ id: z.string().min(1), patch: teammatePatchSchema }),
   entities: ({ id }) => [
@@ -286,7 +286,7 @@ export const updateTeammateOp = defineOperation({
 
 export const deleteTeammateOp = defineOperation({
   name: "teammates.delete",
-  capability: "edit",
+  capability: "teammates:edit",
   effect: "consequential",
   input: idSchema,
   entities: ({ id }) => [
@@ -326,7 +326,7 @@ export const deleteTeammateOp = defineOperation({
 
 export const listTeammateThreadOp = defineOperation({
   name: "teammates.thread",
-  capability: "member",
+  capability: "teammates:view",
   effect: "read",
   input: idSchema,
   entities: () => [],
@@ -341,7 +341,7 @@ export const listTeammateThreadOp = defineOperation({
 
 export const readTeammateConversationOp = defineOperation({
   name: "teammates.conversation",
-  capability: "member",
+  capability: "teammates:view",
   effect: "read",
   input: z.object({
     id: z.string().min(1),
@@ -375,7 +375,7 @@ export const readTeammateConversationOp = defineOperation({
 /** Reactions belong to a Member's own Teammate conversation, outside Inbox. */
 export const setTeammateMessageFeedbackOp = defineOperation({
   name: "teammates.messages.feedback",
-  capability: "member",
+  capability: "teammates:use",
   effect: "write",
   input: z.object({
     id: z.string().min(1),
@@ -419,7 +419,7 @@ export const setTeammateMessageFeedbackOp = defineOperation({
  */
 export const startReferralOp = defineOperation({
   name: "teammates.referral.start",
-  capability: "member",
+  capability: "teammates:use",
   effect: "write",
   input: z.object({
     originConversationId: z.string().min(1),

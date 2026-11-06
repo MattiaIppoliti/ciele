@@ -1,9 +1,9 @@
 ---
 title: Assistants
-description: Configurez l'identité, le modèle, le comportement, les outils et les vérifications d'un Assistant.
+description: Configurez l’identité, le modèle, le comportement, les outils et les vérifications d’un Assistant.
 ---
 
-Un Assistant est l'unité de configuration principale dans Ciele. Chaque
+Un Assistant est l’unité de configuration principale dans Ciele. Chaque
 Assistant possède ses propres Knowledge, Flows, paramètres de brouillon et
 historique de publication.
 
@@ -11,10 +11,10 @@ historique de publication.
 
 | Section | Objectif |
 | --- | --- |
-| General | Définir l'identité, le modèle et les paramètres par défaut de la conversation. |
+| General | Définir l’identité, le modèle et les valeurs par défaut de la conversation. |
 | Knowledge | Ajouter des sources et des FAQ. |
-| Flows | Définissez le routage et les réponses. |
-| Tools & Skills | Contrôlez les outils d'exécution, l'intégration des API et les instructions réutilisables. |
+| Flows | Définir le routage et les réponses. |
+| Tools & Skills | Contrôlez les outils d’exécution, l’intégration des API et les instructions réutilisables. |
 | Goals | Planifier des vérifications de réponses déterministes. |
 | Guardrails | Vérifiez les messages des visiteurs et masquez le texte des réponses marquées. |
 | Assistant Help Desks | Sélectionnez les Help Desks pour la remontée. |
@@ -22,24 +22,24 @@ historique de publication.
 | Authentication | Exiger la connexion via Microsoft Entra pour les visiteurs. |
 | Publish | Créez et gérez le snapshot en production. |
 
-Les modifications affectent immédiatement l'aperçu (Preview). Le widget en
-direct ne change qu'après la publication.
+Les modifications affectent immédiatement l’environnement Preview. Le widget en
+direct ne change qu’après la publication.
 
 Preview peut utiliser votre abonnement local connecté à Claude ou à ChatGPT
 depuis **Settings → AI**. Le panneau de progression affiche les recherches et
 leurs résultats. Il ne sollicite pas le raisonnement privé du modèle. Un modèle
 connecté a toujours besoin de Knowledge Sources pour répondre de manière fiable
-aux questions spécifiques à l'organisation.
+aux questions spécifiques à l’organisation.
 
-## Inspecter les sources dans l'aperçu
+## Inspecter les sources dans l’aperçu
 
-L'aperçu affiche des citations de sources numérotées dans la réponse de
-l'Assistant. Passez le curseur sur une citation ou placez le focus dessus à
-l'aide du clavier pour afficher son titre et les détails de la Source. Appuyez
-sur Échap pour fermer la carte. Cliquez sur une citation comportant une URL
-publique pour ouvrir la page d'origine dans un nouvel onglet.
+L’aperçu affiche des citations de sources numérotées dans la réponse de
+l’Assistant. Passez le curseur sur une citation ou sélectionnez-la au clavier
+pour afficher son titre et les détails de la source. Appuyez sur Échap pour
+fermer la carte. Cliquez sur une citation comportant une URL publique pour
+ouvrir la page d’origine dans un nouvel onglet.
 
-Chaque phrase ou étape sourcée porte sa citation à côté du texte qu'elle étaye.
+Chaque phrase ou étape sourcée porte sa citation à côté du texte qu’elle étaye.
 Une Source peut être citée plusieurs fois dans une même réponse. Les documents
 privés affichent un aperçu sans lien externe. Les sources sans référence
 intégrée restent disponibles dans la liste Sources située sous la réponse.
@@ -49,5 +49,35 @@ intégrée restent disponibles dans la liste Sources située sous la réponse.
 La duplication copie la configuration et les Flows. Elle ne copie pas le contenu
 de la Knowledge Base.
 
-Veuillez vérifier le nouvel Assistant avant sa publication. En particulier,
-ajoutez ses Sources requises et confirmez ses connexions au Help Desk.
+Vérifiez le nouvel Assistant avant sa publication. En particulier, ajoutez les
+Sources requises et confirmez ses connexions au Help Desk.
+
+## Déplacer un Assistant d’une Organisation à une autre
+
+Ouvrez le menu Assistant et sélectionnez **Export bundle** pour télécharger un
+fichier JSON versionné. La lecture d'un Assistant autorise l'exportation.
+
+Sélectionnez **Import bundle as new Assistant** pour importer le fichier.
+L’importation nécessite un accès en modification et crée toujours un nouvel
+Assistant. Les Assistants existants restent inchangés.
+
+Le bundle contient la configuration de Publication, les Flows, les Skills, les
+Guardrails, les réponses rapides et le style. Il nomme les Collections, les Help
+Desks et les fournisseurs de connexion.
+
+L’importation fait correspondre ces noms dans l’organisation de destination.
+Lisez le rapport d’importation pour identifier les correspondances manquantes ou
+ambiguës. Les Flows comportant des références non résolues restent désactivés.
+
+Les identifiants, les valeurs chiffrées, les Conversations et les données des
+Visiteurs sont exclus. Configurez les identifiants après l’importation. Les API
+Integrations affichent **Needs setup** tant que les identifiants ne sont pas
+disponibles.
+
+Le contenu de la collection n’est pas inclus. Importez des liens vers des
+Sources de destination existantes à partir d’une Collection correspondante. Les
+versions de bundle inconnues sont refusées avant la création.
+
+L’API fournit `GET /api/v1/assistants/{id}/export` et
+`POST /api/v1/assistants/import`. MCP fournit les actions d’exportation et
+d’importation de `manage_assistants`.

@@ -208,3 +208,55 @@ describe("granted actions as tools", () => {
     expect(output).toMatchObject({ id: "IMP-3", status: "done" });
   });
 });
+
+describe("instrumented tool results", () => {
+  it("caps any tool's result the model reads, with the total length", async () => {
+    const huge = "x".repeat(50_000);
+    const { ctx } = makeContext([
+      action({
+        operation: "improvements.list",
+        inputSchema: z.object({}),
+        run: async () => ({ entities: [], result: { body: huge } }),
+      }),
+    ]);
+    const output = (await run(buildToolset(ctx), teammateActionToolName("improvements.list"))) as {
+      truncated?: boolean;
+      totalLength?: number;
+    };
+    expect(output.truncated).toBe(true);
+    expect(output.totalLength).toBeGreaterThan(50_000);
+  });
+});
+
+describe("useSkill", () => {
+  const indexed = [
+    {
+      id: "s1",
+      name: "Refund policy",
+      description: "Questions about getting money back",
+      prompt: "Offer store credit first.",
+      starter: "",
+    },
+  ];
+
+  it("hands back an indexed skill's body by name", async () => {
+    const { ctx } = makeContext([]);
+    const toolset = buildToolset({ ...ctx, skillIndex: indexed });
+    expect(await run(toolset, "useSkill", { name: "Refund policy" })).toMatchObject({
+      name: "Refund policy",
+      instructions: "Offer store credit first.",
+    });
+  });
+
+  it("names the skills it has when asked for one it does not", async () => {
+    const { ctx } = makeContext([]);
+    const toolset = buildToolset({ ...ctx, skillIndex: indexed });
+    const output = (await run(toolset, "useSkill", { name: "Shipping" })) as { error?: string };
+    expect(output.error).toContain("Refund policy");
+  });
+
+  it("is not offered when no skill is indexed", () => {
+    const { ctx } = makeContext([]);
+    expect(Object.keys(buildToolset(ctx))).not.toContain("useSkill");
+  });
+});

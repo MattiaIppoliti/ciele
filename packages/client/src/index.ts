@@ -1,4 +1,8 @@
+export { OUTBOUND_WEBHOOK_EVENTS, isOutboundWebhookEventType } from "@agent-hub/core/outbound-webhooks";
 import type {
+  BusinessHours,
+  BusinessHoursInput,
+  BusinessHoursPatch,
   ApplicationConnection,
   ReviewRequest,
   AssistantPatch,
@@ -29,6 +33,8 @@ import type {
   FlowPatch,
   HttpFlowRun,
   ImprovementPatch,
+  ImprovementQuery,
+  ImprovementStatus,
   HelpDesk,
   KnowledgeCollection,
   Memory,
@@ -37,6 +43,9 @@ import type {
   SupportChannelConfig,
   SupportChannelInput,
   SupportChannelPatch,
+  QuickText,
+  OutboundWebhookSubscription,
+  WebhookDelivery,
   Skill,
   SkillInput,
   SkillPatch,
@@ -63,6 +72,9 @@ import type {
  * response without a second dependency. Declared once, in `@agent-hub/core`.
  */
 export type {
+  BusinessHours,
+  BusinessHoursInput,
+  BusinessHoursPatch,
   AssistantAnswer,
   AssistantAnswerSource,
   KnowledgeSearchHit,
@@ -82,7 +94,19 @@ export type {
  * base URL is just a constructor option / CIELE_BASE_URL.
  */
 
+/** What `POST /quick-texts` accepts (#1085). */
+export type OutboundWebhookInput = Pick<OutboundWebhookSubscription, "name" | "url" | "eventTypes">;
+export type OutboundWebhookPatch = Partial<OutboundWebhookInput> & { paused?: boolean };
+
+export interface QuickTextInput {
+  title: string;
+  body: string;
+  folder?: string | null;
+}
+
 export interface CieleClientOptions {
+  /** Audit attribution only; this never grants authority. */
+  surface?: "api" | "mcp";
   /** An org API key (`ciele_sk_…`), minted in Settings → API Keys. */
   apiKey: string;
   /** Deployment origin; defaults to the SaaS. Self-host: your own URL. */
@@ -318,9 +342,44 @@ export type ProviderConnectionView = Omit<ProviderConnection, "encryptedKey"> & 
 /** `GET /whoami`, the key's own identity (#627). */
 export interface ApiWhoami {
   organizationId: string;
-  role: "owner" | "admin" | "editor" | "viewer";
+  /** The ladder tier the key acts at. */
+  role: "owner" | "admin" | "editor" | "viewer" | "support_agent";
   keyId: string;
+  /** What the key may do: its Role's Capabilities, capped at its creator's (ADR-0028). */
+  capabilities?: string[];
 }
+
+/** A Role as `/roles` returns it (#1164). */
+export interface ApiRole {
+  id: string;
+  key: string | null;
+  name: string;
+  description: string;
+  capabilities: string[];
+  organizationLevel: boolean;
+  assistantLevel: boolean;
+  tier: Role;
+  memberCount: number;
+  apiKeyCount: number;
+  inviteCount: number;
+  assistantGrantCount: number;
+  memberDefault: boolean;
+  assistantDefault: boolean;
+  builtIn: boolean;
+  edited: boolean;
+  locked: boolean;
+}
+
+export interface ApiRoleInput {
+  name: string;
+  description: string;
+  capabilities: string[];
+  organizationLevel: boolean;
+  assistantLevel: boolean;
+}
+
+/** A Role by id, custom ones included, or a built-in by name. */
+export type ApiRoleChoice = { roleId: string } | { role: Role };
 
 interface RequestOptions {
   body?: unknown;
@@ -344,12 +403,21 @@ function linkedForm(file: File, assistantIds: string[]): FormData {
   return form;
 }
 
+/** A Member's Assistant scope: `selected` reaches only the listed Assistants. */
+export interface MemberAssistantsView {
+  userId: string;
+  scope: "all" | "selected";
+  access: Array<{ assistantId: string; role: "denied" | "viewer" | "editor" | "admin" }>;
+}
+
 export class CieleClient {
+  private readonly surface: "api" | "mcp";
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: CieleClientOptions) {
+    this.surface = options.surface ?? "api";
     this.apiKey = options.apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_CIELE_BASE_URL).replace(/\/+$/, "");
     this.fetchImpl = options.fetch ?? fetch;
@@ -367,6 +435,7 @@ export class CieleClient {
     const headers: Record<string, string> = {
       authorization: `Bearer ${this.apiKey}`,
     };
+    headers["x-ciele-surface"] = this.surface;
     if (options.body !== undefined) headers["content-type"] = "application/json";
     if (options.idempotencyKey) headers["idempotency-key"] = options.idempotencyKey;
     if (options.accept) headers.accept = options.accept;
@@ -431,7 +500,19 @@ export class CieleClient {
     return this.request("GET", "/whoami");
   }
 
+  readonly exportSchedules = {
+    list: (): Promise<{ available: boolean; items: import("@agent-hub/core").ExportSchedule[] }> => this.request("GET", "/exports/schedules"),
+    create: (input: Omit<import("@agent-hub/core").ExportScheduleInput, "organizationId" | "createdBy">): Promise<import("@agent-hub/core").ExportSchedule> => this.request("POST", "/exports/schedules", { body: input }),
+    update: (id: string, patch: import("@agent-hub/core").ExportSchedulePatch): Promise<import("@agent-hub/core").ExportSchedule> => this.request("PATCH", p`/exports/schedules/${id}`, { body: patch }),
+    delete: (id: string): Promise<void> => this.request("DELETE", p`/exports/schedules/${id}`),
+  };
+
   readonly assistants = {
+    exportBundle: (id: string): Promise<import("@agent-hub/core").AssistantBundle> => this.request("GET", p`/assistants/${id}/export`),
+    importBundle: (bundle: unknown): Promise<{ assistantId: string; report: string[] }> => this.request("POST", "/assistants/import", { body: { bundle } }),
+    access: (id: string): Promise<{ data: Array<Member & { override: import("@agent-hub/core").AssistantAccessEntry | null }> }> => this.request("GET",p`/assistants/${id}/access`),
+    setAccess: (id: string,userId: string,role: import("@agent-hub/core").AssistantAccessRole): Promise<void> => this.request("PUT",p`/assistants/${id}/access/${userId}`,{ body: { role } }),
+    clearAccess: (id: string,userId: string): Promise<void> => this.request("DELETE",p`/assistants/${id}/access/${userId}`),
     list: (params: ListParams = {}): Promise<Page<ApiAssistant>> =>
       this.request("GET", "/assistants", { query: { ...params } }),
     listAll: (): AsyncGenerator<ApiAssistant> => this.paginate("/assistants"),
@@ -549,6 +630,15 @@ export class CieleClient {
   };
 
   readonly knowledge = {
+    sourceDocuments: (sourceId: string, query: { page?: number; pageSize?: number; trustTier?: import("@agent-hub/core").OkfTrustTier } = {}): Promise<{ items: import("@agent-hub/core").SourceDocumentListItem[]; total: number }> => this.request("GET", p`/sources/${sourceId}/documents`, { query }),
+    reviewDocument: (sourceId: string, documentId: string): Promise<import("@agent-hub/core").Concept> => this.request("POST", p`/sources/${sourceId}/documents/${documentId}/review`),
+    removeDocumentReview: (sourceId: string, documentId: string): Promise<void> => this.request("DELETE", p`/sources/${sourceId}/documents/${documentId}/review`),
+    getFaq: (sourceId: string): Promise<{ question: string; answer: string }> => this.request("GET", p`/sources/${sourceId}/faq`),
+    updateFaq: (sourceId: string, input: { question: string; answer: string }): Promise<{ sourceId: string; documentId: string; question: string; answer: string }> => this.request("PATCH", p`/sources/${sourceId}/faq`, { body: input }),
+    faqHistory: (sourceId: string): Promise<{ data: import("@agent-hub/core").FaqHistoryEntry[] }> => this.request("GET", p`/sources/${sourceId}/faq/history`),
+    restoreFaq: (sourceId: string, versionId: string): Promise<{ sourceId: string; documentId: string; question: string; answer: string }> => this.request("POST", p`/sources/${sourceId}/faq/restore`, { body: { versionId } }),
+    checkFaqDuplicates: (input: { question: string; collectionId?: string }): Promise<{ data: import("@agent-hub/core").FaqDuplicate[] }> => this.request("POST", "/knowledge/faqs/check", { body: input }),
+    sourceUsage: (sourceId: string): Promise<import("@agent-hub/core").SourceUsageStats | null> => this.request("GET", p`/sources/${sourceId}/usage`),
     collections: (assistantId: string): Promise<{ data: KnowledgeCollection[] }> =>
       this.request("GET", p`/assistants/${assistantId}/collections`),
     sources: (collectionId: string): Promise<{ data: ApiSource[] }> =>
@@ -598,7 +688,7 @@ export class CieleClient {
       collectionId: string,
       csv: File,
       assistantIds: string[]
-    ): Promise<{ imported: number; skipped: string[] }> =>
+    ): Promise<{ imported: number; skipped: string[]; duplicates: import("@agent-hub/core").FaqImportDuplicate[]; duplicateCheckIncomplete: boolean }> =>
       this.request("POST", p`/collections/${collectionId}/faqs/import`, {
         form: linkedForm(csv, assistantIds),
       }),
@@ -613,6 +703,9 @@ export class CieleClient {
         q?: string;
         page?: number;
         pageSize?: number;
+        unused?: boolean;
+        sort?: import("@agent-hub/core").OrgKnowledgeSourceSort;
+        ascending?: boolean;
       } = {}
     ): Promise<{
       items: Array<{
@@ -621,6 +714,7 @@ export class CieleClient {
         name: string;
         kind: string;
         status: string;
+        usage?: import("@agent-hub/core").SourceUsageStats;
         conceptCount: number;
         answerPreview: string;
         linkedAssistants: Array<{
@@ -639,6 +733,9 @@ export class CieleClient {
       if (params.kinds?.length) search.set("kinds", params.kinds.join(","));
       if (params.status) search.set("status", params.status);
       if (params.assistantId) search.set("assistantId", params.assistantId);
+      if (params.unused !== undefined) search.set("unused", String(params.unused));
+      if (params.sort) search.set("sort", params.sort);
+      if (params.ascending !== undefined) search.set("ascending", String(params.ascending));
       if (params.q) search.set("q", params.q);
       if (params.page) search.set("page", String(params.page));
       if (params.pageSize) search.set("pageSize", String(params.pageSize));
@@ -710,7 +807,7 @@ export class CieleClient {
     importOrgFaqs: (
       csv: File,
       assistantIds: string[]
-    ): Promise<{ imported: number; skipped: string[] }> =>
+    ): Promise<{ imported: number; skipped: string[]; duplicates: import("@agent-hub/core").FaqImportDuplicate[]; duplicateCheckIncomplete: boolean }> =>
       this.request("POST", "/knowledge/faqs/import", { form: linkedForm(csv, assistantIds) }),
     /** Org-wide FAQ CSV export (raw CSV text). */
     exportOrgFaqs: (): Promise<string> =>
@@ -771,8 +868,14 @@ export class CieleClient {
   };
 
   readonly improvements = {
-    list: (params: ListParams = {}): Promise<Page<{ id: string }>> =>
-      this.request("GET", "/improvements", { query: { ...params } }),
+    /**
+     * Filters run before pagination; `counts` sizes every stage under the same
+     * filters. `assigneeId: null` asks for unassigned work.
+     */
+    list: (
+      params: ListParams & ImprovementQuery & { status?: ImprovementStatus } = {}
+    ): Promise<Page<{ id: string }> & { counts: Record<ImprovementStatus, number> }> =>
+      this.request("GET", "/improvements", { query: { ...params, assigneeId: params.assigneeId === null ? "" : params.assigneeId } }),
     get: (id: string): Promise<unknown> =>
       this.request("GET", p`/improvements/${id}`),
     update: (id: string, patch: ImprovementPatch): Promise<unknown> =>
@@ -1138,20 +1241,17 @@ export class CieleClient {
         p`/help-desks/${helpDeskId}/channels/reorder`,
         { body: { orderedIds } }
       ),
-    connectServiceNow: (
+    /**
+     * Names the Organization-owned Salesforce or ServiceNow Application
+     * Connection the desk's "Create a ticket" channel files through.
+     */
+    setTicketing: (
       helpDeskId: string,
-      input: {
-        name: string;
-        baseUrl: string;
-        clientId: string;
-        clientSecret: string;
-        username: string;
-        password: string;
-      }
+      input: { connectionId: string; table?: string; requesterEmailField?: string }
     ): Promise<ApiHelpDesk> =>
       this.request(
-        "POST",
-        p`/help-desks/${helpDeskId}/ticketing/servicenow`,
+        "PUT",
+        p`/help-desks/${helpDeskId}/ticketing`,
         { body: input }
       ),
     disconnectTicketing: (helpDeskId: string): Promise<ApiHelpDesk> =>
@@ -1169,6 +1269,36 @@ export class CieleClient {
       this.request("PATCH", p`/skills/${id}`, { body: patch }),
     delete: (id: string): Promise<void> =>
       this.request("DELETE", p`/skills/${id}`),
+  };
+
+  /** Quick Texts (#1085): saved replies for the Inbox reply box. */
+  readonly businessHours = {
+    list: (): Promise<{ available: boolean; defaultTimezone: string; data: BusinessHours[] }> => this.request("GET", "/business-hours"),
+    create: (input: BusinessHoursInput): Promise<BusinessHours> => this.request("POST", "/business-hours", { body: input }),
+    update: (id: string, patch: BusinessHoursPatch): Promise<BusinessHours> => this.request("PATCH", p`/business-hours/${id}`, { body: patch }),
+    delete: (id: string): Promise<void> => this.request("DELETE", p`/business-hours/${id}`),
+    setTimezone: (timezone: string): Promise<{ timezone: string }> => this.request("PATCH", "/business-hours/timezone", { body: { timezone } }),
+  };
+
+  readonly webhooks = {
+    list: (): Promise<{ available: boolean; data: OutboundWebhookSubscription[] }> => this.request("GET", "/webhooks"),
+    create: (input: OutboundWebhookInput): Promise<{ subscription: OutboundWebhookSubscription; secret: string }> =>
+      this.request("POST", "/webhooks", { body: input }),
+    update: (id: string, patch: OutboundWebhookPatch): Promise<OutboundWebhookSubscription> =>
+      this.request("PATCH", p`/webhooks/${id}`, { body: patch }),
+    delete: (id: string): Promise<void> => this.request("DELETE", p`/webhooks/${id}`),
+    deliveries: (id: string): Promise<{ data: WebhookDelivery[] }> => this.request("GET", p`/webhooks/${id}/deliveries`),
+    test: (id: string): Promise<{ eventId: string }> => this.request("POST", p`/webhooks/${id}/test`),
+  };
+
+  readonly quickTexts = {
+    list: (): Promise<{ data: QuickText[] }> => this.request("GET", "/quick-texts"),
+    create: (input: QuickTextInput): Promise<QuickText> =>
+      this.request("POST", "/quick-texts", { body: input }),
+    update: (id: string, patch: Partial<QuickTextInput>): Promise<QuickText> =>
+      this.request("PATCH", p`/quick-texts/${id}`, { body: patch }),
+    delete: (id: string): Promise<void> =>
+      this.request("DELETE", p`/quick-texts/${id}`),
   };
 
   readonly goals = {
@@ -1216,17 +1346,41 @@ export class CieleClient {
 
   readonly members = {
     list: (): Promise<{ data: Member[] }> => this.request("GET", "/members"),
-    setRole: (userId: string, role: Role): Promise<Member> =>
+    setRole: (userId: string, role: Role | ApiRoleChoice): Promise<Member> =>
       this.request("PATCH", p`/members/${userId}`, {
-        body: { role },
+        body: typeof role === "string" ? { role } : role,
       }),
     remove: (userId: string): Promise<void> =>
       this.request("DELETE", p`/members/${userId}`),
+    /** The Member's Assistant scope and per-Assistant rows. */
+    assistants: (userId: string): Promise<MemberAssistantsView> =>
+      this.request("GET", p`/members/${userId}/assistants`),
+    /** Replace the scope and every row in one write. */
+    setAssistants: (
+      userId: string,
+      input: { scope: "all" | "selected"; access: Array<{ assistantId: string; role: "denied" | "viewer" | "editor" | "admin"; roleId?: string }> }
+    ): Promise<MemberAssistantsView> =>
+      this.request("PUT", p`/members/${userId}/assistants`, { body: input }),
+  };
+
+  readonly roles = {
+    list: (): Promise<{ data: ApiRole[] }> => this.request("GET", "/roles"),
+    get: (id: string): Promise<ApiRole> => this.request("GET", p`/roles/${id}`),
+    create: (input: ApiRoleInput): Promise<ApiRole> =>
+      this.request("POST", "/roles", { body: input }),
+    update: (id: string, patch: Partial<ApiRoleInput>): Promise<ApiRole> =>
+      this.request("PATCH", p`/roles/${id}`, { body: patch }),
+    reset: (id: string): Promise<ApiRole> =>
+      this.request("POST", p`/roles/${id}/reset`),
+    delete: (id: string): Promise<void> =>
+      this.request("DELETE", p`/roles/${id}`),
+    setDefaults: (input: { memberRoleId?: string; assistantRoleId?: string }): Promise<{ data: ApiRole[] }> =>
+      this.request("PUT", "/roles/defaults", { body: input }),
   };
 
   readonly invites = {
     list: (): Promise<{ data: Invite[] }> => this.request("GET", "/invites"),
-    create: (input: { role: Role; email?: string }): Promise<Invite> =>
+    create: (input: ApiRoleChoice & { email?: string }): Promise<Invite> =>
       this.request("POST", "/invites", { body: input }),
     revoke: (id: string): Promise<void> =>
       this.request("DELETE", p`/invites/${id}`),
@@ -1234,10 +1388,7 @@ export class CieleClient {
 
   readonly apiKeys = {
     list: (): Promise<{ data: OrgApiKey[] }> => this.request("GET", "/api-keys"),
-    create: (input: {
-      name: string;
-      role: Role;
-    }): Promise<{ apiKey: OrgApiKey; secret: string }> =>
+    create: (input: { name: string } & ApiRoleChoice): Promise<{ apiKey: OrgApiKey; secret: string }> =>
       this.request("POST", "/api-keys", { body: input }),
     revoke: (id: string): Promise<void> =>
       this.request("DELETE", p`/api-keys/${id}`),
@@ -1252,6 +1403,45 @@ export class CieleClient {
     spenders: (window: { from?: string; to?: string } = {}): Promise<unknown> =>
       this.request("GET", "/usage/spenders", {
         query: { from: window.from || undefined, to: window.to || undefined },
+      }),
+  };
+
+  /**
+   * The Organization audit log, read-only: operations write every entry as
+   * they run, so the client has no method that writes one. Newest first; to
+   * read further back pass the last entry's `createdAt` and `id` as `before`
+   * and `beforeId`.
+   */
+  readonly auditLog = {
+    list: (
+      filter: {
+        actions?: string[];
+        actor?: string;
+        domain?: string;
+        from?: string;
+        to?: string;
+        order?: "newest" | "oldest";
+        before?: string;
+        beforeId?: string;
+        after?: string;
+        afterId?: string;
+        limit?: number;
+      } = {}
+    ): Promise<unknown> =>
+      this.request("GET", "/audit-log", {
+        query: {
+          action: filter.actions?.length ? filter.actions.join(",") : undefined,
+          actor: filter.actor || undefined,
+          domain: filter.domain || undefined,
+          from: filter.from || undefined,
+          to: filter.to || undefined,
+          order: filter.order,
+          before: filter.before || undefined,
+          beforeId: filter.beforeId || undefined,
+          after: filter.after || undefined,
+          afterId: filter.afterId || undefined,
+          limit: filter.limit,
+        },
       }),
   };
 
@@ -1344,3 +1534,5 @@ export class CieleClient {
       this.request("PATCH", "/providers/embedding", { body: { connectionId } }),
   };
 }
+
+export type { ExportSchedule, ExportScheduleInput, ExportSchedulePatch } from "@agent-hub/core";

@@ -10,6 +10,7 @@ import { readSearchParam, type SearchParamsLike } from "@/lib/url-state";
  */
 
 export interface DashboardView {
+  moderation?: import("@agent-hub/core").ModerationCounts | null;
   dashboard: UsageDashboard;
   /**
    * The same measures over the period of equal length just before this one,

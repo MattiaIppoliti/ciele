@@ -27,6 +27,7 @@ import type {
   ImprovementMessageLink,
   ImprovementPatch,
   ImprovementProposal,
+  ImprovementQuery,
   ImprovementStatus,
   InboxConversation,
   InboxFacets,
@@ -51,7 +52,7 @@ import type {
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
 import { connectorAction } from "@agent-hub/core";
-import { modelSelector, roleAllowsCapability, thrownMessage } from "@agent-hub/core";
+import { capabilitiesAllow, modelSelector, thrownMessage } from "@agent-hub/core";
 import {
   isSupabaseConfigured,
   raiseImprovement,
@@ -142,7 +143,7 @@ import {
   createFlowOp,
   createHelpDeskOp,
   createSupportChannelOp,
-  connectServiceNowOp,
+  setTicketingTargetOp,
   createSkillOp,
   createAssistantGoalOp,
   deleteAssistantOp,
@@ -178,7 +179,10 @@ import {
   updateAssistantGoalOp,
   updateFlowOp,
   updateImprovementOp,
+  listImprovementValidationsOp,
   listImprovementsPageOp,
+  recordImprovementValidationOp,
+  requestImprovementReplayOp,
   setMemorySettingsOp,
   wipeSubjectMemoriesOp,
   disconnectTicketingIntegrationOp,
@@ -219,6 +223,7 @@ import {
   sendConversationFeedbackOp,
   setConversationLegalHoldOp,
   setConversationPinnedOp,
+  desksWithAvailableOperator,
   setMessageFeedbackOp,
   validateSsoIdentityOp,
   createProjectOp,
@@ -244,7 +249,7 @@ import { getWidgetDb } from "@/lib/widget-db";
 import { starterSkills, type StarterSkill } from "@/lib/composer/skills";
 import { discoverScopesKeepingCredentials } from "@/lib/application-discovery";
 import { saveSlackBotSettings } from "@/lib/slack/settings";
-import { canViewReasoning } from "@/lib/rbac";
+import { can } from "@/lib/rbac";
 import { canDeleteApplicationConnection } from "@/lib/application-connections";
 import { improvementTaskRows, type ImprovementTaskRow } from "@/lib/work/improvement-tasks";
 import { MAX_AGENT_ITERATIONS } from "@agent-hub/agent/client";
@@ -268,6 +273,20 @@ import {
 // --- Auth & organization ----------------------------------------------------
 
 export async function signOutAction() {
+  // An operator who signs out is Away (#1084): nobody should be assigned a
+  // waiting Visitor they will never see. Best effort, a Member who never set
+  // a status has nothing to clear.
+  try {
+    const { session, db } = await requireMember("member");
+    const [presence] = await db
+      .table("operatorPresence")
+      .list({ organizationId: session.organization.id, memberId: session.userId });
+    if (presence?.status === "available") {
+      await db.table("operatorPresence").update(presence.id, { status: "away" });
+    }
+  } catch {
+    /* signing out must never fail on a status */
+  }
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
     await supabase.auth.signOut();
@@ -276,9 +295,11 @@ export async function signOutAction() {
 }
 
 export async function createOrganizationAction(name: string) {
-  await requireSession();
+  const session = await requireSession();
   const db = await getDb();
-  await db.createOrganization(name.trim());
+  const organizationId = await db.createOrganization(name.trim());
+  const { recordAuditOutcome } = await import("@ciele/ops");
+  await recordAuditOutcome({ organizationId, userId: session.userId, role: "owner", actorEmail: session.email, db }, { operation: "organization.create", effect: "write", entities: [{ kind: "organization", id: organizationId }], outcome: "ok" });
   revalidatePath("/", "layout");
   redirect("/");
 }
@@ -312,16 +333,14 @@ export async function updateOrganizationAction(patch: OrganizationPatch) {
 export async function uploadOrganizationLogoAction(
   formData: FormData,
 ): Promise<{ logoUrl?: string; error?: string }> {
-  const { db, session } = await requireMember("manageMembers");
+  const { db, session } = await requireMember("organization:edit");
   const uploaded = await uploadPublicImageFromForm(objectStorageClient(), formData, {
     organizationId: session.organization.id,
     kind: "organization",
   });
   if (uploaded.error !== undefined) return { error: uploaded.error };
 
-  await db.updateOrganization(session.organization.id, {
-    logoUrl: uploaded.publicUrl,
-  });
+  await runOperation(updateOrganizationOp, { logoUrl: uploaded.publicUrl });
   revalidatePath("/", "layout");
   return { logoUrl: uploaded.publicUrl };
 }
@@ -340,7 +359,7 @@ export async function updateCompostOptOutAction(
   optOut: boolean,
 ): Promise<void> {
   await orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
+    { operation: { name: "organization.compost.update", effect: "write" }, capability: "organization:edit", entities: [{ kind: "aiSettings" }] },
     ({ db, session }) => db.setCompostOptOut(session.organization.id, optOut),
   );
 }
@@ -396,7 +415,7 @@ export async function updatePersonalAiSubscriptionsAllowedAction(
   allowed: boolean,
 ): Promise<void> {
   await orgMutation(
-    { capability: "changeRoles", entities: [{ kind: "aiSettings" }] },
+    { operation: { name: "organization.personalSubscriptions.update", effect: "consequential" }, capability: "personalSubscriptions:manage", entities: [{ kind: "aiSettings" }] },
     ({ db, session }) =>
       db.setPersonalAiSubscriptionsAllowed(session.organization.id, allowed),
   );
@@ -409,8 +428,8 @@ export async function updatePersonalAiSubscriptionsAllowedAction(
  * The same asymmetry is enforced by RLS (20260728120000), this check is the
  * one that produces a readable error instead of a silent no-op update.
  */
-export async function updateMemberRoleAction(userId: string, role: Role) {
-  await runOperation(updateMemberRoleOp, { userId, role });
+export async function updateMemberRoleAction(userId: string, roleId: string) {
+  return runOperation(updateMemberRoleOp, { userId, roleId });
 }
 
 export async function removeMemberAction(userId: string) {
@@ -432,12 +451,12 @@ export async function removeMemberAction(userId: string) {
  * and reported, and one that fails does not stop the rest: the outcome names
  * it, and the form keeps only those in the box for the next attempt.
  */
-export async function createInvitesAction(role: Role, emailsText: string) {
+export async function createInvitesAction(roleId: string, emailsText: string) {
   const { emails, invalid, tooMany } = parseInviteEmails(emailsText);
   if (invalid.length) throw new Error(`Not an email address: ${invalid.join(", ")}`);
   if (tooMany) throw new Error(`Invite at most ${MAX_INVITES_PER_SUBMIT} people at a time`);
   const invite = (email?: string) =>
-    runOperation(createInviteOp, email ? { role, email } : { role });
+    runOperation(createInviteOp, email ? { roleId, email } : { roleId });
   const outcome: InviteOutcome<Awaited<ReturnType<typeof invite>>> = {
     created: [],
     alreadyInvited: [],
@@ -480,10 +499,10 @@ export async function revokeInviteAction(inviteId: string) {
  * The key's Role is capped at the creator's: a key acts as a delegate of the
  * human who minted it and can never out-rank them.
  */
-export async function createApiKeyAction(name: string, role: Role) {
+export async function createApiKeyAction(name: string, roleId: string) {
   return runOperation(createOrgApiKeyOp, {
     name: name.trim() || "Untitled key",
-    role,
+    roleId,
   });
 }
 
@@ -685,7 +704,7 @@ export async function createAssistantAction(input: {
 
 export async function updateAssistantAction(id: string, patch: AssistantPatch) {
   if (patch.voice?.enabled) {
-    const { db, organizationId } = await requireMember("edit");
+    const { db, organizationId } = await requireMember("assistants:edit", { assistantId: id });
     const assistant = await db.getAssistant(id);
     if (!assistant || assistant.organizationId !== organizationId) throw new Error("Assistant not found");
     const { validateVoiceSelection } = await import("@/lib/voice-http");
@@ -704,7 +723,7 @@ export async function updateAssistantAction(id: string, patch: AssistantPatch) {
 export async function testApiRequestAction(
   settings: NonNullable<FlowActionSettings["api_request"]>,
 ): Promise<ApiRequestTestResult> {
-  await requireMember("edit");
+  await requireMember("apiIntegrations:edit");
   return testApiRequest(settings);
 }
 
@@ -715,7 +734,7 @@ export async function testApiRequestAction(
  * builder is an operator surface.
  */
 async function builderConnectorRuntime() {
-  const { organizationId, session } = await requireMember("edit");
+  const { organizationId, session } = await requireMember("flows:edit");
   return dbConnectorRuntime(getWidgetDb(), organizationId, {
     allowPersonal: true,
     memberId: session.userId,
@@ -772,8 +791,8 @@ export async function uploadAssistantAvatarAction(
   formData: FormData,
 ): Promise<{ avatarUrl?: string; error?: string }> {
   return orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "assistants.avatar.update", effect: "write" },
+      capability: "assistants:edit",
       entities: [{ kind: "assistant", id }],
       revalidateIf: (result) => !result.error,
     },
@@ -887,18 +906,11 @@ export async function reorderSupportChannelsAction(
   await runOperation(reorderSupportChannelsOp, { helpDeskId, orderedIds });
 }
 
-export async function connectServiceNowIntegrationAction(
+export async function setTicketingTargetAction(
   helpDeskId: string,
-  input: {
-    name: string;
-    baseUrl: string;
-    clientId: string;
-    clientSecret: string;
-    username: string;
-    password: string;
-  },
+  input: { connectionId: string; table?: string; requesterEmailField?: string },
 ) {
-  await runOperation(connectServiceNowOp, { helpDeskId, ...input });
+  await runOperation(setTicketingTargetOp, { helpDeskId, ...input });
 }
 
 export async function disconnectTicketingIntegrationAction(helpDeskId: string) {
@@ -1157,6 +1169,7 @@ export async function listEscalationDesksAction(
     db,
     session.organization.id,
     assistant.helpDeskSettings?.selectedIds ?? [],
+    await desksWithAvailableOperator(db, session.organization.id),
   );
 }
 
@@ -1389,7 +1402,7 @@ export async function testOpenAiCompatibleConnectionAction(input: {
 }): Promise<OpenAiCompatibleTestResult> {
   // Same capability as saving the connection: this probe makes the server issue
   // a request to a caller-chosen host, which is not a read-only ability.
-  await requireMember("manageMembers");
+  await requireMember("providers:manage");
   return testOpenAiCompatibleConnection({
     baseUrl: input.baseUrl.trim(),
     apiKey: input.apiKey?.trim() || null,
@@ -1446,7 +1459,7 @@ export async function uploadFileSourceAction(
     // Authorize before the parser sees a byte (#801, CYB-01): a check that runs
     // *after* extraction is not a gate, a refused caller would still have spent
     // PDF-parser CPU and memory on a 25 MiB document first.
-    const { organizationId, session } = await requireMember("edit");
+    const { organizationId, session } = await requireMember("knowledge:edit", { assistantId: assistantId || null });
     // An authorized member is still on a budget (#801, CYB-01): parsing is the
     // expensive step, so the window is checked after authorization (anonymous
     // callers are already refused) and before a byte reaches the parser.
@@ -1484,7 +1497,7 @@ export async function reprocessSourceAction(
   collectionId: string,
   sourceId: string,
 ) {
-  const { db, organizationId } = await requireMember("edit");
+  const { db, organizationId } = await requireMember("knowledge:edit", { assistantId });
   const source = await db.getSource(sourceId);
   if (!source || source.collectionId !== collectionId)
     throw new Error("Source not found");
@@ -1511,7 +1524,7 @@ export async function retrySourceIngestAction(
   collectionId: string,
   sourceId: string,
 ) {
-  const { db, organizationId } = await requireMember("edit");
+  const { db, organizationId } = await requireMember("knowledge:edit", { assistantId });
   const source = await db.getSource(sourceId);
   if (!source || source.collectionId !== collectionId)
     throw new Error("Source not found");
@@ -1605,8 +1618,8 @@ export async function addWebsiteSourceAction(
   input: WebsiteFormInput,
 ) {
   await orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "knowledge.websites.create", effect: "write" },
+      capability: "knowledge:edit",
       entities: [{ kind: "assistantEditor", assistantId }, { kind: "alerts" }],
     },
     async ({ db }) => {
@@ -1633,8 +1646,8 @@ export async function updateWebsiteSourceAction(
   input: WebsiteFormInput,
 ) {
   await orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "knowledge.websites.update", effect: "write" },
+      capability: "knowledge:edit",
       entities: [{ kind: "assistantEditor", assistantId }],
     },
     async ({ db }) => {
@@ -1658,8 +1671,8 @@ export async function setRecrawlScheduleAction(
   schedule: RecrawlSchedule,
 ) {
   await orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "knowledge.sources.recrawlSchedule.set", effect: "write" },
+      capability: "knowledge:edit",
       entities: [{ kind: "assistantEditor", assistantId }],
     },
     ({ db }) => db.updateSource(sourceId, { recrawlSchedule: schedule }),
@@ -1684,8 +1697,8 @@ export async function pollWebsiteCrawlAction(
   sourceId: string,
 ): Promise<SourceStatus> {
   return orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "knowledge.crawls.poll", effect: "read" },
+      capability: "knowledge:edit",
       entities: [{ kind: "assistantEditor", assistantId }],
       revalidateIf: (status: SourceStatus) => status !== "processing",
     },
@@ -1849,6 +1862,8 @@ export async function createOrgFaqAction(
 export async function importOrgFaqsAction(formData: FormData): Promise<{
   imported: number;
   skipped: string[];
+  duplicates?: import("@agent-hub/core").FaqImportDuplicate[];
+  duplicateCheckIncomplete?: boolean;
 }> {
   const file = formData.get("file") as File | null;
   const assistantIds = JSON.parse(
@@ -1864,7 +1879,7 @@ export async function importOrgFaqsAction(formData: FormData): Promise<{
     rows,
     assistantIds,
   });
-  return { imported: result.imported, skipped };
+  return { imported: result.imported, skipped, duplicates: result.duplicates, duplicateCheckIncomplete: result.duplicateCheckIncomplete };
 }
 
 /** One FAQ with its full answer, the hub's edit dialog. */
@@ -1896,8 +1911,8 @@ export async function addOrgWebsiteSourceAction(
   const unique = [...new Set(assistantIds)];
   if (unique.length === 0) throw new Error("Pick at least one assistant");
   await orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "knowledge.org.websites.create", effect: "write" },
+      capability: "knowledge:edit",
       entities: [
         { kind: "knowledgeHub" },
         { kind: "alerts" },
@@ -1936,7 +1951,7 @@ export async function uploadOrgFileSourceAction(
   });
   if (!validation.ok) return { error: validation.error };
   try {
-    const { db, organizationId, session } = await requireMember("edit");
+    const { db, organizationId, session } = await requireMember("knowledge:edit");
     // Same budget as the per-assistant upload (#801, CYB-01): one member, one
     // window, whichever door the file comes through.
     const budget = checkUploadAllowance(organizationId, session.userId);
@@ -1988,9 +2003,11 @@ export async function createFaqAction(
 export async function importFaqsAction(formData: FormData): Promise<{
   imported: number;
   skipped: string[];
+  duplicates: import("@agent-hub/core").FaqImportDuplicate[];
+  duplicateCheckIncomplete: boolean;
 }> {
-  await requireMember("edit");
   const assistantId = String(formData.get("assistantId") ?? "");
+  await requireMember("knowledge:edit", { assistantId: assistantId || null });
   const collectionId = String(formData.get("collectionId") ?? "");
   const file = formData.get("file");
   if (!assistantId || !collectionId || !(file instanceof File)) {
@@ -2002,16 +2019,16 @@ export async function importFaqsAction(formData: FormData): Promise<{
 
   const { rows, skipped } = parseFaqCsv(await file.text());
   if (rows.length === 0) {
-    return { imported: 0, skipped };
+    return { imported: 0, skipped, duplicates: [], duplicateCheckIncomplete: false };
   }
 
-  const { imported } = await runOperation(importFaqsOp, {
+  const { imported, duplicates, duplicateCheckIncomplete } = await runOperation(importFaqsOp, {
     assistantId,
     collectionId,
     fileName: file.name,
     rows,
   });
-  return { imported, skipped };
+  return { imported, skipped, duplicates, duplicateCheckIncomplete };
 }
 
 /**
@@ -2020,7 +2037,7 @@ export async function importFaqsAction(formData: FormData): Promise<{
  * during a provider outage). Run after adding/fixing an embedding provider.
  */
 export async function reembedKnowledgeAction(assistantId: string) {
-  const { db, session, organizationId } = await requireMember("edit");
+  const { db, session, organizationId } = await requireMember("knowledge:edit", { assistantId });
   const connections = await db.listProviderConnections(session.organization.id);
   const conceptIds = await db.listNullEmbeddingConceptIds(assistantId);
   let reembedded = 0;
@@ -2070,7 +2087,7 @@ export async function deleteConceptAction(
   // A FAQ Concept owns a `faq` Source (PRD #726): deleting the FAQ retires
   // the whole Source so no orphaned hub row survives (the cascade lives in
   // deleteSourceOp).
-  const { db } = await requireMember("edit");
+  const { db } = await requireMember("knowledge:delete");
   const concept = await db.getConcept(conceptId);
   if (concept?.sourceId) {
     const source = await db.getSource(concept.sourceId);
@@ -2080,8 +2097,8 @@ export async function deleteConceptAction(
     }
   }
   await orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "knowledge.documents.delete", effect: "consequential" },
+      capability: "knowledge:delete",
       entities: [{ kind: "assistantEditor", assistantId }],
     },
     async ({ db }) => {
@@ -2143,7 +2160,23 @@ export async function getInboxConversationReviewAction(
   const review = await runOperation(getInboxConversationReviewOp, { conversationId });
   const { session } = await requireMember("member");
   const reactions = await readReactionRecords(getWidgetDb(), session.organization.id, review.messages.filter((message) => message.role === "assistant").map((message) => message.id));
-  return { ...review, reactions };
+  // The model's own reasoning quotes Visitors and knowledge verbatim (#557),
+  // so it leaves the server only for inbox:reasoning. The steps stay, emptied,
+  // so the panel can still say how many it hides.
+  const messages = can(session, "inbox:reasoning")
+    ? review.messages
+    : review.messages.map((message) =>
+        message.trace
+          ? {
+              ...message,
+              trace: {
+                ...message.trace,
+                steps: message.trace.steps.map((step) => (step.kind === "thought" ? { ...step, label: "", detail: undefined } : step)),
+              },
+            }
+          : message
+      );
+  return { ...review, messages, reactions };
 }
 
 /** Every filtered summary for the lightweight CSV export. */
@@ -2190,7 +2223,7 @@ export async function exportInboxConversationsAction(
 
   return {
     rows: conversationExportRows(exportWindow.rows, {
-      includeReasoning: canViewReasoning(session.role),
+      includeReasoning: can(session, "inbox:reasoning"),
       iterationLimit: MAX_AGENT_ITERATIONS,
     }),
     truncated: exportWindow.truncated,
@@ -2244,9 +2277,10 @@ export async function listImprovementsPageAction(
     cursor?: string | null;
     status?: ImprovementStatus;
     limit?: number;
-  },
+  } & ImprovementQuery,
 ) {
   return runOperation(listImprovementsPageOp, {
+    ...input,
     limit: input.limit ?? IMPROVEMENT_LANE_PAGE_SIZE,
     cursor: input.cursor,
     status: input.status,
@@ -2261,6 +2295,7 @@ export async function listImprovementsPageAction(
  */
 export async function listAllImprovementsAction(
   status?: ImprovementStatus,
+  filters: ImprovementQuery = {},
 ): Promise<ImprovementListItem[]> {
   const rows: ImprovementListItem[] = [];
   let cursor: string | null = null;
@@ -2270,7 +2305,7 @@ export async function listAllImprovementsAction(
     // that depends on its own initializer) without it.
     const page: ImprovementLanePage = await runOperation(
       listImprovementsPageOp,
-      { limit: 100, cursor, status },
+      { ...filters, limit: 100, cursor, status },
     );
     rows.push(...page.items);
     cursor = page.nextCursor;
@@ -2317,7 +2352,7 @@ export async function getImprovementDetailAction(
       .filter((project) => !project.archived)
       .map((project) => ({ id: project.id, name: project.name })),
     tasks: improvementTaskRows(tasks.items, projects),
-    canCreateTasks: roleAllowsCapability(session.role, createTaskOp.capability),
+    canCreateTasks: capabilitiesAllow(session.capabilities, createTaskOp.capability),
   };
 }
 
@@ -2345,15 +2380,17 @@ export async function listConversationImprovementLinksAction(
 export async function createImprovementFromMessageAction(
   messageId: string,
   title: string,
+  description = "",
 ): Promise<Improvement> {
   return orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "improvements.fromMessage.create", effect: "write" },
+      capability: "improvements:edit",
       entities: [{ kind: "improvementList" }, { kind: "inbox" }],
     },
     async ({ db, session }) => {
       const improvement = await raiseImprovement(db, session.organization.id, {
         title,
+        description,
         createdBy: session.userId,
         messageId,
       });
@@ -2400,8 +2437,8 @@ export async function linkMessageToImprovementAction(
   improvementId: string,
 ): Promise<void> {
   await orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "improvements.messages.link", effect: "write" },
+      capability: "improvements:edit",
       entities: [
         { kind: "improvementList" },
         { kind: "improvement", id: improvementId },
@@ -2417,8 +2454,8 @@ export async function unlinkImprovementMessageAction(
   messageId: string,
 ): Promise<void> {
   await orgMutation(
-    {
-      capability: "edit",
+    { operation: { name: "improvements.messages.unlink", effect: "write" },
+      capability: "improvements:edit",
       entities: [{ kind: "improvement", id: improvementId }, { kind: "inbox" }],
     },
     ({ db }) => db.unlinkImprovementMessage(improvementId, messageId),
@@ -2436,7 +2473,7 @@ export async function updateImprovementAction(
 
 export async function deleteImprovementAction(id: string): Promise<void> {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "improvementList" }] },
+    { operation: { name: "improvements.delete", effect: "consequential" }, capability: "improvements:edit", entities: [{ kind: "improvementList" }] },
     ({ db }) => db.deleteImprovement(id),
   );
   redirect("/improvements");
@@ -2512,7 +2549,7 @@ export async function deleteProjectAction(id: string): Promise<void> {
  * edited rather than from whichever transcript a decision happened in.
  */
 export async function readProjectAction(id: string): Promise<
-  { project: Project } & MemoryDocumentView
+  { project: Project; improvementCounts: Record<ImprovementStatus, number> | null } & MemoryDocumentView
 > {
   return runOperation(getProjectOp, { id });
 }
@@ -2562,7 +2599,7 @@ export async function createApplicationImportAction(input: {
 }
 
 export async function discoverApplicationScopesAction(connectionId: string) {
-  const { db, organizationId } = await requireMember("edit");
+  const { db, organizationId } = await requireMember("applications:edit");
   const connection = await requireApplicationConnectionForImport(
     db,
     organizationId,
@@ -2589,7 +2626,7 @@ export async function configureSlackBotAction(
   connectionId: string,
   config: SlackBotConfig | null
 ) {
-  const { db, organizationId } = await requireMember("publish");
+  return orgMutation({ operation: { name: "applications.slackBot.configure", effect: "consequential" }, capability: "applications:connect", entities: [{ kind: "applicationConnection", id: connectionId },{ kind: "knowledgeHub" },{ kind: "alerts" }] },async ({ db, organizationId }) => {
   const expectedAppId = process.env.SLACK_APPLICATION_APP_ID;
   if (config === null) {
     await saveSlackBotSettings(db, organizationId, connectionId, null);
@@ -2615,6 +2652,7 @@ export async function configureSlackBotAction(
     });
   }
   revalidateEntities([{ kind: "knowledgeHub" }], organizationId);
+  });
 }
 
 export async function syncApplicationImportNowAction(importId: string): Promise<void> {
@@ -2652,12 +2690,12 @@ export async function setApplicationImportEnabledAction(
 
 /** The caller may delete this Connection; hands back the Imports it owns. */
 async function requireDeletableConnection(connectionId: string) {
-  const { db, organizationId, session } = await requireMember("edit");
+  const { db, organizationId, session } = await requireMember("applications:edit");
   const connection = await db.getSafeApplicationConnection(connectionId);
   if (
     !connection ||
     connection.organizationId !== organizationId ||
-    !canDeleteApplicationConnection(connection, session.userId, session.role)
+    !canDeleteApplicationConnection(connection, session.userId, session)
   ) {
     throw new Error("Application Connection not found");
   }
@@ -2693,6 +2731,7 @@ export async function deleteApplicationImportAction(importId: string): Promise<v
 export async function deleteApplicationConnectionAction(
   connectionId: string
 ): Promise<void> {
+  return orgMutation({ operation: { name: "applications.connections.delete", effect: "consequential" }, capability: "applications:edit", entities: [{ kind: "applicationConnection", id: connectionId },{ kind: "knowledgeHub" },{ kind: "alerts" }] },async () => {
   const { organizationId, imports } = await requireDeletableConnection(connectionId);
   const mutationDb = getWidgetDb();
   const connection = await mutationDb.getApplicationConnection(connectionId);
@@ -2722,6 +2761,7 @@ export async function deleteApplicationConnectionAction(
     ],
     organizationId,
   );
+  });
 }
 
 /**
@@ -2767,8 +2807,8 @@ export async function saveEvaluationDefaultAction(input: unknown): Promise<{ ok:
   }) }).safeParse(input);
   if (!parsed.success) return { ok: false, error: "Choose an Assistant, stage and model." };
   try {
-    const { db, organizationId } = await requireMember("edit");
     const { assistantId, stage, model } = parsed.data;
+    const { db, organizationId } = await requireMember("evaluations:run", { assistantId });
     const assistant = await db.getAssistant(assistantId);
     if (!assistant || assistant.organizationId !== organizationId) throw new Error("Assistant not found.");
     const [connections, extraModels] = await Promise.all([db.listProviderConnections(organizationId), listPlatformEvalModels()]);
@@ -2801,7 +2841,7 @@ export async function saveTeammateDefaultModelAction(input: unknown): Promise<{ 
   }) }).safeParse(input);
   if (!parsed.success) return { ok: false, error: "Choose a Teammate and model." };
   try {
-    const { db, organizationId, session } = await requireMember("edit");
+    const { db, organizationId, session } = await requireMember("teammates:edit");
     const { canEditTeammate } = await import("@agent-hub/core");
     const teammate = await db.table("teammates").get(parsed.data.teammateId);
     if (!session.role || !teammate || teammate.organizationId !== organizationId || !canEditTeammate(teammate, { userId: session.userId, role: session.role })) throw new Error("Teammate not found.");
@@ -2823,4 +2863,19 @@ export async function updateAlertAction(id: string, patch: Partial<Pick<import("
 
 export async function renameSourceAction(sourceId: string, name: string, assistantId?: string) {
   await runOperation(renameSourceOp, { sourceId, name, assistantId });
+}
+
+/** An Improvement's validation evidence, each record marked stale or current. */
+export async function listImprovementValidationsAction(improvementId: string) {
+  return runOperation(listImprovementValidationsOp, { improvementId });
+}
+
+/** A Member's own check of the customer widget. Never changes the status. */
+export async function recordImprovementValidationAction(input: Parameters<typeof recordImprovementValidationOp.run>[1]) {
+  return runOperation(recordImprovementValidationOp, input);
+}
+
+/** Queues one bounded synthetic replay against the latest Publication. */
+export async function requestImprovementReplayAction(input: Parameters<typeof requestImprovementReplayOp.run>[1]) {
+  return runOperation(requestImprovementReplayOp, input);
 }

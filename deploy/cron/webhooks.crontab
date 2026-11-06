@@ -1,0 +1,4 @@
+# An external worker drains a hosted deployment every five minutes (UTC).
+# The app authenticates this call with CRON_SECRET and fences durable job leases.
+*/5 * * * * /usr/local/bin/run-job.sh /api/cron/finalize-crawls
+*/5 * * * * /usr/local/bin/run-job.sh /api/cron/run-exports

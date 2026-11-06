@@ -54,6 +54,7 @@ export function inboxConversationMatches(
   conversation: InboxConversation,
   query: InboxQuery
 ): boolean {
+  if (query.flaggedAnswer && !conversation.metadata.flaggedAnswer) return false;
   const from = query.from ? Date.parse(`${query.from}T00:00:00.000Z`) : null;
   const to = query.to ? Date.parse(`${query.to}T23:59:59.999Z`) : null;
   const updated = Date.parse(conversation.updatedAt);

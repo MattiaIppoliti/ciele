@@ -52,7 +52,7 @@ egress policy appropriate to the number of active Teammates.
 
 In Ciele, an admin opens **Teammate → Configure → Execution**, enables the required capabilities,
 and saves. Browser requires internet; terminal requires internet and files. Writes require an edit
-capability ceiling. The computer starts on first use; **Check computer**, **Start** and **Stop**
+action ceiling. The computer starts on first use; **Check computer**, **Start** and **Stop**
 provide lifecycle controls. These controls are not a remote desktop viewer.
 
 Smoke test with a Teammate using the Ciele harness:
