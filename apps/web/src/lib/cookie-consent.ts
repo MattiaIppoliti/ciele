@@ -94,139 +94,195 @@ export const CONSENT_REVISION = 1;
 export const COOKIE_NOTICE_PATH = "/policies/cookies";
 export const PRIVACY_POLICY_PATH = "/policies/privacy";
 
+/**
+ * Who the banner names: the operator of the site, its domain, and the mailbox
+ * for privacy requests. ciele.app sets none of the three variables and gets
+ * Ciele's values, so its banner is unchanged.
+ *
+ * A fork that runs the app under its own name sets NEXT_PUBLIC_SITE_NAME. From
+ * then on Ciele's domain and mailbox stop being defaults: a visitor of someone
+ * else's site must not be told they are on ciele.app, or be sent to our inbox
+ * with a privacy request we cannot answer. Such a fork names its domain with
+ * NEXT_PUBLIC_SITE_DOMAIN and its mailbox with NEXT_PUBLIC_PRIVACY_EMAIL; with
+ * no mailbox configured the banner names none.
+ *
+ * Only the copy changes. Storage keys such as `ciele-visitor` are what the
+ * browser really holds, so the tables keep showing them as they are.
+ */
+export interface ConsentBrand {
+  /** The operator, as it appears in the cookie tables and the copy. */
+  name: string;
+  /** The site's domain for the banner title, or null to use `name` there. */
+  domain: string | null;
+  /** The privacy contact, or null to name no mailbox. */
+  privacyEmail: string | null;
+}
+
+export function consentBrand(env: {
+  siteName?: string;
+  siteDomain?: string;
+  privacyEmail?: string;
+}): ConsentBrand {
+  const name = env.siteName?.trim();
+  if (!name) {
+    return { name: "Ciele", domain: "ciele.app", privacyEmail: "privacy@ciele.app" };
+  }
+  return {
+    name,
+    domain: env.siteDomain?.trim() || null,
+    privacyEmail: env.privacyEmail?.trim() || null,
+  };
+}
+
+/**
+ * This module runs in the browser, so each variable is read by its literal
+ * name: Next inlines a `process.env.NEXT_PUBLIC_*` reference only when it can
+ * see the whole name at build time.
+ */
+export const CONSENT_BRAND: ConsentBrand = consentBrand({
+  siteName: process.env.NEXT_PUBLIC_SITE_NAME,
+  siteDomain: process.env.NEXT_PUBLIC_SITE_DOMAIN,
+  privacyEmail: process.env.NEXT_PUBLIC_PRIVACY_EMAIL,
+});
+
 /** The date shown on the notice page; keep in step with CONSENT_REVISION. */
 export const COOKIE_NOTICE_LAST_UPDATED = "July 26, 2026";
 
-export const CONSENT_CATEGORIES: ConsentCategory[] = [
-  {
-    id: "necessary",
-    title: "Strictly necessary",
-    essential: true,
-    description:
-      "Required to run the site and keep it secure, signing you in, keeping your session on the right organization, and remembering this cookie choice. They set no advertising or cross-site identifiers, so they stay on and cannot be switched off. Blocking them in your browser will break parts of the product.",
-    items: [
-      {
-        name: "sb-<project>-auth-token",
-        provider: "Ciele (Supabase Auth)",
-        purpose:
-          "Keeps you signed in to the console and identifies your session on each request.",
-        duration: "1 year, refreshed while you stay active",
-        kind: "Cookie",
-      },
-      {
-        name: "active_org_id",
-        provider: "Ciele",
-        purpose:
-          "Remembers which organization you are working in when you belong to more than one.",
-        duration: "Session",
-        kind: "Cookie",
-      },
-      {
-        name: "sso_txn",
-        provider: "Ciele",
-        purpose:
-          "Encrypted, single-use token that protects one sign-in exchange with your identity provider against replay.",
-        duration: "10 minutes",
-        kind: "Cookie",
-      },
-      {
-        name: "sso_gate",
-        provider: "Ciele",
-        purpose:
-          "Encrypted proof that you completed sign-in for an assistant that requires an account.",
-        duration: "12 hours",
-        kind: "Cookie",
-      },
-      {
-        name: CONSENT_COOKIE_NAME,
-        provider: "Ciele",
-        purpose:
-          "Stores the choice you make here: the categories you allowed, when you chose, and a random consent id. We also keep our own copy of that record on our servers so we can show what you agreed to, see “Our record of your choice” below.",
-        duration: `${CONSENT_COOKIE_DAYS} days`,
-        kind: "Cookie",
-        localStorageKeys: [],
-      },
-      {
-        name: "theme",
-        provider: "Ciele",
-        purpose:
-          "Remembers whether you chose the light or dark interface, so the page does not load in the wrong one. Set only because you asked for it, and holds no identifier.",
-        duration: "Until you clear it",
-        kind: "Local storage",
-        localStorageKeys: ["theme"],
-      },
-      {
-        name: "_vercel_jwt, __vercel_live_token",
-        provider: "Vercel (our hosting provider)",
-        purpose:
-          "Controls access to protected and preview deployments. Set by our host on the deployments it guards, not on the public site.",
-        duration: "Session",
-        kind: "Cookie",
-      },
-    ],
-  },
-  {
-    id: "functional",
-    title: "Functional",
-    essential: false,
-    description:
-      "Remember optional choices and let an embedded Ciele assistant pick a conversation back up where you left it. Turning these off does not stop you using the site, an assistant will simply start fresh each time, and some layout choices will not stick.",
-    items: [
-      {
-        name: "ciele-visitor",
-        provider: "Ciele",
-        purpose:
-          "A random id that lets an embedded assistant keep one conversation continuous across page loads. Not linked to an account and not used to profile you or track you across other sites.",
-        duration: "Until you clear it",
-        kind: "Local storage",
-        localStorageKeys: ["ciele-visitor"],
-      },
-      {
-        name: "preview-panel-collapsed",
-        provider: "Ciele",
-        purpose:
-          "Remembers whether you collapsed the assistant preview panel in the console, so it opens the way you left it.",
-        duration: "Until you clear it",
-        kind: "Local storage",
-        localStorageKeys: ["preview-panel-collapsed"],
-      },
-      {
-        name: "ciele.local-connector.*, ciele.preview.ai-preferences.*",
-        provider: "Ciele",
-        purpose:
-          "If you pair a local connector, keeps that pairing and its preview model preferences on this device so you do not have to set them up again. Only written once you use that feature.",
-        duration: "Until you clear it",
-        kind: "Local storage",
-        localStorageKeys: ["ciele.local-connector.", "ciele.preview.ai-preferences."],
-      },
-    ],
-  },
-  {
-    id: "analytics",
-    title: "Analytics",
-    essential: false,
-    description:
-      "Let us count visits and measure page performance so we can see which pages matter and what is slow. The measurements are aggregated and we cannot use them to identify you. With these off we simply do not receive the measurement.",
-    items: [
-      {
-        name: "No cookie set",
-        provider: "Vercel Web Analytics",
-        purpose:
-          "Counts page views and referrers in aggregate. Cookieless by design, it stores nothing on your device, but we still ask first and load it only if you allow this category.",
-        duration: "Not stored on your device",
-        kind: "Cookie",
-      },
-      {
-        name: "No cookie set",
-        provider: "Vercel Speed Insights",
-        purpose:
-          "Reports anonymous page-performance timings (such as how long a page took to become usable) so we can fix slow pages.",
-        duration: "Not stored on your device",
-        kind: "Cookie",
-      },
-    ],
-  },
-];
+/** The declaration, with `brand` as the party that sets our own storage. */
+export function consentCategories(brand: ConsentBrand): ConsentCategory[] {
+  return [
+    {
+      id: "necessary",
+      title: "Strictly necessary",
+      essential: true,
+      description:
+        "Required to run the site and keep it secure, signing you in, keeping your session on the right organization, and remembering this cookie choice. They set no advertising or cross-site identifiers, so they stay on and cannot be switched off. Blocking them in your browser will break parts of the product.",
+      items: [
+        {
+          name: "sb-<project>-auth-token",
+          provider: `${brand.name} (Supabase Auth)`,
+          purpose:
+            "Keeps you signed in to the console and identifies your session on each request.",
+          duration: "1 year, refreshed while you stay active",
+          kind: "Cookie",
+        },
+        {
+          name: "active_org_id",
+          provider: brand.name,
+          purpose:
+            "Remembers which organization you are working in when you belong to more than one.",
+          duration: "Session",
+          kind: "Cookie",
+        },
+        {
+          name: "sso_txn",
+          provider: brand.name,
+          purpose:
+            "Encrypted, single-use token that protects one sign-in exchange with your identity provider against replay.",
+          duration: "10 minutes",
+          kind: "Cookie",
+        },
+        {
+          name: "sso_gate",
+          provider: brand.name,
+          purpose:
+            "Encrypted proof that you completed sign-in for an assistant that requires an account.",
+          duration: "12 hours",
+          kind: "Cookie",
+        },
+        {
+          name: CONSENT_COOKIE_NAME,
+          provider: brand.name,
+          purpose:
+            "Stores the choice you make here: the categories you allowed, when you chose, and a random consent id. We also keep our own copy of that record on our servers so we can show what you agreed to, see “Our record of your choice” below.",
+          duration: `${CONSENT_COOKIE_DAYS} days`,
+          kind: "Cookie",
+          localStorageKeys: [],
+        },
+        {
+          name: "theme",
+          provider: brand.name,
+          purpose:
+            "Remembers whether you chose the light or dark interface, so the page does not load in the wrong one. Set only because you asked for it, and holds no identifier.",
+          duration: "Until you clear it",
+          kind: "Local storage",
+          localStorageKeys: ["theme"],
+        },
+        {
+          name: "_vercel_jwt, __vercel_live_token",
+          provider: "Vercel (our hosting provider)",
+          purpose:
+            "Controls access to protected and preview deployments. Set by our host on the deployments it guards, not on the public site.",
+          duration: "Session",
+          kind: "Cookie",
+        },
+      ],
+    },
+    {
+      id: "functional",
+      title: "Functional",
+      essential: false,
+      description:
+        `Remember optional choices and let an embedded ${brand.name} assistant pick a conversation back up where you left it. Turning these off does not stop you using the site, an assistant will simply start fresh each time, and some layout choices will not stick.`,
+      items: [
+        {
+          name: "ciele-visitor",
+          provider: brand.name,
+          purpose:
+            "A random id that lets an embedded assistant keep one conversation continuous across page loads. Not linked to an account and not used to profile you or track you across other sites.",
+          duration: "Until you clear it",
+          kind: "Local storage",
+          localStorageKeys: ["ciele-visitor"],
+        },
+        {
+          name: "preview-panel-collapsed",
+          provider: brand.name,
+          purpose:
+            "Remembers whether you collapsed the assistant preview panel in the console, so it opens the way you left it.",
+          duration: "Until you clear it",
+          kind: "Local storage",
+          localStorageKeys: ["preview-panel-collapsed"],
+        },
+        {
+          name: "ciele.local-connector.*, ciele.preview.ai-preferences.*",
+          provider: brand.name,
+          purpose:
+            "If you pair a local connector, keeps that pairing and its preview model preferences on this device so you do not have to set them up again. Only written once you use that feature.",
+          duration: "Until you clear it",
+          kind: "Local storage",
+          localStorageKeys: ["ciele.local-connector.", "ciele.preview.ai-preferences."],
+        },
+      ],
+    },
+    {
+      id: "analytics",
+      title: "Analytics",
+      essential: false,
+      description:
+        "Let us count visits and measure page performance so we can see which pages matter and what is slow. The measurements are aggregated and we cannot use them to identify you. With these off we simply do not receive the measurement.",
+      items: [
+        {
+          name: "No cookie set",
+          provider: "Vercel Web Analytics",
+          purpose:
+            "Counts page views and referrers in aggregate. Cookieless by design, it stores nothing on your device, but we still ask first and load it only if you allow this category.",
+          duration: "Not stored on your device",
+          kind: "Cookie",
+        },
+        {
+          name: "No cookie set",
+          provider: "Vercel Speed Insights",
+          purpose:
+            "Reports anonymous page-performance timings (such as how long a page took to become usable) so we can fix slow pages.",
+          duration: "Not stored on your device",
+          kind: "Cookie",
+        },
+      ],
+    },
+  ];
+}
+
+export const CONSENT_CATEGORIES: ConsentCategory[] = consentCategories(CONSENT_BRAND);
 
 /** The categories a visitor can actually switch, in display order. */
 export const OPTIONAL_CATEGORIES: ConsentCategory[] = CONSENT_CATEGORIES.filter(
@@ -276,12 +332,26 @@ export const COOKIE_TABLE_HEADERS = {
   kind: "Type",
 } as const;
 
+/**
+ * The plugin renders its strings as HTML. The brand comes from deployment
+ * configuration, not from a visitor, but it is still not ours to trust as
+ * markup, so anything derived from it is escaped on the way in.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function cookieTable(category: ConsentCategory) {
   return {
     headers: { ...COOKIE_TABLE_HEADERS },
     body: category.items.map((item) => ({
       name: item.name,
-      provider: item.provider,
+      provider: escapeHtml(item.provider),
       purpose: item.purpose,
       duration: item.duration,
       kind: item.kind,
@@ -295,7 +365,13 @@ function cookieTable(category: ConsentCategory) {
  * Kept as a pure function of the declaration above so the compliance
  * properties are assertable in a plain unit test without a DOM.
  */
-export function buildConsentConfig(): CookieConsentConfig {
+export function buildConsentConfig(
+  brand: ConsentBrand = CONSENT_BRAND,
+): CookieConsentConfig {
+  const categories = consentCategories(brand);
+  const contact = brand.privacyEmail
+    ? ` For anything else, email <a href="mailto:${escapeHtml(brand.privacyEmail)}">${escapeHtml(brand.privacyEmail)}</a>.`
+    : "";
   return {
     // `opt-in` is the whole point: until the visitor chooses, only the
     // read-only necessary category counts as granted.
@@ -349,7 +425,7 @@ export function buildConsentConfig(): CookieConsentConfig {
         en: {
           consentModal: {
             label: "Cookie notice",
-            title: "Cookies on ciele.app",
+            title: `Cookies on ${escapeHtml(brand.domain ?? brand.name)}`,
             description:
               "We use strictly necessary cookies to run this site. We would also like to set optional cookies to measure performance and remember your choices, only if you agree.",
             acceptAllBtn: "Accept all",
@@ -374,9 +450,9 @@ export function buildConsentConfig(): CookieConsentConfig {
                 description:
                   "Choose which optional cookies we may set. Strictly necessary cookies are always on because the site cannot work without them. You can come back and change or withdraw any of this at any time from the Cookie Notice or the link in our footer.",
               },
-              ...CONSENT_CATEGORIES.map((category) => ({
+              ...categories.map((category) => ({
                 title: category.title,
-                description: category.description,
+                description: escapeHtml(category.description),
                 linkedCategory: category.id,
                 cookieTable: cookieTable(category),
               })),
@@ -386,7 +462,7 @@ export function buildConsentConfig(): CookieConsentConfig {
               },
               {
                 title: "More information",
-                description: `Full detail, including how to control cookies in your browser, is in our <a href="${COOKIE_NOTICE_PATH}">Cookie Notice</a>. For anything else, email <a href="mailto:privacy@ciele.app">privacy@ciele.app</a>.`,
+                description: `Full detail, including how to control cookies in your browser, is in our <a href="${COOKIE_NOTICE_PATH}">Cookie Notice</a>.${contact}`,
               },
             ],
           },

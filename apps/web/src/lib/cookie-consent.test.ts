@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildConsentConfig,
+  consentBrand,
   CONSENT_CATEGORIES,
   CONSENT_COOKIE_DAYS,
   CONSENT_COOKIE_NAME,
@@ -222,5 +223,54 @@ describe("the banner presents as a small bottom-right card", () => {
   it("shows itself automatically and hides from crawlers", () => {
     expect(config.autoShow).toBe(true);
     expect(config.hideFromBots).toBe(true);
+  });
+});
+
+describe("the banner names the site that runs it", () => {
+  const copyOf = (brandEnv: Parameters<typeof consentBrand>[0]) =>
+    JSON.stringify(buildConsentConfig(consentBrand(brandEnv)).language);
+
+  it("keeps ciele.app's own copy when no brand is configured", () => {
+    expect(consentModal?.title).toBe("Cookies on ciele.app");
+    expect(JSON.stringify(preferencesModal)).toContain(
+      'For anything else, email <a href=\\"mailto:privacy@ciele.app\\">privacy@ciele.app</a>.',
+    );
+    expect(JSON.stringify(preferencesModal)).toContain("Ciele (Supabase Auth)");
+  });
+
+  it("names a fork's site and mailbox, and never Ciele's", () => {
+    const copy = copyOf({
+      siteName: "Acme AI",
+      siteDomain: "acme.example",
+      privacyEmail: "privacy@example.org",
+    });
+    expect(copy).toContain("Cookies on acme.example");
+    expect(copy).toContain("Acme AI (Supabase Auth)");
+    expect(copy).toContain("mailto:privacy@example.org");
+    expect(copy).not.toMatch(/\bCiele\b/);
+    expect(copy).not.toContain("ciele.app");
+  });
+
+  it("does not send a fork's visitors to Ciele's mailbox or domain by default", () => {
+    const copy = copyOf({ siteName: "Acme AI" });
+    expect(copy).toContain("Cookies on Acme AI");
+    expect(copy).not.toContain("mailto:");
+    expect(copy).not.toContain("ciele.app");
+  });
+
+  it("keeps the real storage key names, which the browser holds regardless", () => {
+    expect(copyOf({ siteName: "Acme AI" })).toContain("ciele-visitor");
+  });
+
+  it("escapes a configured brand instead of rendering it as markup", () => {
+    const copy = copyOf({ siteName: "<b>Acme</b> & Co", privacyEmail: 'x@y.z"><script>' });
+    expect(copy).not.toContain("<b>Acme");
+    expect(copy).not.toContain("<script>");
+    expect(copy).toContain("&lt;b&gt;Acme&lt;/b&gt; &amp; Co");
+  });
+
+  it("changes only the copy, never the consent mechanics", () => {
+    const fork = buildConsentConfig(consentBrand({ siteName: "Acme AI" }));
+    expect({ ...fork, language: null }).toEqual({ ...config, language: null });
   });
 });
